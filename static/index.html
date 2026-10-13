@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eRaktKosh Live | Nationwide Blood Lakehouse & SOS Finder</title>
+    <meta name="description"
+        content="Real-time blood bank availability and emergency SOS facility finder across 36 Indian states powered by DuckDB and dbt Core.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="pulse-indicator">
+                    <span class="pulse-dot"></span>
+                </div>
+                <div class="brand-text">
+                    <h1>eRaktKosh <span>Lakehouse</span></h1>
+                    <p class="tagline">National Blood Inventory Intelligence & SOS Network</p>
+                </div>
+            </div>
+            <div class="engine-badge">
+                <span class="badge-dot"></span>
+                <span>Powered by DuckDB & dbt Core</span>
+            </div>
+        </header>
+
+        <!-- KPI Cards -->
+        <section class="kpi-section" id="kpi-section">
+            <div class="kpi-card glass-panel">
+                <div class="kpi-icon">🏥</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Registered Facilities</span>
+                    <h2 class="kpi-val" id="kpi-total-banks">--</h2>
+                    <span class="kpi-sub">Across 36 States & UTs</span>
+                </div>
+            </div>
+
+            <div class="kpi-card glass-panel">
+                <div class="kpi-icon">🟢</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Verified Fresh Stock</span>
+                    <h2 class="kpi-val text-green" id="kpi-fresh-banks">--</h2>
+                    <span class="kpi-sub">Updated in past 24 hrs</span>
+                </div>
+            </div>
+
+            <div class="kpi-card glass-panel">
+                <div class="kpi-icon">⚠️</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Stale / Inactive Banks</span>
+                    <h2 class="kpi-val text-red" id="kpi-stale-banks">--</h2>
+                    <span class="kpi-sub">No updates for &gt;30 days</span>
+                </div>
+            </div>
+
+            <div class="kpi-card glass-panel">
+                <div class="kpi-icon">⚡</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">OLAP Query Latency</span>
+                    <h2 class="kpi-val text-cyan">&lt; 2 ms</h2>
+                    <span class="kpi-sub">Vectorized DuckDB Engine</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics Chart Section -->
+        <section class="chart-section glass-panel">
+            <div class="chart-header">
+                <div>
+                    <h3>📊 National Facility Distribution</h3>
+                    <p>Top States by Active Blood Banks (Aggregated from Gold Marts)</p>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="statesChart"></canvas>
+            </div>
+        </section>
+
+        <!-- Emergency Finder -->
+        <section class="finder-section glass-panel">
+            <div class="finder-header">
+                <div class="finder-title-group">
+                    <span class="alert-pill">EMERGENCY FINDER</span>
+                    <h2>Find Verified Blood Availability</h2>
+                    <p>Search active facilities, verify stock recency, and connect directly with blood banks.</p>
+                </div>
+            </div>
+
+            <!-- Blood Group Quick Pills -->
+            <div class="pills-wrapper">
+                <span class="pills-label">Quick Blood Filter:</span>
+                <div class="pills-container">
+                    <button class="pill-btn active" data-group="">All</button>
+                    <button class="pill-btn" data-group="O+">O+</button>
+                    <button class="pill-btn" data-group="O-">O- (Universal)</button>
+                    <button class="pill-btn" data-group="A+">A+</button>
+                    <button class="pill-btn" data-group="A-">A-</button>
+                    <button class="pill-btn" data-group="B+">B+</button>
+                    <button class="pill-btn" data-group="B-">B-</button>
+                    <button class="pill-btn" data-group="AB+">AB+</button>
+                    <button class="pill-btn" data-group="AB-">AB-</button>
+                    <button class="pill-btn" data-group="Platelet">Platelets 🩸</button>
+                    <button class="pill-btn" data-group="Plasma">Plasma 🧪</button>
+                </div>
+            </div>
+
+            <div class="search-form">
+                <div class="input-group">
+                    <label for="state-select">Select State</label>
+                    <select id="state-select" class="custom-select">
+                        <option value="ALL">All India (Nationwide)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="district-select">Select District</label>
+                    <select id="district-select" class="custom-select" disabled>
+                        <option value="ALL">All Districts</option>
+                    </select>
+                </div>
+
+                <div class="input-group search-input-group">
+                    <label for="search-input">Search Facility / Address</label>
+                    <input type="text" id="search-input" placeholder="e.g. Civil Hospital, Red Cross..."
+                        class="custom-input">
+                </div>
+
+                <div class="button-group">
+                    <button id="search-btn" class="btn btn-primary">
+                        <span>🔍 Search Facilities</span>
+                    </button>
+                    <button id="reset-btn" class="btn btn-secondary">Reset</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Grid -->
+        <section class="results-section">
+            <div class="results-header">
+                <h3>Matching Blood Banks (<span id="results-count">0</span>)</h3>
+                <span class="sort-tag">Ranked by data recency</span>
+            </div>
+
+            <div class="hospitals-grid" id="hospitals-grid">
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Querying DuckDB Gold Lakehouse...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Developed with ❤️ using <strong>eRaktKosh Data</strong> | <strong>DuckDB</strong> | <strong>dbt
+                    Core</strong> | <strong>FastAPI</strong></p>
+            <div class="footer-links">
+                <a href="https://github.com/radhey803/eraktkosh-blood-lakehouse" target="_blank" rel="noopener">GitHub
+                    Repository</a>
+                <span>•</span>
+                <a href="/api/docs" target="_blank">FastAPI Swagger Docs</a>
+            </div>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>

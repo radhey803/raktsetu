@@ -7,6 +7,10 @@ let locationsMap = {};
 let selectedBloodGroup = "";
 let selectedComponent = "Packed Red Blood Cells";
 let chartInstance = null;
+let leafletMap = null;
+let markersLayer = null;
+let currentView = 'grid'; // 'grid' | 'map'
+let currentHospitalsData = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     initDashboard();
@@ -175,6 +179,31 @@ function setupEventListeners() {
         document.querySelector('.pill-btn[data-group=""]').classList.add('active');
         searchHospitals();
     });
+
+    // View Toggle Handlers (Grid vs Map)
+    const gridBtn = document.getElementById('toggle-grid-btn');
+    const mapBtn = document.getElementById('toggle-map-btn');
+    const gridEl = document.getElementById('hospitals-grid');
+    const mapContainerEl = document.getElementById('map-view-container');
+
+    if (gridBtn && mapBtn) {
+        gridBtn.addEventListener('click', () => {
+            currentView = 'grid';
+            gridBtn.classList.add('active');
+            mapBtn.classList.remove('active');
+            gridEl.classList.remove('hidden');
+            mapContainerEl.classList.add('hidden');
+        });
+
+        mapBtn.addEventListener('click', () => {
+            currentView = 'map';
+            mapBtn.classList.add('active');
+            gridBtn.classList.remove('active');
+            gridEl.classList.add('hidden');
+            mapContainerEl.classList.remove('hidden');
+            initOrUpdateLeafletMap();
+        });
+    }
 }
 
 // 4. Query Facilities & Render Cards
@@ -205,6 +234,11 @@ async function searchHospitals() {
         const data = await res.json();
 
         countEl.textContent = data.count;
+        currentHospitalsData = data.hospitals || [];
+
+        if (currentView === 'map') {
+            initOrUpdateLeafletMap();
+        }
 
         if (data.count === 0) {
             grid.innerHTML = `
@@ -529,4 +563,116 @@ function escapeQuotes(str) {
     if (!str) return '';
     return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
+
+// ----------------- 7. INTERACTIVE LEAFLET BLOOD MAP -----------------
+
+function initOrUpdateLeafletMap() {
+    if (typeof L === 'undefined') {
+        console.warn('Leaflet library is still loading...');
+        setTimeout(initOrUpdateLeafletMap, 300);
+        return;
+    }
+
+    const mapContainer = document.getElementById('blood-map');
+    if (!mapContainer) return;
+
+    if (!leafletMap) {
+        leafletMap = L.map('blood-map', {
+            center: [22.2587, 71.1924], // Gujarat center by default
+            zoom: 7,
+            zoomControl: true,
+            scrollWheelZoom: true
+        });
+
+        // High performance OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 18
+        }).addTo(leafletMap);
+
+        markersLayer = L.layerGroup().addTo(leafletMap);
+    }
+
+    // Delay size invalidation slightly so CSS visibility transition completes
+    setTimeout(() => {
+        if (leafletMap) {
+            leafletMap.invalidateSize();
+            renderBloodMapMarkers(currentHospitalsData);
+        }
+    }, 200);
+}
+
+function renderBloodMapMarkers(hospitals) {
+    if (!leafletMap || !markersLayer) return;
+
+    markersLayer.clearLayers();
+
+    if (!hospitals || hospitals.length === 0) return;
+
+    const bounds = [];
+
+    hospitals.forEach(h => {
+        if (!h.lat || !h.lng) return;
+
+        // Determine marker color status
+        let pinClass = 'pin-green';
+        if (!h.stock || !h.stock.trim()) {
+            pinClass = 'pin-red';
+        } else if (selectedBloodGroup) {
+            // Check specific units for filtered blood group
+            const match = h.stock.match(/:\s*(\d+)/);
+            const count = match ? parseInt(match[1]) : 0;
+            if (count <= 0) pinClass = 'pin-red';
+            else if (count <= 5) pinClass = 'pin-amber';
+            else pinClass = 'pin-green';
+        }
+
+        const customIcon = L.divIcon({
+            className: 'custom-pin-marker',
+            html: `<div class="custom-pin ${pinClass}" title="${escapeHTML(h.name)}"></div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+            popupAnchor: [0, -10]
+        });
+
+        const phoneMatch = (h.contact || '').match(/Phone:\s*([0-9\-\s,]+)/i);
+        const phoneNumber = phoneMatch ? phoneMatch[1].trim() : '';
+        const callBtn = phoneNumber && phoneNumber !== '-'
+            ? `<a href="tel:${phoneNumber.split(',')[0].trim()}" class="call-btn" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;">📞 Call</a>`
+            : '';
+
+        const mapsQuery = encodeURIComponent(`${h.name}, ${h.district}, ${h.state}`);
+        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+
+        const popupContent = `
+            <div class="map-popup-card">
+                <div>
+                    <span class="badge badge-govt" style="font-size: 0.65rem;">${escapeHTML(h.type || 'Blood Centre')}</span>
+                    <h4 class="map-popup-title">${escapeHTML(h.name)}</h4>
+                    <p class="map-popup-loc">📍 ${escapeHTML(h.district)}, ${escapeHTML(h.state)}</p>
+                </div>
+                <div class="map-popup-stock">
+                    <strong>📦 ${escapeHTML(h.component || 'PRBC')} Stock:</strong><br>
+                    ${escapeHTML(h.stock || 'Contact facility directly for availability')}
+                </div>
+                <div class="map-popup-actions">
+                    ${callBtn}
+                    <button class="trend-btn" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;" onclick="openHospitalHistory(${h.code}, '${escapeQuotes(h.name)}', '${escapeQuotes(h.district)}', '${escapeQuotes(h.state)}')">📈 7-Day Trend</button>
+                    <a href="${mapsLink}" target="_blank" rel="noopener" class="maps-link" style="font-size: 0.75rem;">Directions ↗</a>
+                </div>
+            </div>
+        `;
+
+        const marker = L.marker([h.lat, h.lng], { icon: customIcon }).bindPopup(popupContent);
+        markersLayer.addLayer(marker);
+        bounds.push([h.lat, h.lng]);
+    });
+
+    if (bounds.length === 1) {
+        leafletMap.setView(bounds[0], 12);
+    } else if (bounds.length > 1) {
+        leafletMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
+    }
+}
+
 

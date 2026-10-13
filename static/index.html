@@ -14,6 +14,9 @@
         rel="stylesheet">
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet CSS & JS for Interactive Blood Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 
@@ -166,13 +169,38 @@
             </div>
         </section>
 
-        <!-- Results Grid -->
+        <!-- Results Grid & Map Section -->
         <section class="results-section">
             <div class="results-header">
-                <h3>Matching Blood Banks (<span id="results-count">0</span>)</h3>
-                <span class="sort-tag">Ranked by data recency</span>
+                <div class="results-title-wrap">
+                    <h3>Matching Blood Banks (<span id="results-count">0</span>)</h3>
+                    <span class="sort-tag">Ranked by data recency</span>
+                </div>
+                <!-- View Toggle Buttons -->
+                <div class="view-toggle-group">
+                    <button id="toggle-grid-btn" class="toggle-btn active" title="Show Grid View">
+                        <span>📋 Grid View</span>
+                    </button>
+                    <button id="toggle-map-btn" class="toggle-btn" title="Show Geographic Map View">
+                        <span>🗺️ Live Blood Map</span>
+                    </button>
+                </div>
             </div>
 
+            <!-- Map View Container (Leaflet) -->
+            <div id="map-view-container" class="map-view-container glass-panel hidden">
+                <div class="map-toolbar">
+                    <div class="map-legend">
+                        <span class="legend-item"><span class="legend-dot dot-green"></span> In Stock (&gt;5 units)</span>
+                        <span class="legend-item"><span class="legend-dot dot-amber"></span> Low Stock (1–5 units)</span>
+                        <span class="legend-item"><span class="legend-dot dot-red"></span> Critical / Nil Stock</span>
+                    </div>
+                    <span class="map-hint">💡 Click any pin to view stock details, call, or open 7-Day Trend chart</span>
+                </div>
+                <div id="blood-map" class="blood-map-canvas"></div>
+            </div>
+
+            <!-- Grid View Container -->
             <div class="hospitals-grid" id="hospitals-grid">
                 <div class="loading-state">
                     <div class="spinner"></div>

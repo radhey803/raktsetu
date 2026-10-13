@@ -19,6 +19,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import duckdb
 from snapshot_manager import query_hospital_trend, query_district_trend
+from geo_coords import resolve_facility_lat_lng
 
 DB_PATH = os.path.join(WORKSPACE_DIR, "blood_warehouse.duckdb")
 
@@ -261,6 +262,8 @@ def search_hospitals(
             if not check_blood_group_available(stock_str, blood_group):
                 continue
 
+        lat, lng = resolve_facility_lat_lng(r[0], r[4] or "", r[5] or "")
+
         results.append({
             "code": r[0],
             "name": r[1],
@@ -275,7 +278,9 @@ def search_hospitals(
             "freshness": r[10] or "UNKNOWN",
             "alert": r[11] or "NORMAL",
             "stock": stock_str,
-            "component": component or "All Components"
+            "component": component or "All Components",
+            "lat": lat,
+            "lng": lng
         })
         
         if len(results) >= limit:

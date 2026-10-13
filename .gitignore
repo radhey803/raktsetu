@@ -1,0 +1,23 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+# Node & JS Build Bloat
+node_modules/
+package-lock.json
+bundle.js
+# DuckDB Databases & WAL files
+*.duckdb
+*.duckdb.wal
+# dbt Artifacts & Logs
+blood_project/target/
+blood_project/dbt_packages/
+blood_project/logs/
+# Large Raw Scraped CSV Dumps
+*.csv

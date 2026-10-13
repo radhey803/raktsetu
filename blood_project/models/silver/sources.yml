@@ -1,0 +1,24 @@
+version: 2
+
+sources:
+  - name: bronze
+    schema: bronze
+    description: "Raw data layer - ingested directly from eRaktKosh scraper CSV"
+    tables:
+      - name: raw_blood_inventory
+        description: "Raw nationwide blood bank inventory scraped from eRaktKosh portal"
+        columns:
+          - name: hospitalname
+            description: "Name of the blood bank or hospital"
+          - name: State
+            description: "Indian state name"
+          - name: District
+            description: "District within the state"
+          - name: hospitalCode
+            description: "Unique identifier for each blood bank"
+          - name: hospitalType
+            description: "Type: Govt., Private, Charitable/Vol"
+          - name: entrydate
+            description: "Last data update timestamp from eRaktKosh"
+          - name: components
+            description: "Raw nested dictionary of blood components and availability"

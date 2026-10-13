@@ -1,0 +1,15 @@
+version: 2
+
+models:
+  - name: stg_blood_inventory
+    description: "Cleaned and standardized blood bank inventory records from Bronze layer."
+    columns:
+      - name: hospital_name
+        description: "Facility name"
+        tests:
+          - not_null
+
+      - name: state_name
+        description: "State in India"
+        tests:
+          - not_null

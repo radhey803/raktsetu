@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: dim_blood_banks
+    description: "Deduplicated master dimension table of unique blood bank facilities."
+    columns:
+      - name: hospital_code
+        description: "Primary key for blood banks"
+        tests:
+          - unique
+          - not_null
+
+      - name: state_name
+        description: "State location"
+        tests:
+          - not_null
+
+  - name: fct_state_blood_summary
+    description: "State and district level aggregation of blood bank counts and facilities."
+    columns:
+      - name: state_name
+        tests:
+          - not_null
+      - name: total_blood_banks
+        tests:
+          - not_null

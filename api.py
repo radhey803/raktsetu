@@ -45,10 +45,17 @@ def get_national_summary():
     """Returns high-level KPI cards for the dashboard header."""
     con = get_db()
     
-    total_banks = con.execute("SELECT COUNT(*) FROM main_gold.dim_blood_banks;").fetchone()[0]
-    total_states = con.execute("SELECT COUNT(DISTINCT state_name) FROM main_gold.fct_state_blood_summary;").fetchone()[0]
-    stale_banks = con.execute("SELECT COUNT(*) FROM main_gold.fct_blood_shortage_alerts WHERE days_since_last_update > 30;").fetchone()[0]
-    fresh_banks = con.execute("SELECT COUNT(*) FROM main_gold.fct_blood_shortage_alerts WHERE days_since_last_update <= 1;").fetchone()[0]
+    row_banks = con.execute("SELECT COUNT(*) FROM main_gold.dim_blood_banks;").fetchone()
+    total_banks = row_banks[0] if row_banks else 0
+
+    row_states = con.execute("SELECT COUNT(DISTINCT state_name) FROM main_gold.fct_state_blood_summary;").fetchone()
+    total_states = row_states[0] if row_states else 0
+
+    row_stale = con.execute("SELECT COUNT(*) FROM main_gold.fct_blood_shortage_alerts WHERE days_since_last_update > 30;").fetchone()
+    stale_banks = row_stale[0] if row_stale else 0
+
+    row_fresh = con.execute("SELECT COUNT(*) FROM main_gold.fct_blood_shortage_alerts WHERE days_since_last_update <= 1;").fetchone()
+    fresh_banks = row_fresh[0] if row_fresh else 0
 
     top_states = con.execute("""
         SELECT state_name, SUM(total_blood_banks) as banks

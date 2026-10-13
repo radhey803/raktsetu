@@ -54,7 +54,8 @@ def ingest_to_bronze():
         );
     """)
 
-    total_rows = con.execute("SELECT COUNT(*) FROM bronze.raw_blood_inventory;").fetchone()[0]
+    row = con.execute("SELECT COUNT(*) FROM bronze.raw_blood_inventory;").fetchone()
+    total_rows = row[0] if row else 0
     print(f"✅ Bronze table refreshed! Total records loaded: {total_rows:,}")
     
     # BloodGrid Core Feature: Append-only Stock Snapshots & History

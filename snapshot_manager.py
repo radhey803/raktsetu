@@ -132,9 +132,10 @@ def seed_historical_backfill_if_empty(con: duckdb.DuckDBPyConnection, days_back:
     historical backfill based on the current snapshot with realistic consumption
     and donation variance. Enables rich 7-day trend charts immediately.
     """
-    distinct_dates = con.execute(
+    res_distinct = con.execute(
         "SELECT COUNT(DISTINCT snapshot_date) FROM main_gold.stock_snapshots;"
-    ).fetchone()[0]
+    ).fetchone()
+    distinct_dates = res_distinct[0] if res_distinct else 0
 
     if distinct_dates >= days_back:
         print(f"ℹ️ Snapshot history already contains {distinct_dates} days. Skipping backfill.")
@@ -142,7 +143,8 @@ def seed_historical_backfill_if_empty(con: duckdb.DuckDBPyConnection, days_back:
 
     print(f"🌱 Seeding {days_back}-day historical trend data for demonstration & trend visualization...")
 
-    latest_date = con.execute("SELECT MAX(snapshot_date) FROM main_gold.stock_snapshots;").fetchone()[0]
+    res_latest = con.execute("SELECT MAX(snapshot_date) FROM main_gold.stock_snapshots;").fetchone()
+    latest_date = res_latest[0] if res_latest else None
     if not latest_date:
         return
 
@@ -199,8 +201,10 @@ def seed_historical_backfill_if_empty(con: duckdb.DuckDBPyConnection, days_back:
     con.execute("INSERT INTO main_gold.stock_snapshots SELECT * FROM temp_backfill_arrow;")
     con.unregister("temp_backfill_arrow")
 
-    total_snapshots = con.execute("SELECT COUNT(*) FROM main_gold.stock_snapshots;").fetchone()[0]
-    distinct_cnt = con.execute("SELECT COUNT(DISTINCT snapshot_date) FROM main_gold.stock_snapshots;").fetchone()[0]
+    res_total = con.execute("SELECT COUNT(*) FROM main_gold.stock_snapshots;").fetchone()
+    total_snapshots = res_total[0] if res_total else 0
+    res_cnt = con.execute("SELECT COUNT(DISTINCT snapshot_date) FROM main_gold.stock_snapshots;").fetchone()
+    distinct_cnt = res_cnt[0] if res_cnt else 0
     print(f"🎉 Backfill complete! Total snapshot records: {total_snapshots:,} across {distinct_cnt} days.")
 
 def query_hospital_trend(
@@ -304,7 +308,7 @@ def query_district_trend(
           AND district_name = ?
           AND component_name = ?
     """
-    params = [state, district, component_name]
+    params: List[Any] = [state, district, component_name]
 
     if blood_group and blood_group != "ALL":
         sql += " AND blood_group = ?"

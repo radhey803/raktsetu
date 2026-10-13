@@ -6,17 +6,21 @@ eRaktKosh End-to-End Data Pipeline Orchestrator
 3. Executes dbt build (Silver & Gold models + Data Tests)
 """
 
+import os
 import sys
 import asyncio
-import os
 import subprocess
 import time
+
+WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
+if WORKSPACE_DIR not in sys.path:
+    sys.path.insert(0, WORKSPACE_DIR)
+
 import duckdb
 from async_scraper import scrape_entire_country_async
 from snapshot_manager import record_live_snapshot, seed_historical_backfill_if_empty
 
 # Paths
-WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
 DBT_DIR = os.path.join(WORKSPACE_DIR, "blood_project")
 DB_PATH = os.path.join(WORKSPACE_DIR, "blood_warehouse.duckdb")
 CSV_PATH = os.path.join(WORKSPACE_DIR, "INDIA_blood_inventory_async.csv")

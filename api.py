@@ -6,7 +6,13 @@ FastAPI backend querying DuckDB Gold layer in read-only mode (<2ms latency).
 
 import os
 import re
+import sys
 from typing import Optional
+
+WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
+if WORKSPACE_DIR not in sys.path:
+    sys.path.insert(0, WORKSPACE_DIR)
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -14,7 +20,6 @@ from fastapi.staticfiles import StaticFiles
 import duckdb
 from snapshot_manager import query_hospital_trend, query_district_trend
 
-WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(WORKSPACE_DIR, "blood_warehouse.duckdb")
 
 app = FastAPI(title="eRaktKosh Blood Lakehouse API", version="1.0.0")

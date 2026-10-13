@@ -5,12 +5,14 @@ FastAPI backend querying DuckDB Gold layer in read-only mode (<2ms latency).
 """
 
 import os
+import re
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import duckdb
+from snapshot_manager import query_hospital_trend, query_district_trend
 
 WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(WORKSPACE_DIR, "blood_warehouse.duckdb")
@@ -86,14 +88,96 @@ def get_location_hierarchy():
 
     return locations
 
+@app.get("/api/history")
+def get_hospital_history(
+    hospital_code: int = Query(..., description="Hospital Code"),
+    component: Optional[str] = Query("Packed Red Blood Cells", description="Blood Component"),
+    days: int = Query(14, ge=1, le=90, description="Number of days of history")
+):
+    """
+    Returns time-series stock history and 7-day trend metrics for a specific hospital
+    across all blood groups.
+    """
+    con = get_db()
+    data = query_hospital_trend(con, hospital_code, component_name=component or "Packed Red Blood Cells", days=days)
+    con.close()
+    return data
+
+@app.get("/api/district-trends")
+def get_district_trends(
+    state: str = Query(..., description="State Name"),
+    district: str = Query(..., description="District Name"),
+    component: Optional[str] = Query("Packed Red Blood Cells", description="Blood Component"),
+    blood_group: Optional[str] = Query("O-", description="Target Blood Group"),
+    days: int = Query(14, ge=1, le=90, description="Number of days")
+):
+    """
+    Returns aggregate time-series stock trends for an entire district to track
+    evolving shortages and well-stocked periods.
+    """
+    con = get_db()
+    data = query_district_trend(
+        con,
+        state=state,
+        district=district,
+        component_name=component or "Packed Red Blood Cells",
+        blood_group=blood_group or "O-",
+        days=days
+    )
+    con.close()
+    return data
+
+def extract_component_stock(comp_raw: str, target_component: Optional[str] = None) -> str:
+    """
+    Extracts available_WithQty for a target component,
+    or combines all available_WithQty if target_component is 'ALL' or None.
+    """
+    if not comp_raw:
+        return ""
+    
+    if target_component and target_component != "ALL":
+        pattern = rf"'{re.escape(target_component)}':\s*\{{[^}}]*'available_WithQty':\s*'([^']*)'"
+        match = re.search(pattern, comp_raw, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        return ""
+    else:
+        avail_matches = re.findall(r"'available_WithQty':\s*'([^']+)'", comp_raw)
+        return ', '.join([m.strip() for m in avail_matches if m.strip()])
+
+def check_blood_group_available(stock_str: str, bg: str) -> bool:
+    if not stock_str:
+        return False
+    bg = bg.strip().lower()
+    
+    # Check specific group patterns in in-stock string (using negative lookbehind to prevent B+ matching AB+)
+    patterns = {
+        "o-": r'(?<![a-zA-Z])O\s*-\s*[Vv]e\s*:\s*([1-9]\d*)',
+        "o+": r'(?<![a-zA-Z])O\s*\+\s*[Vv]e\s*:\s*([1-9]\d*)',
+        "a+": r'(?<![a-zA-Z])A\s*\+\s*[Vv]e\s*:\s*([1-9]\d*)',
+        "a-": r'(?<![a-zA-Z])A\s*-\s*[Vv]e\s*:\s*([1-9]\d*)',
+        "b+": r'(?<![a-zA-Z])B\s*\+\s*[Vv]e\s*:\s*([1-9]\d*)',
+        "b-": r'(?<![a-zA-Z])B\s*-\s*[Vv]e\s*:\s*([1-9]\d*)',
+        "ab+": r'(?<![a-zA-Z])AB\s*\+\s*[Vv]e\s*:\s*([1-9]\d*)',
+        "ab-": r'(?<![a-zA-Z])AB\s*-\s*[Vv]e\s*:\s*([1-9]\d*)',
+        "bombay": r'Oh\s*[\+\-]\s*[Vv][Ee]\s*:\s*([1-9]\d*)'
+    }
+    
+    if bg in patterns:
+        return bool(re.search(patterns[bg], stock_str))
+        
+    return bg in stock_str.lower()
+
 @app.get("/api/search")
 def search_hospitals(
     state: Optional[str] = Query(None),
     district: Optional[str] = Query(None),
+    component: Optional[str] = Query("Packed Red Blood Cells"),
+    blood_group: Optional[str] = Query(None),
     search_query: Optional[str] = Query(None),
-    limit: int = 50
+    limit: int = 60
 ):
-    """Emergency SOS Search with hospital contacts and staleness ratings."""
+    """Emergency SOS Search checking live inventory by component, blood group, and contact."""
     con = get_db()
     
     sql = """
@@ -109,10 +193,24 @@ def search_hospitals(
             b.last_updated_at,
             a.days_since_last_update,
             a.data_freshness_status,
-            a.stock_alert_level
+            a.stock_alert_level,
+            s.components_raw
         FROM main_gold.dim_blood_banks b
-        LEFT JOIN main_gold.fct_blood_shortage_alerts a 
-               ON b.hospital_code = a.hospital_code
+        LEFT JOIN (
+            SELECT 
+                hospital_code,
+                days_since_last_update,
+                data_freshness_status,
+                stock_alert_level
+            FROM main_gold.fct_blood_shortage_alerts
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY hospital_code ORDER BY last_updated_at DESC NULLS LAST) = 1
+        ) a ON b.hospital_code = a.hospital_code
+        LEFT JOIN (
+            SELECT hospital_code, components_raw
+            FROM main_silver.stg_blood_inventory
+            WHERE components_raw IS NOT NULL
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY hospital_code ORDER BY last_updated_at DESC NULLS LAST) = 1
+        ) s ON b.hospital_code = s.hospital_code
         WHERE 1=1
     """
     params = []
@@ -125,19 +223,32 @@ def search_hospitals(
         sql += " AND b.district_name = ?"
         params.append(district)
         
-    if search_query:
+    if search_query and search_query.strip():
         sql += " AND (LOWER(b.hospital_name) LIKE ? OR LOWER(b.hospital_address) LIKE ?)"
-        q = f"%{search_query.lower()}%"
+        q = f"%{search_query.lower().strip()}%"
         params.extend([q, q])
 
-    sql += " ORDER BY a.days_since_last_update ASC NULLS LAST LIMIT ?"
-    params.append(limit)
+    sql += " ORDER BY a.days_since_last_update ASC NULLS LAST"
 
     rows = con.execute(sql, params).fetchall()
     con.close()
 
     results = []
     for r in rows:
+        comp_raw = r[12] or ""
+        
+        # Extract stock specifically for the chosen component (e.g. Packed Red Blood Cells)
+        stock_str = extract_component_stock(comp_raw, component)
+        
+        # If user picked a component but this hospital has 0 stock of that component,
+        # and they're filtering by blood group or searching by component:
+        if component and component != "ALL" and blood_group:
+            if not check_blood_group_available(stock_str, blood_group):
+                continue
+        elif blood_group and blood_group.strip():
+            if not check_blood_group_available(stock_str, blood_group):
+                continue
+
         results.append({
             "code": r[0],
             "name": r[1],
@@ -150,10 +261,16 @@ def search_hospitals(
             "last_updated": str(r[8]) if r[8] else "Unknown",
             "days_stale": r[9],
             "freshness": r[10] or "UNKNOWN",
-            "alert": r[11] or "NORMAL"
+            "alert": r[11] or "NORMAL",
+            "stock": stock_str,
+            "component": component or "All Components"
         })
+        
+        if len(results) >= limit:
+            break
 
     return {"count": len(results), "hospitals": results}
+
 
 # Serve static web frontend
 os.makedirs(os.path.join(WORKSPACE_DIR, "static"), exist_ok=True)

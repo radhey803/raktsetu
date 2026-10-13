@@ -103,7 +103,7 @@
 
             <!-- Blood Group Quick Pills -->
             <div class="pills-wrapper">
-                <span class="pills-label">Quick Blood Filter:</span>
+                <span class="pills-label">Filter by In-Stock Blood Group & Components:</span>
                 <div class="pills-container">
                     <button class="pill-btn active" data-group="">All</button>
                     <button class="pill-btn" data-group="O+">O+</button>
@@ -114,10 +114,12 @@
                     <button class="pill-btn" data-group="B-">B-</button>
                     <button class="pill-btn" data-group="AB+">AB+</button>
                     <button class="pill-btn" data-group="AB-">AB-</button>
-                    <button class="pill-btn" data-group="Platelet">Platelets 🩸</button>
-                    <button class="pill-btn" data-group="Plasma">Plasma 🧪</button>
+                    <button class="pill-btn" data-group="Bombay">🩸 Bombay (Oh) Rare</button>
+                    <button class="pill-btn" data-group="Platelet">Platelets</button>
+                    <button class="pill-btn" data-group="Plasma">Plasma</button>
                 </div>
             </div>
+
 
             <div class="search-form">
                 <div class="input-group">
@@ -131,6 +133,21 @@
                     <label for="district-select">Select District</label>
                     <select id="district-select" class="custom-select" disabled>
                         <option value="ALL">All Districts</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="component-select">Select Blood Component</label>
+                    <select id="component-select" class="custom-select">
+                        <option value="Packed Red Blood Cells" selected>Packed Red Blood Cells (PRBC)</option>
+                        <option value="Whole Blood">Whole Blood</option>
+                        <option value="Fresh Frozen Plasma">Fresh Frozen Plasma (FFP)</option>
+                        <option value="Platelet Concentrate">Platelet Concentrate</option>
+                        <option value="Single Donor Platelet">Single Donor Platelet (SDP)</option>
+                        <option value="Random Donor Platelets">Random Donor Platelets (RDP)</option>
+                        <option value="Cryoprecipitate">Cryoprecipitate</option>
+                        <option value="Plasma">Plasma</option>
+                        <option value="ALL">All Components</option>
                     </select>
                 </div>
 
@@ -163,6 +180,46 @@
                 </div>
             </div>
         </section>
+
+        <!-- 7-Day Stock History & Shortage Trend Modal (BloodGrid Intelligence) -->
+        <div id="history-modal" class="modal-overlay hidden">
+            <div class="modal-container glass-panel">
+                <div class="modal-header">
+                    <div>
+                        <span class="badge badge-govt" id="modal-hosp-badge">📈 Historical Time-Series Intelligence</span>
+                        <h3 id="modal-hosp-name">Facility Name</h3>
+                        <p id="modal-hosp-loc" class="modal-subtitle">District, State</p>
+                    </div>
+                    <button id="modal-close-btn" class="close-btn" title="Close Modal">&times;</button>
+                </div>
+                
+                <div class="modal-controls">
+                    <div class="comp-selector-group">
+                        <label for="modal-component-select">Component:</label>
+                        <select id="modal-component-select" class="custom-select modal-select">
+                            <option value="Packed Red Blood Cells" selected>Packed Red Blood Cells (PRBC)</option>
+                            <option value="Whole Blood">Whole Blood</option>
+                            <option value="Fresh Frozen Plasma">Fresh Frozen Plasma (FFP)</option>
+                            <option value="Platelet Concentrate">Platelet Concentrate</option>
+                            <option value="Single Donor Platelet">Single Donor Platelet (SDP)</option>
+                            <option value="Random Donor Platelets">Random Donor Platelets (RDP)</option>
+                            <option value="Plasma">Plasma</option>
+                        </select>
+                    </div>
+                    <div class="metric-summary-pills" id="modal-summary-pills">
+                        <!-- Rendered dynamically (O-, O+, etc.) -->
+                    </div>
+                </div>
+
+                <div class="modal-chart-container">
+                    <canvas id="historyChart"></canvas>
+                </div>
+
+                <div class="modal-footer">
+                    <span class="history-footnote">⚡ Powered by DuckDB append-only lakehouse snapshots. Enables daily trend visibility missing from official portals.</span>
+                </div>
+            </div>
+        </div>
 
         <!-- Footer -->
         <footer class="app-footer">

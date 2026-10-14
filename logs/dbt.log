@@ -71,3 +71,51 @@ Happy modeling!
 [0m22:11:06.557400 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x74ebcd54b6b0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x74ebcd54bce0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x74ebcc1c6fc0>]}
 [0m22:11:06.557983 [debug] [MainThread]: Flushing usage events
 [0m22:11:07.937562 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m10:45:41.489822 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x70bbbbb1b740>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x70bbbc0324e0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x70bbbba00320>]}
+
+
+============================== 10:45:41.494088 | c84323e6-0fe2-4069-ad5f-ffcdc274b04e ==============================
+[0m10:45:41.494088 [info ] [MainThread]: Running with dbt=1.12.5
+[0m10:45:41.494632 [debug] [MainThread]: running dbt with arguments {'partial_parse': 'True', 'quiet': 'False', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'hints_enabled': 'True', 'log_cache_events': 'False', 'log_format': 'default', 'introspect': 'True', 'profiles_dir': '/home/radhey/.dbt', 'version_check': 'True', 'send_anonymous_usage_stats': 'True', 'log_path': 'logs', 'static_parser': 'True', 'write_json': 'True', 'debug': 'False', 'no_print': 'None', 'warn_error': 'None', 'invocation_command': 'dbt docs generate', 'printer_width': '80', 'fail_fast': 'False', 'use_colors': 'True', 'empty': 'None', 'use_experimental_parser': 'False', 'target_path': 'None', 'maximum_seed_size_mib': '1', 'cache_selected_only': 'False', 'indirect_selection': 'eager'}
+[0m10:45:41.495271 [error] [MainThread]: [[31mERROR[0m]: Encountered an error:
+Runtime Error
+  No dbt_project.yml found at expected path /home/radhey/Documents/project_idea/dbt_project.yml
+  Verify that each entry within packages.yml (and their transitive dependencies) contains a file named dbt_project.yml
+  
+[0m10:45:41.495979 [debug] [MainThread]: Resource report: {"command_name": "generate", "command_success": false, "command_wall_clock_time": 0.06284891, "process_in_blocks": "22456", "process_kernel_time": 0.197221, "process_mem_max_rss": "108668", "process_out_blocks": "8", "process_user_time": 1.102347}
+[0m10:45:41.496664 [debug] [MainThread]: Command `dbt docs generate` failed at 10:45:41.496585 after 0.06 seconds
+[0m10:45:41.497147 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x70bbbbec5940>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x70bbbbe6ddc0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x70bbbf1cd670>]}
+[0m10:45:41.497725 [debug] [MainThread]: Flushing usage events
+[0m10:45:42.907319 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m10:46:00.242496 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x78ec3de83050>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x78ec3d3677d0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x78ec3bbf83e0>]}
+
+
+============================== 10:46:00.245180 | 55a26d1c-3b7c-4219-9db2-688e94852203 ==============================
+[0m10:46:00.245180 [info ] [MainThread]: Running with dbt=1.12.5
+[0m10:46:00.245713 [debug] [MainThread]: running dbt with arguments {'maximum_seed_size_mib': '1', 'cache_selected_only': 'False', 'log_path': 'logs', 'indirect_selection': 'eager', 'profiles_dir': '/home/radhey/.dbt', 'version_check': 'True', 'use_experimental_parser': 'False', 'introspect': 'True', 'send_anonymous_usage_stats': 'True', 'fail_fast': 'False', 'partial_parse': 'True', 'quiet': 'False', 'use_colors': 'True', 'empty': 'None', 'printer_width': '80', 'write_json': 'True', 'no_print': 'None', 'warn_error': 'None', 'log_cache_events': 'False', 'debug': 'False', 'invocation_command': 'dbt docs generate', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'log_format': 'default', 'hints_enabled': 'True', 'target_path': 'None', 'static_parser': 'True'}
+[0m10:46:00.246443 [error] [MainThread]: [[31mERROR[0m]: Encountered an error:
+Runtime Error
+  No dbt_project.yml found at expected path /home/radhey/Documents/project_idea/dbt_project.yml
+  Verify that each entry within packages.yml (and their transitive dependencies) contains a file named dbt_project.yml
+  
+[0m10:46:00.247178 [debug] [MainThread]: Resource report: {"command_name": "generate", "command_success": false, "command_wall_clock_time": 0.05916248, "process_in_blocks": "0", "process_kernel_time": 0.118284, "process_mem_max_rss": "108644", "process_out_blocks": "8", "process_user_time": 0.99874}
+[0m10:46:00.247773 [debug] [MainThread]: Command `dbt docs generate` failed at 10:46:00.247689 after 0.06 seconds
+[0m10:46:00.248255 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x78ec3de83050>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x78ec3af800b0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x78ec3af825a0>]}
+[0m10:46:00.249014 [debug] [MainThread]: Flushing usage events
+[0m10:46:01.705519 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m10:48:37.659180 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7fc8843c93d0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7fc883786900>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7fc882a9b350>]}
+
+
+============================== 10:48:37.661778 | 20eff674-112f-4023-ae08-23d2394ae4d2 ==============================
+[0m10:48:37.661778 [info ] [MainThread]: Running with dbt=1.12.5
+[0m10:48:37.662331 [debug] [MainThread]: running dbt with arguments {'target_path': 'None', 'use_colors': 'True', 'log_cache_events': 'False', 'debug': 'False', 'empty': 'None', 'warn_error': 'None', 'hints_enabled': 'True', 'fail_fast': 'False', 'no_print': 'None', 'partial_parse': 'True', 'printer_width': '80', 'indirect_selection': 'eager', 'log_format': 'default', 'static_parser': 'True', 'quiet': 'False', 'maximum_seed_size_mib': '1', 'send_anonymous_usage_stats': 'True', 'version_check': 'True', 'log_path': 'logs', 'profiles_dir': '/home/radhey/.dbt', 'cache_selected_only': 'False', 'invocation_command': 'dbt docs generate', 'write_json': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'use_experimental_parser': 'False', 'introspect': 'True'}
+[0m10:48:37.662970 [error] [MainThread]: [[31mERROR[0m]: Encountered an error:
+Runtime Error
+  No dbt_project.yml found at expected path /home/radhey/Documents/project_idea/dbt_project.yml
+  Verify that each entry within packages.yml (and their transitive dependencies) contains a file named dbt_project.yml
+  
+[0m10:48:37.663687 [debug] [MainThread]: Resource report: {"command_name": "generate", "command_success": false, "command_wall_clock_time": 0.060874708, "process_in_blocks": "0", "process_kernel_time": 0.134304, "process_mem_max_rss": "108616", "process_out_blocks": "8", "process_user_time": 0.979758}
+[0m10:48:37.664405 [debug] [MainThread]: Command `dbt docs generate` failed at 10:48:37.664319 after 0.06 seconds
+[0m10:48:37.664824 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7fc8843c93d0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7fc88366a930>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7fc8871c96d0>]}
+[0m10:48:37.665567 [debug] [MainThread]: Flushing usage events
+[0m10:48:39.207838 [debug] [MainThread]: An error was encountered while trying to flush usage events

@@ -4,226 +4,413 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>eRaktKosh Live | Nationwide Blood Lakehouse & SOS Finder</title>
+    <title>RaktSetu Lakehouse | National Blood Inventory & Emergency Network</title>
     <meta name="description"
-        content="Real-time blood bank availability and emergency SOS facility finder across 36 Indian states powered by DuckDB and dbt Core.">
+        content="Real-time national blood inventory intelligence and verified emergency facility finder across 36 Indian states and union territories powered by RaktSetu Lakehouse.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Geist:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Leaflet CSS & JS for Interactive Blood Map -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
-    <div class="ambient-glow glow-1"></div>
-    <div class="ambient-glow glow-2"></div>
+    <!-- SVG Icon Sprite (Lucide Style, 1.5px stroke, no emojis) -->
+    <svg style="display: none;" aria-hidden="true">
+        <symbol id="icon-droplet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+        </symbol>
+        <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </symbol>
+        <symbol id="icon-reset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+        </symbol>
+        <symbol id="icon-map-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+        </symbol>
+        <symbol id="icon-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+        </symbol>
+        <symbol id="icon-navigation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+        </symbol>
+        <symbol id="icon-trending-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+            <polyline points="17 6 23 6 23 12"></polyline>
+        </symbol>
+        <symbol id="icon-share-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="5" r="3"></circle>
+            <circle cx="6" cy="12" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+        </symbol>
+        <symbol id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+        </symbol>
+        <symbol id="icon-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+            <line x1="8" y1="2" x2="8" y2="18"></line>
+            <line x1="16" y1="6" x2="16" y2="22"></line>
+        </symbol>
+        <symbol id="icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </symbol>
+        <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </symbol>
+        <symbol id="icon-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"></line>
+            <polyline points="5 12 12 5 19 12"></polyline>
+        </symbol>
+        <symbol id="icon-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <polyline points="19 12 12 19 5 12"></polyline>
+        </symbol>
+        <symbol id="icon-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+        </symbol>
+        <symbol id="icon-external-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+        </symbol>
+        <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+        </symbol>
+        <symbol id="icon-alert-triangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </symbol>
+        <symbol id="icon-refresh-cw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </symbol>
+        <symbol id="icon-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+        </symbol>
+        <symbol id="icon-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+        </symbol>
+        <symbol id="icon-chevrons-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="11 17 6 12 11 7"></polyline>
+            <polyline points="18 17 13 12 18 7"></polyline>
+        </symbol>
+        <symbol id="icon-chevrons-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="13 17 18 12 13 7"></polyline>
+            <polyline points="6 17 11 12 6 7"></polyline>
+        </symbol>
+    </svg>
 
-    <div class="app-container">
-        <!-- Header -->
-        <header class="app-header">
-            <div class="brand">
-                <div class="pulse-indicator">
-                    <span class="pulse-dot"></span>
-                </div>
-                <div class="brand-text">
-                    <h1>eRaktKosh <span>Lakehouse</span></h1>
-                    <p class="tagline">National Blood Inventory Intelligence & SOS Network</p>
-                </div>
-            </div>
-            <div class="engine-badge">
-                <span class="badge-dot"></span>
-                <span>Powered by DuckDB & dbt Core</span>
-            </div>
-        </header>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
 
-        <!-- KPI Cards -->
-        <section class="kpi-section" id="kpi-section">
-            <div class="kpi-card glass-panel">
-                <div class="kpi-icon">🏥</div>
-                <div class="kpi-content">
-                    <span class="kpi-label">Registered Facilities</span>
-                    <h2 class="kpi-val" id="kpi-total-banks">--</h2>
-                    <span class="kpi-sub">Across 36 States & UTs</span>
-                </div>
-            </div>
+    <!-- Top Sticky Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <a href="/" class="brand" aria-label="RaktSetu Lakehouse Home">
+                <span class="brand-mark" aria-hidden="true">
+                    <svg class="icon"><use href="#icon-droplet"></use></svg>
+                </span>
+                <span class="brand-name">
+                    <span class="brand-primary">RaktSetu</span>
+                    <span class="brand-sub">Lakehouse</span>
+                </span>
+            </a>
 
-            <div class="kpi-card glass-panel">
-                <div class="kpi-icon">🟢</div>
-                <div class="kpi-content">
-                    <span class="kpi-label">Verified Fresh Stock</span>
-                    <h2 class="kpi-val text-green" id="kpi-fresh-banks">--</h2>
-                    <span class="kpi-sub">Updated in past 24 hrs</span>
-                </div>
-            </div>
-
-            <div class="kpi-card glass-panel">
-                <div class="kpi-icon">⚠️</div>
-                <div class="kpi-content">
-                    <span class="kpi-label">Stale / Inactive Banks</span>
-                    <h2 class="kpi-val text-red" id="kpi-stale-banks">--</h2>
-                    <span class="kpi-sub">No updates for &gt;30 days</span>
-                </div>
-            </div>
-
-            <div class="kpi-card glass-panel">
-                <div class="kpi-icon">⚡</div>
-                <div class="kpi-content">
-                    <span class="kpi-label">OLAP Query Latency</span>
-                    <h2 class="kpi-val text-cyan">&lt; 2 ms</h2>
-                    <span class="kpi-sub">Vectorized DuckDB Engine</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- Analytics Chart Section -->
-        <section class="chart-section glass-panel">
-            <div class="chart-header">
-                <div>
-                    <h3>📊 National Facility Distribution</h3>
-                    <p>Top States by Active Blood Banks (Aggregated from Gold Marts)</p>
-                </div>
-            </div>
-            <div class="chart-container">
-                <canvas id="statesChart"></canvas>
-            </div>
-        </section>
-
-        <!-- Emergency Finder -->
-        <section class="finder-section glass-panel">
-            <div class="finder-header">
-                <div class="finder-title-group">
-                    <span class="alert-pill">EMERGENCY FINDER</span>
-                    <h2>Find Verified Blood Availability</h2>
-                    <p>Search active facilities, verify stock recency, and connect directly with blood banks.</p>
-                </div>
-            </div>
-
-            <!-- Blood Group Quick Pills -->
-            <div class="pills-wrapper">
-                <span class="pills-label">Filter by In-Stock Blood Group & Components:</span>
-                <div class="pills-container">
-                    <button class="pill-btn active" data-group="">All</button>
-                    <button class="pill-btn" data-group="O+">O+</button>
-                    <button class="pill-btn" data-group="O-">O- (Universal)</button>
-                    <button class="pill-btn" data-group="A+">A+</button>
-                    <button class="pill-btn" data-group="A-">A-</button>
-                    <button class="pill-btn" data-group="B+">B+</button>
-                    <button class="pill-btn" data-group="B-">B-</button>
-                    <button class="pill-btn" data-group="AB+">AB+</button>
-                    <button class="pill-btn" data-group="AB-">AB-</button>
-                    <button class="pill-btn" data-group="Bombay">🩸 Bombay (Oh) Rare</button>
-                    <button class="pill-btn" data-group="Platelet">Platelets</button>
-                    <button class="pill-btn" data-group="Plasma">Plasma</button>
-                </div>
-            </div>
-
-
-            <div class="search-form">
-                <div class="input-group">
-                    <label for="state-select">Select State</label>
-                    <select id="state-select" class="custom-select">
-                        <option value="ALL">All India (Nationwide)</option>
-                    </select>
-                </div>
-
-                <div class="input-group">
-                    <label for="district-select">Select District</label>
-                    <select id="district-select" class="custom-select" disabled>
-                        <option value="ALL">All Districts</option>
-                    </select>
-                </div>
-
-                <div class="input-group">
-                    <label for="component-select">Select Blood Component</label>
-                    <select id="component-select" class="custom-select">
-                        <option value="Packed Red Blood Cells" selected>Packed Red Blood Cells (PRBC)</option>
-                        <option value="Whole Blood">Whole Blood</option>
-                        <option value="Fresh Frozen Plasma">Fresh Frozen Plasma (FFP)</option>
-                        <option value="Platelet Concentrate">Platelet Concentrate</option>
-                        <option value="Single Donor Platelet">Single Donor Platelet (SDP)</option>
-                        <option value="Random Donor Platelets">Random Donor Platelets (RDP)</option>
-                        <option value="Cryoprecipitate">Cryoprecipitate</option>
-                        <option value="Plasma">Plasma</option>
-                        <option value="ALL">All Components</option>
-                    </select>
-                </div>
-
-                <div class="input-group search-input-group">
-                    <label for="search-input">Search Facility / Address</label>
-                    <input type="text" id="search-input" placeholder="e.g. Civil Hospital, Red Cross..."
-                        class="custom-input">
-                </div>
-
-                <div class="button-group">
-                    <button id="search-btn" class="btn btn-primary">
-                        <span>🔍 Search Facilities</span>
-                    </button>
-                    <button id="reset-btn" class="btn btn-secondary">Reset</button>
+            <div class="header-right">
+                <nav class="header-nav" aria-label="Main Navigation">
+                    <a href="#finder-section" class="nav-link">Find blood</a>
+                    <a href="#chart-section" class="nav-link">Network</a>
+                    <a href="#app-footer" class="nav-link">About</a>
+                </nav>
+                <div class="live-status" role="status" aria-label="Inventory system active">
+                    <span class="live-dot" aria-hidden="true"></span>
+                    <span class="live-label">Live sync <span id="live-sync-time">19:30</span></span>
                 </div>
             </div>
-        </section>
+        </div>
+    </header>
 
-        <!-- Results Grid & Map Section -->
-        <section class="results-section">
-            <div class="results-header">
-                <div class="results-title-wrap">
-                    <h3>Matching Blood Banks (<span id="results-count">0</span>)</h3>
-                    <span class="sort-tag">Ranked by data recency</span>
+    <main id="main-content" class="app-main">
+        <div class="main-container">
+            <!-- Hero Section -->
+            <section class="hero-section" aria-labelledby="hero-title">
+                <div class="hero-content">
+                    <span class="hero-kicker">Emergency Blood Intelligence Network</span>
+                    <h1 id="hero-title" class="hero-title">Find verified blood availability, in minutes.</h1>
+                    <p class="hero-sub">Direct connection to 4,680+ registered blood centres across 36 states and union territories. Stock verified against national data records.</p>
                 </div>
-                <!-- View Toggle Buttons -->
-                <div class="view-toggle-group">
-                    <button id="toggle-grid-btn" class="toggle-btn active" title="Show Grid View">
-                        <span>📋 Grid View</span>
-                    </button>
-                    <button id="toggle-map-btn" class="toggle-btn" title="Show Geographic Map View">
-                        <span>🗺️ Live Blood Map</span>
-                    </button>
-                </div>
-            </div>
 
-            <!-- Map View Container (Leaflet) -->
-            <div id="map-view-container" class="map-view-container glass-panel hidden">
-                <div class="map-toolbar">
-                    <div class="map-legend">
-                        <span class="legend-item"><span class="legend-dot dot-green"></span> In Stock (&gt;5 units)</span>
-                        <span class="legend-item"><span class="legend-dot dot-amber"></span> Low Stock (1–5 units)</span>
-                        <span class="legend-item"><span class="legend-dot dot-red"></span> Critical / Nil Stock</span>
+                <!-- Emergency Finder & Filter Panel -->
+                <section class="finder-panel" id="finder-section" aria-label="Blood inventory search and filters">
+                    <!-- Blood Group Segmented Control -->
+                    <div class="filter-group">
+                        <div class="filter-header">
+                            <span class="filter-label">Filter by blood group & component</span>
+                            <span class="filter-hint">Select a group to verify real-time units</span>
+                        </div>
+                        <div class="segmented-control" role="radiogroup" aria-label="Select blood group">
+                            <button type="button" class="segment-btn active" data-group="" role="radio" aria-checked="true">All</button>
+                            <button type="button" class="segment-btn" data-group="O+" role="radio" aria-checked="false">O+</button>
+                            <button type="button" class="segment-btn" data-group="O-" role="radio" aria-checked="false">O- <span class="tag-universal">Univ</span></button>
+                            <button type="button" class="segment-btn" data-group="A+" role="radio" aria-checked="false">A+</button>
+                            <button type="button" class="segment-btn" data-group="A-" role="radio" aria-checked="false">A-</button>
+                            <button type="button" class="segment-btn" data-group="B+" role="radio" aria-checked="false">B+</button>
+                            <button type="button" class="segment-btn" data-group="B-" role="radio" aria-checked="false">B-</button>
+                            <button type="button" class="segment-btn" data-group="AB+" role="radio" aria-checked="false">AB+</button>
+                            <button type="button" class="segment-btn" data-group="AB-" role="radio" aria-checked="false">AB-</button>
+                            <button type="button" class="segment-btn segment-rare" data-group="Bombay" role="radio" aria-checked="false">
+                                <span class="rare-dot" aria-hidden="true"></span>Bombay (Oh)
+                            </button>
+                            <button type="button" class="segment-btn" data-group="Platelet" role="radio" aria-checked="false">Platelets</button>
+                            <button type="button" class="segment-btn" data-group="Plasma" role="radio" aria-checked="false">Plasma</button>
+                        </div>
                     </div>
-                    <span class="map-hint">💡 Click any pin to view stock details, call, or open 7-Day Trend chart</span>
-                </div>
-                <div id="blood-map" class="blood-map-canvas"></div>
-            </div>
 
-            <!-- Grid View Container -->
-            <div class="hospitals-grid" id="hospitals-grid">
-                <div class="loading-state">
-                    <div class="spinner"></div>
-                    <p>Querying DuckDB Gold Lakehouse...</p>
-                </div>
-            </div>
-        </section>
+                    <!-- Search Form Inputs -->
+                    <div class="search-form">
+                        <div class="field-item">
+                            <label for="state-select" class="field-label">State / UT</label>
+                            <div class="select-wrapper">
+                                <select id="state-select" class="custom-select">
+                                    <option value="ALL">All India (Nationwide)</option>
+                                </select>
+                                <svg class="select-chevron" aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
+                            </div>
+                        </div>
 
-        <!-- 7-Day Stock History & Shortage Trend Modal (BloodGrid Intelligence) -->
-        <div id="history-modal" class="modal-overlay hidden">
-            <div class="modal-container glass-panel">
-                <div class="modal-header">
+                        <div class="field-item">
+                            <label for="district-select" class="field-label">District</label>
+                            <div class="select-wrapper">
+                                <select id="district-select" class="custom-select" disabled>
+                                    <option value="ALL">All Districts</option>
+                                </select>
+                                <svg class="select-chevron" aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
+                            </div>
+                        </div>
+
+                        <div class="field-item">
+                            <label for="component-select" class="field-label">Blood Component</label>
+                            <div class="select-wrapper">
+                                <select id="component-select" class="custom-select">
+                                    <option value="Packed Red Blood Cells" selected>Packed Red Blood Cells (PRBC)</option>
+                                    <option value="Whole Blood">Whole Blood</option>
+                                    <option value="Fresh Frozen Plasma">Fresh Frozen Plasma (FFP)</option>
+                                    <option value="Platelet Concentrate">Platelet Concentrate</option>
+                                    <option value="Single Donor Platelet">Single Donor Platelet (SDP)</option>
+                                    <option value="Random Donor Platelets">Random Donor Platelets (RDP)</option>
+                                    <option value="Cryoprecipitate">Cryoprecipitate</option>
+                                    <option value="Plasma">Plasma</option>
+                                    <option value="ALL">All Components</option>
+                                </select>
+                                <svg class="select-chevron" aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
+                            </div>
+                        </div>
+
+                        <div class="field-item field-search">
+                            <label for="search-input" class="field-label">Facility or Address</label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+                                <input type="text" id="search-input" class="custom-input"
+                                    placeholder="e.g. Civil Hospital, Red Cross Society...">
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" id="search-btn" class="btn btn-primary">
+                                <svg class="icon"><use href="#icon-search"></use></svg>
+                                <span>Search facilities</span>
+                            </button>
+                            <button type="button" id="reset-btn" class="btn btn-text">
+                                <svg class="icon"><use href="#icon-reset"></use></svg>
+                                <span>Reset</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Stat Strip (Editorial 4-figure strip on single surface) -->
+            <section class="stat-strip" id="stat-strip" aria-label="National Blood Network Statistics">
+                <div class="stat-cell">
+                    <span class="stat-label">Registered facilities</span>
+                    <div class="stat-value" id="kpi-total-banks">--</div>
+                    <span class="stat-sub">Across 36 states &amp; union territories</span>
+                </div>
+
+                <div class="stat-divider" aria-hidden="true"></div>
+
+                <div class="stat-cell">
+                    <span class="stat-label">Verified fresh stock</span>
+                    <div class="stat-value text-stock-in" id="kpi-fresh-banks">--</div>
+                    <span class="stat-sub">Updated in past 24 hours</span>
+                </div>
+
+                <div class="stat-divider" aria-hidden="true"></div>
+
+                <div class="stat-cell">
+                    <span class="stat-label">Flagged for review</span>
+                    <div class="stat-value text-stock-critical" id="kpi-stale-banks">--</div>
+                    <span class="stat-sub">No updates recorded for &gt;30 days</span>
+                </div>
+
+                <div class="stat-divider" aria-hidden="true"></div>
+
+                <div class="stat-cell">
+                    <span class="stat-label">Facilities reporting today</span>
+                    <div class="stat-value" id="kpi-today-banks">3,864</div>
+                    <span class="stat-sub">Active nodes transmitting availability</span>
+                </div>
+            </section>
+
+            <!-- National Distribution Chart Section -->
+            <section class="chart-section" id="chart-section" aria-labelledby="chart-title">
+                <div class="section-header">
                     <div>
-                        <span class="badge badge-govt" id="modal-hosp-badge">📈 Historical Time-Series Intelligence</span>
-                        <h3 id="modal-hosp-name">Facility Name</h3>
-                        <p id="modal-hosp-loc" class="modal-subtitle">District, State</p>
+                        <h2 id="chart-title" class="section-title">National facility distribution</h2>
+                        <p class="section-sub">Top states by active blood banks aggregated from Gold warehouse marts</p>
                     </div>
-                    <button id="modal-close-btn" class="close-btn" title="Close Modal">&times;</button>
+                    <span class="chart-source-note">Updated hourly via DuckDB pipeline</span>
                 </div>
-                
-                <div class="modal-controls">
-                    <div class="comp-selector-group">
-                        <label for="modal-component-select">Component:</label>
+                <div class="chart-surface">
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="statesChart" height="260" aria-label="Horizontal bar chart of active blood banks by state" role="img"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section (Grid View + Interactive Map) -->
+            <section class="results-section" id="results-section" aria-labelledby="results-title">
+                <div class="results-header">
+                    <div class="results-title-group">
+                        <h2 id="results-title" class="results-title">
+                            <span id="results-count" aria-live="polite">0</span> blood banks
+                        </h2>
+                        <span class="results-rank-label">Sorted by data recency</span>
+                    </div>
+
+                    <!-- View Switcher -->
+                    <div class="view-switch" role="tablist" aria-label="Choose layout view">
+                        <button type="button" id="toggle-grid-btn" class="switch-btn active" role="tab" aria-selected="true" title="Switch to grid layout">
+                            <svg class="icon"><use href="#icon-grid"></use></svg>
+                            <span>Grid view</span>
+                        </button>
+                        <button type="button" id="toggle-map-btn" class="switch-btn" role="tab" aria-selected="false" title="Switch to map layout">
+                            <svg class="icon"><use href="#icon-map"></use></svg>
+                            <span>Live blood map</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Interactive Map Container -->
+                <div id="map-view-container" class="map-view-container hidden" role="region" aria-label="Geographic blood bank map">
+                    <div class="map-toolbar">
+                        <div class="map-legend" aria-label="Map status legend">
+                            <span class="legend-item"><span class="legend-dot dot-green" aria-hidden="true"></span> In stock (&gt;5 units)</span>
+                            <span class="legend-item"><span class="legend-dot dot-amber" aria-hidden="true"></span> Low stock (1–5 units)</span>
+                            <span class="legend-item"><span class="legend-dot dot-red" aria-hidden="true"></span> Critical / Nil stock</span>
+                        </div>
+                        <div class="map-actions">
+                            <button type="button" id="map-reset-btn" class="map-btn" title="Reset view to fit markers">
+                                <svg class="icon"><use href="#icon-navigation"></use></svg>
+                                <span>Reset view</span>
+                            </button>
+                            <span class="map-hint">Click any pin for facility details &amp; 7-day trend</span>
+                        </div>
+                    </div>
+                    <div id="blood-map" class="blood-map-canvas" role="application" aria-label="Blood banks interactive map"></div>
+                </div>
+
+                <!-- Hospital Cards Grid -->
+                <div class="hospitals-grid" id="hospitals-grid" aria-live="polite">
+                    <!-- Skeleton shimmer or real cards injected by app.js -->
+                </div>
+
+                <!-- Pagination Bar -->
+                <nav id="pagination-wrapper" class="pagination-wrapper hidden" aria-label="Search results pagination">
+                    <div class="pagination-info">
+                        Showing <strong id="pagination-start">0</strong>–<strong id="pagination-end">0</strong> of <strong id="pagination-total">0</strong> facilities
+                    </div>
+
+                    <div class="pagination-nav">
+                        <button type="button" id="page-first-btn" class="page-btn page-edge-btn" title="First page" disabled>
+                            <svg class="icon"><use href="#icon-chevrons-left"></use></svg>
+                            <span>First</span>
+                        </button>
+                        <button type="button" id="page-prev-btn" class="page-btn page-arrow-btn" title="Previous page" disabled>
+                            <svg class="icon"><use href="#icon-chevron-left"></use></svg>
+                            <span>Prev</span>
+                        </button>
+
+                        <div id="page-numbers-container" class="page-numbers-container" aria-label="Page numbers">
+                            <!-- Injected by app.js -->
+                        </div>
+
+                        <button type="button" id="page-next-btn" class="page-btn page-arrow-btn" title="Next page" disabled>
+                            <span>Next</span>
+                            <svg class="icon"><use href="#icon-chevron-right"></use></svg>
+                        </button>
+                        <button type="button" id="page-last-btn" class="page-btn page-edge-btn" title="Last page" disabled>
+                            <span>Last</span>
+                            <svg class="icon"><use href="#icon-chevrons-right"></use></svg>
+                        </button>
+                    </div>
+
+                    <div class="pagination-page-size">
+                        <label for="page-size-select" class="page-size-label">Per page:</label>
+                        <div class="select-wrapper select-wrapper-sm">
+                            <select id="page-size-select" class="custom-select pagination-select">
+                                <option value="6">6</option>
+                                <option value="9" selected>9</option>
+                                <option value="18">18</option>
+                                <option value="27">27</option>
+                                <option value="ALL">All</option>
+                            </select>
+                            <svg class="select-chevron" aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
+                        </div>
+                    </div>
+                </nav>
+            </section>
+        </div>
+    </main>
+
+    <!-- 7-Day Stock Trend Modal (Restyled, accessible, no emojis) -->
+    <div id="history-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-hosp-name">
+        <div class="modal-container" role="document">
+            <div class="modal-header">
+                <div>
+                    <span class="tag tag-neutral" id="modal-hosp-badge">Historical inventory trend</span>
+                    <h3 id="modal-hosp-name" class="modal-title">Facility Name</h3>
+                    <p id="modal-hosp-loc" class="modal-subtitle">District, State</p>
+                </div>
+                <button type="button" id="modal-close-btn" class="close-btn" aria-label="Close trend details modal">
+                    <svg class="icon"><use href="#icon-x"></use></svg>
+                </button>
+            </div>
+
+            <div class="modal-controls">
+                <div class="comp-select-group">
+                    <label for="modal-component-select" class="field-label">Component</label>
+                    <div class="select-wrapper">
                         <select id="modal-component-select" class="custom-select modal-select">
                             <option value="Packed Red Blood Cells" selected>Packed Red Blood Cells (PRBC)</option>
                             <option value="Whole Blood">Whole Blood</option>
@@ -233,34 +420,77 @@
                             <option value="Random Donor Platelets">Random Donor Platelets (RDP)</option>
                             <option value="Plasma">Plasma</option>
                         </select>
-                    </div>
-                    <div class="metric-summary-pills" id="modal-summary-pills">
-                        <!-- Rendered dynamically (O-, O+, etc.) -->
+                        <svg class="select-chevron" aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
                     </div>
                 </div>
+            </div>
 
-                <div class="modal-chart-container">
-                    <canvas id="historyChart"></canvas>
+            <!-- Compact 7-Day Change Table -->
+            <div class="modal-summary-section">
+                <div class="table-wrapper">
+                    <table class="trend-table" id="modal-summary-table" aria-label="7-day stock change summary">
+                        <thead>
+                            <tr>
+                                <th scope="col">Group</th>
+                                <th scope="col" class="text-right">Current units</th>
+                                <th scope="col" class="text-right">7-day change</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modal-summary-tbody">
+                            <!-- Injected by app.js -->
+                        </tbody>
+                    </table>
                 </div>
+                <!-- Backwards-compatibility fallback container for existing code -->
+                <div id="modal-summary-pills" class="sr-only"></div>
+            </div>
 
-                <div class="modal-footer">
-                    <span class="history-footnote">⚡ Powered by DuckDB append-only lakehouse snapshots. Enables daily trend visibility missing from official portals.</span>
+            <div class="modal-chart-wrapper">
+                <canvas id="historyChart" height="280" aria-label="Line chart showing daily units available over past 14 days" role="img"></canvas>
+            </div>
+
+            <div class="modal-footer">
+                <span class="modal-source-note">Verified against append-only DuckDB snapshots. Daily tracking detects evolving shortages before official registry updates.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiet Editorial Footer -->
+    <footer class="app-footer" id="app-footer">
+        <div class="footer-container">
+            <div class="footer-top">
+                <div class="footer-brand">
+                    <span class="footer-brand-title">RaktSetu Lakehouse</span>
+                    <p class="footer-brand-desc">National blood bank data intelligence system. Providing transparent, verified blood availability to patients, families, and emergency teams across India.</p>
+                </div>
+                <div class="footer-emergency">
+                    <span class="emergency-label">National emergency helplines</span>
+                    <div class="emergency-links">
+                        <a href="tel:112" class="emergency-tel">Emergency Services: <strong>112</strong></a>
+                        <a href="tel:104" class="emergency-tel">Health Information Helpline: <strong>104</strong></a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-disclaimer">
+                <p><strong>Clinical notice:</strong> Always contact the blood bank by phone before travelling to confirm real-time reservation. RaktSetu lakehouse records are synchronized with public blood registers and may experience minor reporting delays.</p>
+            </div>
+
+            <div class="footer-bottom">
+                <div class="footer-meta">
+                    <span>Data: DuckDB + dbt Core via RaktSetu lakehouse snapshots</span>
+                    <span class="footer-sep">•</span>
+                    <span>Last refreshed: Today</span>
+                </div>
+                <div class="footer-links">
+                    <a href="https://github.com/radhey803/eraktkosh-blood-lakehouse" target="_blank" rel="noopener">GitHub repository</a>
+                    <span class="footer-sep">•</span>
+                    <a href="/api/docs" target="_blank" rel="noopener">FastAPI OpenAPI documentation</a>
                 </div>
             </div>
         </div>
-
-        <!-- Footer -->
-        <footer class="app-footer">
-            <p>Developed with ❤️ using <strong>eRaktKosh Data</strong> | <strong>DuckDB</strong> | <strong>dbt
-                    Core</strong> | <strong>FastAPI</strong></p>
-            <div class="footer-links">
-                <a href="https://github.com/radhey803/eraktkosh-blood-lakehouse" target="_blank" rel="noopener">GitHub
-                    Repository</a>
-                <span>•</span>
-                <a href="/api/docs" target="_blank">FastAPI Swagger Docs</a>
-            </div>
-        </footer>
-    </div>
+    </footer>
 
     <script src="/static/app.js"></script>
 </body>

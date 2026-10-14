@@ -5,13 +5,12 @@
         "*.tsv": "duckdb.dataFileViewer",
         "*.xlsx": "duckdb.dataFileViewer"
     },
-    "duckdb.defaultDatabase": "blood_warehouse",
     "duckdb.databases": [
         {
             "alias": "blood_warehouse",
             "type": "file",
             "path": "/home/radhey/Documents/project_idea/blood_warehouse.duckdb",
-            "attached": true
+            "attached": false
         }
     ],
     "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",

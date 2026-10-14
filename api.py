@@ -21,7 +21,10 @@ import duckdb
 from snapshot_manager import query_hospital_trend, query_district_trend
 from geo_coords import resolve_facility_lat_lng
 
+import shutil
+
 DB_PATH = os.path.join(WORKSPACE_DIR, "blood_warehouse.duckdb")
+SHADOW_DB_PATH = os.path.join(WORKSPACE_DIR, ".blood_warehouse_shadow.duckdb")
 
 app = FastAPI(title="eRaktKosh Blood Lakehouse API", version="1.0.0")
 
@@ -37,8 +40,19 @@ app.add_middleware(
 def get_db():
     if not os.path.exists(DB_PATH):
         raise HTTPException(status_code=500, detail="DuckDB warehouse file not found. Run pipeline first.")
-    # Always open in read_only mode to prevent locks and enable instant concurrent queries
-    return duckdb.connect(DB_PATH, read_only=True)
+    try:
+        return duckdb.connect(DB_PATH, read_only=True)
+    except duckdb.IOException as e:
+        # Gracefully handle IDE / external process file locks by serving from shadow copy
+        if "Could not set lock" in str(e):
+            try:
+                if not os.path.exists(SHADOW_DB_PATH) or os.path.getmtime(DB_PATH) > os.path.getmtime(SHADOW_DB_PATH):
+                    shutil.copyfile(DB_PATH, SHADOW_DB_PATH)
+                return duckdb.connect(SHADOW_DB_PATH, read_only=True)
+            except Exception:
+                if os.path.exists(SHADOW_DB_PATH):
+                    return duckdb.connect(SHADOW_DB_PATH, read_only=True)
+        raise HTTPException(status_code=500, detail=f"Database access error: {str(e)}")
 
 # ----------------- API ENDPOINTS -----------------
 
@@ -188,7 +202,7 @@ def search_hospitals(
     component: Optional[str] = Query("Packed Red Blood Cells"),
     blood_group: Optional[str] = Query(None),
     search_query: Optional[str] = Query(None),
-    limit: int = 60
+    limit: int = 500
 ):
     """Emergency SOS Search checking live inventory by component, blood group, and contact."""
     con = get_db()

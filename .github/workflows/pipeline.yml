@@ -1,0 +1,47 @@
+name: Scheduled Ingestion & Warehouse Build
+
+on:
+  schedule:
+    # Runs every 4 hours: 00:00, 04:00, 08:00, 12:00, 16:00, 20:00 IST
+    # IST is UTC+5:30 -> UTC schedule: 18:30, 22:30, 02:30, 06:30, 10:30, 14:30
+    - cron: '30 2,6,10,14,18,22 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-pipeline:
+    name: Scrape, Transform, Gate & Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --no-dev
+
+      - name: Execute BloodGrid Orchestration Pipeline
+        env:
+          BLOODGRID_ENV: production
+          BLOODGRID_SCRAPER_CONCURRENCY: 10
+          BLOODGRID_SCRAPER_TIMEOUT_SEC: 20
+          BLOODGRID_TELEGRAM_BOT_TOKEN: ${{ secrets.BLOODGRID_TELEGRAM_BOT_TOKEN }}
+          BLOODGRID_TELEGRAM_CHAT_ID: ${{ secrets.BLOODGRID_TELEGRAM_CHAT_ID }}
+        run: |
+          uv run python -m bloodgrid.pipeline.run all
+
+      - name: Upload Validated Serving Database Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: serving-duckdb
+          path: serving.duckdb
+          retention-days: 7

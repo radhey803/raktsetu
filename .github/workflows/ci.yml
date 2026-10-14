@@ -1,0 +1,48 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    name: Lint, Type Check & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Lint with Ruff
+        run: |
+          uv run ruff check src/ tests/
+          uv run ruff format --check src/ tests/
+
+      - name: Run Pytest Suite with Coverage
+        run: |
+          uv run pytest tests/ -v --cov=src/bloodgrid --cov-report=term-missing --cov-fail-under=80
+
+      - name: Validate dbt Models and Tests
+        run: |
+          uv run dbt deps --project-dir dbt --profiles-dir dbt
+          uv run dbt build --project-dir dbt --profiles-dir dbt --target dev
+
+      - name: Build Docker Container
+        run: |
+          docker build -t bloodgrid:ci .

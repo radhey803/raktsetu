@@ -79,3 +79,15 @@ async def verify_api_key_or_jwt(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Authentication required. Provide X-API-Key header or Bearer token."
     )
+
+
+async def get_optional_auth(
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(security_bearer)
+) -> Optional[dict]:
+    """Allows endpoints to accept optional authentication for guest checkouts."""
+    try:
+        return await verify_api_key_or_jwt(x_api_key, credentials)
+    except HTTPException:
+        return None
+

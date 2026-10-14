@@ -121,6 +121,46 @@ def serve_index():
     return {"message": "BloodGrid API online. Frontend build directory available at /static."}
 
 
+@app.get("/dashboard", tags=["Frontend"])
+def serve_dashboard():
+    """Serves developer and account console."""
+    dash_file = web_dir / "dashboard.html"
+    if dash_file.exists():
+        return FileResponse(str(dash_file))
+    return {"message": "Dashboard frontend is available at /static/dashboard.html"}
+
+
+@app.get("/pricing", tags=["Frontend"])
+def serve_pricing_page():
+    """Redirects or serves transparent pricing overview."""
+    return FileResponse(str(web_dir / "index.html"))
+
+
+@app.get("/terms", tags=["Legal"])
+def serve_terms_page():
+    terms_file = web_dir / "terms.html"
+    if terms_file.exists():
+        return FileResponse(str(terms_file))
+    return {"message": "Draft Terms of Service"}
+
+
+@app.get("/privacy", tags=["Legal"])
+def serve_privacy_page():
+    priv_file = web_dir / "privacy.html"
+    if priv_file.exists():
+        return FileResponse(str(priv_file))
+    return {"message": "Draft Privacy Policy (DPDP Act 2023 aligned)"}
+
+
+@app.get("/disclaimer", tags=["Legal"])
+def serve_disclaimer_page():
+    disc_file = web_dir / "disclaimer.html"
+    if disc_file.exists():
+        return FileResponse(str(disc_file))
+    return {"message": "Clinical and Data Disclaimer"}
+
+
+
 @app.get("/healthz", tags=["Observability"])
 def liveness_probe():
     """Kubernetes / Docker liveness probe."""

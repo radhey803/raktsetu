@@ -24,11 +24,13 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function initDashboard() {
+    setupNetworkAndFreshnessWatchers();
     loadSummaryKPIs();
     await loadLocations();
     setupEventListeners();
     searchHospitals();
     updateLiveSyncTime();
+    checkSyncFreshness();
 }
 
 function updateLiveSyncTime() {
@@ -487,6 +489,19 @@ async function searchHospitals() {
         params.append('limit', '500');
 
         const res = await fetch(`/api/search?${params.toString()}`);
+        if (res.status === 429) {
+            grid.innerHTML = `
+                <div class="state-message-card">
+                    <div class="state-icon-wrap" aria-hidden="true" style="color: var(--stock-low);">
+                        <svg class="icon"><use href="#icon-clock"></use></svg>
+                    </div>
+                    <h3 class="state-title">Rate limit reached</h3>
+                    <p class="state-sub">You have exceeded the public search rate quota (60 queries/min). Please wait 30 seconds before searching again, or generate a Developer API key.</p>
+                </div>
+            `;
+            if (paginationWrapper) paginationWrapper.classList.add('hidden');
+            return;
+        }
         const data = await res.json();
 
         // Sort data: stale banks (>30d) sorted last
@@ -1289,4 +1304,54 @@ function closeAlertModal() {
         document.body.style.overflow = '';
     }
 }
+
+// ----------------- OFFLINE & STALE-DATA RESILIENCY -----------------
+function setupNetworkAndFreshnessWatchers() {
+    window.addEventListener('offline', () => {
+        showGlobalNoticeBanner('You are currently offline. Showing cached facilities and coordinates.');
+    });
+    window.addEventListener('online', () => {
+        hideGlobalNoticeBanner();
+    });
+}
+
+async function checkSyncFreshness() {
+    try {
+        const res = await fetch('/v1/meta');
+        if (res.ok) {
+            const meta = await res.json();
+            if (meta.sync_recency && meta.sync_recency.hours_since_sync > 12) {
+                showStaleDataBanner(meta.sync_recency.hours_since_sync);
+            }
+        }
+    } catch (_) {
+        // Silently preserve offline resilience
+    }
+}
+
+function showStaleDataBanner(hours) {
+    showGlobalNoticeBanner(`Notice: Data may be slightly stale. Upstream registry has not published an update in over ${Math.round(hours)} hours.`);
+}
+
+function showGlobalNoticeBanner(msg) {
+    let b = document.getElementById('global-stale-banner');
+    if (!b) {
+        b = document.createElement('div');
+        b.id = 'global-stale-banner';
+        b.className = 'mandatory-disclaimer-banner';
+        b.style.borderColor = '#FEF08A';
+        b.style.background = '#FEFCE8';
+        b.style.color = '#854D0E';
+        const main = document.getElementById('main-content');
+        if (main) main.insertBefore(b, main.firstChild);
+    }
+    b.innerHTML = `<svg class="icon" aria-hidden="true"><use href="#icon-clock"></use></svg> <div>${escapeHTML(msg)}</div>`;
+    b.style.display = 'flex';
+}
+
+function hideGlobalNoticeBanner() {
+    const b = document.getElementById('global-stale-banner');
+    if (b) b.style.display = 'none';
+}
+
 

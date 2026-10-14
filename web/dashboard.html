@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BloodGrid Dashboard | Alerts, API Keys & Usage Metering</title>
+    <meta name="description" content="Manage real-time blood shortage alert subscriptions, generate developer API keys, and monitor usage metering on BloodGrid.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <!-- SVG Icon Sprite -->
+    <svg style="display: none;" aria-hidden="true">
+        <symbol id="icon-droplet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+        </symbol>
+        <symbol id="icon-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 2l-2 2m-1.5 1.5L14 9l-1.5-1.5L11 9l-1.5-1.5L8 9l-1.5-1.5L2 12l10 10 4.5-4.5-1.5-1.5 1.5-1.5-1.5-1.5 1.5-1.5-1.5-1.5 6-6z"></path>
+            <circle cx="7.5" cy="16.5" r="1.5"></circle>
+        </symbol>
+        <symbol id="icon-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </symbol>
+        <symbol id="icon-credit-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+            <line x1="1" y1="10" x2="23" y2="10"></line>
+        </symbol>
+        <symbol id="icon-alert-triangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </symbol>
+        <symbol id="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </symbol>
+        <symbol id="icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </symbol>
+    </svg>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <a href="/" class="brand" aria-label="BloodGrid Home">
+                <span class="brand-mark" aria-hidden="true">
+                    <svg class="icon"><use href="#icon-droplet"></use></svg>
+                </span>
+                <span class="brand-name">
+                    <span class="brand-primary">BloodGrid</span>
+                    <span class="brand-sub">Console</span>
+                </span>
+            </a>
+
+            <div class="header-right">
+                <nav class="header-nav">
+                    <a href="/" class="nav-link">&larr; Live Finder</a>
+                    <a href="/docs" target="_blank" rel="noopener" class="nav-link">API Docs</a>
+                    <a href="#app-footer" class="nav-link">Support</a>
+                </nav>
+                <div class="live-status">
+                    <span class="live-dot" aria-hidden="true"></span>
+                    <span class="live-label">Enterprise Grid Active</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="app-main" style="max-width: 1040px; margin: 0 auto; padding: 2rem 1.5rem; width: 100%;">
+        <!-- Legal Notice Banner -->
+        <div class="mandatory-disclaimer-banner" role="note">
+            <svg class="icon" aria-hidden="true"><use href="#icon-alert-triangle"></use></svg>
+            <div>
+                Data sourced from eRaktKosh (Ministry of Health & Family Welfare, Govt. of India). Not an official service. Always call the blood bank to confirm before travelling.
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h1 style="font-family: var(--font-display); font-size: 2rem; color: var(--ink-900);">Account &amp; Developer Console</h1>
+                <p style="color: var(--ink-500); font-size: 0.9375rem;">Manage stock notifications, API keys, usage metering, and tax invoices.</p>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <span class="tag tag-vol" style="font-size: 0.8125rem; padding: 4px 10px;">Pro Alerts Active</span>
+            </div>
+        </div>
+
+        <!-- Metric & Entitlement Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 2.5rem;">
+            <div class="pricing-card" style="padding: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <span style="font-size: 0.8125rem; font-weight: 600; color: var(--ink-500); text-transform: uppercase;">Active Subscriptions</span>
+                    <svg class="icon" style="color: var(--red-500);"><use href="#icon-bell"></use></svg>
+                </div>
+                <div style="font-family: var(--font-display); font-size: 2rem; font-weight: 700; color: var(--ink-900);">3 <span style="font-size: 0.875rem; color: var(--ink-500); font-weight: normal;">/ 10 quota</span></div>
+                <p style="font-size: 0.8125rem; color: var(--ink-500); margin-top: 0.5rem;">Anand (O- PRBC), Ahmedabad (Bombay Oh+), Vadodara (Platelets)</p>
+            </div>
+
+            <div class="pricing-card" style="padding: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <span style="font-size: 0.8125rem; font-weight: 600; color: var(--ink-500); text-transform: uppercase;">API Consumption</span>
+                    <svg class="icon" style="color: #0284C7;"><use href="#icon-key"></use></svg>
+                </div>
+                <div style="font-family: var(--font-display); font-size: 2rem; font-weight: 700; color: var(--ink-900);">1,420 <span style="font-size: 0.875rem; color: var(--ink-500); font-weight: normal;">requests this month</span></div>
+                <p style="font-size: 0.8125rem; color: var(--ink-500); margin-top: 0.5rem;">Rate limit: 300 calls/min (Pro Tier). 0 rate limit violations.</p>
+            </div>
+
+            <div class="pricing-card" style="padding: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <span style="font-size: 0.8125rem; font-weight: 600; color: var(--ink-500); text-transform: uppercase;">Next Renewal</span>
+                    <svg class="icon" style="color: var(--stock-instock);"><use href="#icon-credit-card"></use></svg>
+                </div>
+                <div style="font-family: var(--font-display); font-size: 2rem; font-weight: 700; color: var(--ink-900);">₹299 <span style="font-size: 0.875rem; color: var(--ink-500); font-weight: normal;">/ month</span></div>
+                <p style="font-size: 0.8125rem; color: var(--ink-500); margin-top: 0.5rem;">Renews on 1st of next month via Razorpay Test Gateway.</p>
+            </div>
+        </div>
+
+        <!-- Section 1: Developer API Keys -->
+        <section style="background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 1.75rem; margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h2 style="font-family: var(--font-display); font-size: 1.25rem; color: var(--ink-900);">Developer API Keys</h2>
+                    <p style="font-size: 0.8125rem; color: var(--ink-500);">Use these credentials in your <code>X-API-Key</code> HTTP headers for programmatic availability queries.</p>
+                </div>
+                <button type="button" class="btn btn-primary" id="btn-create-key">
+                    <svg class="icon"><use href="#icon-key"></use></svg>
+                    <span>Generate New API Key</span>
+                </button>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="trend-table" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th scope="col">Key Name</th>
+                            <th scope="col">Key Identifier</th>
+                            <th scope="col">Rate Limit</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Created</th>
+                            <th scope="col" class="text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="api-keys-table-body">
+                        <tr>
+                            <td style="font-weight: 600; color: var(--ink-900);">Emergency App Primary</td>
+                            <td><code>bg_live_4a91fbc8...</code></td>
+                            <td>300 / min</td>
+                            <td><span class="tag tag-vol">Active</span></td>
+                            <td>Oct 14, 2026</td>
+                            <td class="text-right"><button type="button" class="btn-text" style="color: var(--stock-critical); font-size: 0.75rem;">Revoke</button></td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--ink-900);">Anand NGO Sync Bot</td>
+                            <td><code>bg_live_b7201de3...</code></td>
+                            <td>300 / min</td>
+                            <td><span class="tag tag-vol">Active</span></td>
+                            <td>Oct 13, 2026</td>
+                            <td class="text-right"><button type="button" class="btn-text" style="color: var(--stock-critical); font-size: 0.75rem;">Revoke</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section 2: Active Alert Monitors -->
+        <section style="background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 1.75rem; margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h2 style="font-family: var(--font-display); font-size: 1.25rem; color: var(--ink-900);">Active Inventory Alerts</h2>
+                    <p style="font-size: 0.8125rem; color: var(--ink-500);">Automatic Telegram and email triggers fired when target district inventory crosses your threshold.</p>
+                </div>
+                <a href="/#finder-section" class="btn btn-outline" style="border: 1px solid var(--line);">
+                    <span>+ Add Alert for Another District</span>
+                </a>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="trend-table" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th scope="col">District &amp; State</th>
+                            <th scope="col">Blood Group</th>
+                            <th scope="col">Component</th>
+                            <th scope="col">Threshold</th>
+                            <th scope="col">Channel</th>
+                            <th scope="col" class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--ink-900);">Anand, Gujarat</td>
+                            <td><span class="tag tag-govt">O-</span></td>
+                            <td>Packed Red Blood Cells</td>
+                            <td>&ge; 2 units</td>
+                            <td>Telegram (@anand_blood_bot)</td>
+                            <td class="text-right"><button type="button" class="btn-text" style="color: var(--stock-critical); font-size: 0.75rem;">Remove</button></td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--ink-900);">Ahmedabad, Gujarat</td>
+                            <td><span class="tag tag-priv">Bombay (Oh+)</span></td>
+                            <td>Whole Blood</td>
+                            <td>&ge; 1 unit</td>
+                            <td>Email (doctor@apollo.org)</td>
+                            <td class="text-right"><button type="button" class="btn-text" style="color: var(--stock-critical); font-size: 0.75rem;">Remove</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section 3: Billing & Invoices (GST-ready) -->
+        <section style="background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 1.75rem;">
+            <div style="margin-bottom: 1.25rem;">
+                <h2 style="font-family: var(--font-display); font-size: 1.25rem; color: var(--ink-900);">Tax Invoices &amp; Receipts</h2>
+                <p style="font-size: 0.8125rem; color: var(--ink-500);">GST-compliant tax invoices under SAC Code 998313 (IT &amp; Database Hosting Services).</p>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="trend-table" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th scope="col">Invoice #</th>
+                            <th scope="col">Date</th>
+                            <th scope="col">Plan</th>
+                            <th scope="col">Amount (INR)</th>
+                            <th scope="col">Tax Breakup (18% GST)</th>
+                            <th scope="col" class="text-right">Receipt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--ink-900);">INV-2026-10-001</td>
+                            <td>Oct 14, 2026</td>
+                            <td>Pro Alerts (Monthly)</td>
+                            <td style="font-variant-numeric: tabular-nums;">₹299.00</td>
+                            <td style="font-size: 0.75rem; color: var(--ink-500);">CGST 9% (₹22.81) + SGST 9% (₹22.81)</td>
+                            <td class="text-right"><button type="button" class="btn-outline" style="font-size: 0.75rem; padding: 4px 8px;">Download PDF</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Quiet Editorial Footer -->
+    <footer class="app-footer" id="app-footer">
+        <div class="footer-container">
+            <div class="footer-top">
+                <div class="footer-brand">
+                    <span class="footer-brand-title">BloodGrid Lakehouse</span>
+                    <p class="footer-brand-desc">National blood bank data intelligence system. Providing transparent, verified blood availability to patients, families, and emergency teams across India.</p>
+                </div>
+                <div class="footer-emergency">
+                    <span class="emergency-label">National emergency helplines</span>
+                    <div class="emergency-links">
+                        <a href="tel:112" class="emergency-tel">Emergency Services: <strong>112</strong></a>
+                        <a href="tel:104" class="emergency-tel">Health Information Helpline: <strong>104</strong></a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-disclaimer">
+                <p><strong>Clinical notice:</strong> Data sourced from eRaktKosh (Ministry of Health & Family Welfare, Govt. of India). Not an official service. Always contact the blood bank by phone before travelling to confirm real-time reservation.</p>
+            </div>
+
+            <div class="footer-bottom">
+                <div class="footer-meta">
+                    <span>Data: DuckDB + dbt Core via BloodGrid Lakehouse snapshots</span>
+                    <span class="footer-sep">•</span>
+                    <span>Last refreshed: Today</span>
+                </div>
+                <div class="footer-links">
+                    <a href="/terms" class="footer-link">Terms</a>
+                    <span class="footer-sep">•</span>
+                    <a href="/privacy" class="footer-link">Privacy (DPDP 2023)</a>
+                    <span class="footer-sep">•</span>
+                    <a href="/docs" target="_blank" rel="noopener">OpenAPI Documentation</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+
+</html>

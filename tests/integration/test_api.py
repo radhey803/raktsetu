@@ -185,3 +185,18 @@ def test_pricing_endpoint():
     assert "developer" in data["plans"]
     assert "organization" in data["plans"]
 
+
+def test_frontend_pages_serve_html():
+    for path, expected_text in [
+        ("/", "BloodGrid"),
+        ("/dashboard", "Developer Console"),
+        ("/terms", "Terms of Service"),
+        ("/privacy", "Privacy Policy"),
+        ("/disclaimer", "Source Attribution Disclaimer")
+    ]:
+        resp = client.get(path)
+        assert resp.status_code == 200
+        assert "text/html" in resp.headers["content-type"]
+        assert expected_text in resp.text
+
+

@@ -29,19 +29,75 @@ jobs:
       - name: Install dependencies
         run: uv sync --no-dev
 
-      - name: Execute BloodGrid Orchestration Pipeline
+      - name: Execute BloodGrid Pipeline with 2x Automatic Retry
+        id: pipeline_exec
         env:
           BLOODGRID_ENV: production
           BLOODGRID_SCRAPER_CONCURRENCY: 10
           BLOODGRID_SCRAPER_TIMEOUT_SEC: 20
-          BLOODGRID_TELEGRAM_BOT_TOKEN: ${{ secrets.BLOODGRID_TELEGRAM_BOT_TOKEN }}
-          BLOODGRID_TELEGRAM_CHAT_ID: ${{ secrets.BLOODGRID_TELEGRAM_CHAT_ID }}
         run: |
-          uv run python -m bloodgrid.pipeline.run all
+          MAX_ATTEMPTS=3
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            echo "=========================================="
+            echo "🚀 Pipeline Execution Attempt $i of $MAX_ATTEMPTS"
+            echo "=========================================="
+            if uv run python -m bloodgrid.pipeline.run all --force; then
+              echo "✅ Pipeline attempt $i succeeded!"
+              exit 0
+            else
+              echo "⚠️ Attempt $i failed."
+              if [ "$i" -lt "$MAX_ATTEMPTS" ]; then
+                sleep_seconds=$((i * 30))
+                echo "Sleeping $sleep_seconds seconds before retry..."
+                sleep $sleep_seconds
+              fi
+            fi
+          done
+          echo "❌ All $MAX_ATTEMPTS pipeline attempts failed."
+          exit 1
 
-      - name: Upload Validated Serving Database Artifact
+      - name: Dispatch Telegram Failure Alert
+        if: failure()
+        env:
+          TG_BOT_TOKEN: ${{ secrets.BLOODGRID_TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.BLOODGRID_TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -n "$TG_BOT_TOKEN" ] && [ -n "$TG_CHAT_ID" ]; then
+            MESSAGE="🚨 [CRITICAL ALERT] BloodGrid Scheduled Ingestion Pipeline Failed after 3 attempts on GitHub Actions. Last verified serving data remains active."
+            curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TG_CHAT_ID}" \
+              -d "text=${MESSAGE}" || true
+          fi
+
+      - name: Upload Validated Serving Database to GitHub Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: serving-duckdb
           path: serving.duckdb
           retention-days: 7
+
+      - name: Upload to S3 / Cloudflare R2 Object Storage
+        if: success()
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BLOODGRID_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BLOODGRID_S3_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.BLOODGRID_S3_ENDPOINT_URL }}
+          BUCKET_NAME: ${{ secrets.BLOODGRID_S3_BUCKET_NAME }}
+        run: |
+          if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$BUCKET_NAME" ]; then
+            echo "Uploading serving.duckdb to object storage..."
+            aws s3 cp serving.duckdb "s3://${BUCKET_NAME}/serving.duckdb" --endpoint-url "$AWS_ENDPOINT_URL" || true
+            aws s3 sync data/landing/ "s3://${BUCKET_NAME}/landing/" --endpoint-url "$AWS_ENDPOINT_URL" || true
+          fi
+
+      - name: Trigger API Container Signed Refresh Webhook
+        if: success()
+        env:
+          API_URL: ${{ secrets.BLOODGRID_API_URL }}
+          WEBHOOK_SECRET: ${{ secrets.BLOODGRID_API_KEY_SECRET }}
+        run: |
+          if [ -n "$API_URL" ] && [ -n "$WEBHOOK_SECRET" ]; then
+            echo "Triggering API zero-downtime refresh webhook..."
+            curl -s -X POST "${API_URL}/v1/meta/refresh" \
+              -H "Authorization: Bearer ${WEBHOOK_SECRET}" || true
+          fi

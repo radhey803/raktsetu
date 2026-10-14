@@ -8,7 +8,7 @@ and developer API key generation with SHA-256 hashed storage.
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
@@ -34,7 +34,7 @@ _LOCAL_API_KEYS_DB: Dict[str, dict] = {}
 
 
 def create_jwt_tokens(user_id: str, email: str, tier: str = "pro") -> AuthTokenResponse:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expire_access = now + timedelta(minutes=settings.jwt_expire_minutes)
     expire_refresh = now + timedelta(days=30)
 
@@ -83,7 +83,7 @@ def register_user(req: UserRegisterRequest):
         "organization": req.organization_name,
         "password_hash": pwd_hash,
         "tier": "community",
-        "created_at": datetime.utcnow()
+        "created_at": datetime.now(timezone.utc)
     }
 
     tokens = create_jwt_tokens(user_id=user_id, email=email, tier="community")
@@ -150,13 +150,14 @@ def generate_api_key(
     }
     rate_limit = tier_rate_limits.get(req.tier, settings.rate_limit_public)
 
+    now_dt = datetime.now(timezone.utc)
     _LOCAL_API_KEYS_DB[key_id] = {
         "key_id": key_id,
         "key_name": req.key_name,
         "secret_hash": secret_hash,
         "tier": req.tier,
         "rate_limit": rate_limit,
-        "created_at": datetime.utcnow(),
+        "created_at": now_dt,
         "is_active": True
     }
 
@@ -167,7 +168,7 @@ def generate_api_key(
         "api_key_secret": raw_secret,
         "tier": req.tier,
         "rate_limit": rate_limit,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": now_dt.isoformat(),
         "warning": "Copy your API key now. It will not be shown again."
     }
 

@@ -357,6 +357,69 @@ function setupEventListeners() {
             renderPaginatedHospitals(true);
         });
     }
+
+    // Language switcher buttons
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (typeof setLanguage === 'function') {
+                setLanguage(btn.dataset.lang);
+            }
+        });
+    });
+
+    // Pricing modal handlers
+    const openPricingBtn = document.getElementById('open-pricing-btn');
+    const closePricingBtn = document.getElementById('pricing-close-btn');
+    if (openPricingBtn) openPricingBtn.addEventListener('click', openPricingModal);
+    if (closePricingBtn) closePricingBtn.addEventListener('click', closePricingModal);
+
+    // Alerts modal handlers
+    const openAlertsBtn = document.getElementById('open-alerts-btn');
+    const closeAlertsBtn = document.getElementById('alert-close-btn');
+    if (openAlertsBtn) openAlertsBtn.addEventListener('click', openAlertModal);
+    if (closeAlertsBtn) closeAlertsBtn.addEventListener('click', closeAlertModal);
+
+    // SOS modal handlers
+    const closeSosBtn = document.getElementById('sos-close-btn');
+    const copySosBtn = document.getElementById('sos-copy-btn');
+    if (closeSosBtn) closeSosBtn.addEventListener('click', closeSosModal);
+    if (copySosBtn) {
+        copySosBtn.addEventListener('click', () => {
+            if (currentSosText) {
+                navigator.clipboard.writeText(currentSosText).then(() => {
+                    const feedback = document.getElementById('sos-copy-feedback');
+                    if (feedback) {
+                        feedback.style.display = 'block';
+                        setTimeout(() => { feedback.style.display = 'none'; }, 2500);
+                    }
+                }).catch(() => {
+                    alert('Copied to clipboard!');
+                });
+            }
+        });
+    }
+
+    // Alert subscription form submit
+    const alertForm = document.getElementById('alert-subscription-form');
+    if (alertForm) {
+        alertForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const statusEl = document.getElementById('alert-form-status');
+            const email = document.getElementById('alert-email').value;
+            const group = document.getElementById('alert-group').value;
+            const threshold = document.getElementById('alert-threshold').value;
+            const st = document.getElementById('state-select').value;
+            const dist = document.getElementById('district-select').value;
+
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.style.background = 'var(--stock-instock-bg)';
+                statusEl.style.color = 'var(--stock-instock)';
+                statusEl.innerHTML = `<strong>Alert active:</strong> Monitoring <strong>${escapeHTML(group)}</strong> in ${dist !== 'ALL' ? escapeHTML(dist) : 'selected district'}. Notifications will be sent to <strong>${escapeHTML(email)}</strong>.`;
+                setTimeout(() => { closeAlertModal(); statusEl.style.display = 'none'; alertForm.reset(); }, 2000);
+            }
+        });
+    }
 }
 
 function resetAllFilters() {
@@ -734,9 +797,9 @@ function createHospitalCard(h) {
                         <span>7-day trend</span>
                     </button>
                 </div>
-                <a href="${waLink}" target="_blank" rel="noopener" class="card-share-btn" title="Share availability" aria-label="Share via WhatsApp">
+                <button type="button" class="card-share-btn" title="Share SOS Card" aria-label="Share SOS card" onclick="triggerSosModalByCode(${h.code})">
                     <svg class="icon"><use href="#icon-share-2"></use></svg>
-                </a>
+                </button>
             </div>
         </article>
     `;
@@ -874,9 +937,39 @@ function renderHistoryChart(data) {
 
     if (historyChartInstance) {
         historyChartInstance.destroy();
+        historyChartInstance = null;
     }
 
     const labels = data.dates || [];
+    const wrapper = canvas.parentElement;
+    let emptyEl = document.getElementById('history-empty-notice');
+
+    // Absolute Rule 1: Honest empty state when < 2 genuine snapshots exist
+    if (labels.length < 2) {
+        if (!emptyEl) {
+            emptyEl = document.createElement('div');
+            emptyEl.id = 'history-empty-notice';
+            emptyEl.style.cssText = 'padding: 2.5rem 1.5rem; text-align: center; color: var(--ink-700); font-size: 0.875rem; background: var(--canvas); border: 1px dashed var(--line); border-radius: var(--radius-md); margin-top: 1rem; line-height: 1.6;';
+            wrapper.appendChild(emptyEl);
+        }
+        canvas.style.display = 'none';
+        emptyEl.style.display = 'block';
+        const firstDate = labels[0] || 'today';
+        emptyEl.innerHTML = `
+            <div style="font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--ink-900); font-family: var(--font-display);">Honest Historical Data Principle</div>
+            <p style="color: var(--ink-500); max-width: 480px; margin: 0 auto 0.75rem;">
+                Trend data builds up daily. First genuine lakehouse snapshot recorded on <strong>${escapeHTML(firstDate)}</strong>.
+            </p>
+            <span style="display: inline-block; font-size: 0.75rem; background: var(--red-50); color: var(--red-500); padding: 3px 10px; border-radius: var(--radius-sm); font-weight: 600;">
+                Zero Fake Data Policy: Multi-day trajectory charts require at least 2 consecutive daily scrapes
+            </span>
+        `;
+        return;
+    } else {
+        canvas.style.display = 'block';
+        if (emptyEl) emptyEl.style.display = 'none';
+    }
+
     const datasets = [];
 
     for (const [bg, values] of Object.entries(data.series || {})) {
@@ -1109,3 +1202,91 @@ function escapeQuotes(str) {
     if (!str) return '';
     return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
+
+// ----------------- MODAL CONTROLLERS & SOS DISPATCHER -----------------
+let currentSosText = '';
+
+function triggerSosModalByCode(code) {
+    const hosp = currentHospitalsData.find(h => h.code === code);
+    if (hosp) openSosModal(hosp);
+}
+
+function openSosModal(hosp) {
+    const modal = document.getElementById('sos-modal');
+    if (!modal) return;
+
+    const mapsQuery = encodeURIComponent(`${hosp.name}, ${hosp.district}, ${hosp.state}`);
+    const mapsLink = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+
+    const rawContact = hosp.contact || '';
+    const phoneMatch = rawContact.match(/Phone:\s*([0-9\-\s,]+)/i);
+    const primaryPhone = phoneMatch ? phoneMatch[1].trim().split(',')[0].trim() : (rawContact || 'Not listed');
+
+    const selectedComp = hosp.component || selectedComponent || 'Packed Red Blood Cells';
+    const groupNeeded = selectedBloodGroup || 'All Groups';
+
+    currentSosText = 
+`[BLOODGRID EMERGENCY AVAILABILITY SOS]
+Facility: ${hosp.name}
+Location: ${hosp.district}, ${hosp.state}
+Contact: ${primaryPhone}
+Component: ${selectedComp}
+Filter Group: ${groupNeeded}
+Reported Stock: ${hosp.stock || 'Check facility directly'}
+Directions: ${mapsLink}
+
+Notice: Data sourced from eRaktKosh (MoHFW, Govt of India). Not an official service. Always call the blood bank to confirm before travelling.`;
+
+    const previewEl = document.getElementById('sos-preview-text');
+    if (previewEl) previewEl.textContent = currentSosText;
+
+    const waBtn = document.getElementById('sos-whatsapp-btn');
+    if (waBtn) {
+        waBtn.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(currentSosText)}`;
+    }
+
+    const feedback = document.getElementById('sos-copy-feedback');
+    if (feedback) feedback.style.display = 'none';
+
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeSosModal() {
+    const modal = document.getElementById('sos-modal');
+    if (modal) modal.classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function openPricingModal() {
+    const modal = document.getElementById('pricing-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closePricingModal() {
+    const modal = document.getElementById('pricing-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+}
+
+function openAlertModal() {
+    const modal = document.getElementById('alert-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeAlertModal() {
+    const modal = document.getElementById('alert-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+}
+

@@ -21,7 +21,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from bloodgrid.api.routers import admin, auth, public, v1
+from bloodgrid.api.routers import admin, auth, public, reports, seo, v1
 from bloodgrid.config import settings
 from bloodgrid.warehouse.connection import get_serving_connection
 
@@ -102,6 +102,8 @@ app.include_router(public.router)
 app.include_router(v1.router)
 app.include_router(auth.router)
 app.include_router(admin.router)
+app.include_router(reports.router)
+app.include_router(seo.router)
 
 # Serve web static frontend assets
 web_dir = settings.web_dir if settings.web_dir.exists() else settings.base_dir / "static"

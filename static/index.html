@@ -126,25 +126,35 @@
     <!-- Top Sticky Header -->
     <header class="app-header">
         <div class="header-container">
-            <a href="/" class="brand" aria-label="RaktSetu Lakehouse Home">
+            <a href="/" class="brand" aria-label="BloodGrid Lakehouse Home">
                 <span class="brand-mark" aria-hidden="true">
                     <svg class="icon"><use href="#icon-droplet"></use></svg>
                 </span>
                 <span class="brand-name">
-                    <span class="brand-primary">RaktSetu</span>
-                    <span class="brand-sub">Lakehouse</span>
+                    <span class="brand-primary">BloodGrid</span>
+                    <span class="brand-sub" data-i18n="brandSub">Lakehouse</span>
                 </span>
             </a>
 
             <div class="header-right">
                 <nav class="header-nav" aria-label="Main Navigation">
-                    <a href="#finder-section" class="nav-link">Find blood</a>
-                    <a href="#chart-section" class="nav-link">Network</a>
-                    <a href="#app-footer" class="nav-link">About</a>
+                    <a href="#finder-section" class="nav-link" data-i18n="navFind">Find blood</a>
+                    <a href="#chart-section" class="nav-link" data-i18n="navNetwork">Network</a>
+                    <button type="button" id="open-alerts-btn" class="nav-link" style="background: none; border: none; cursor: pointer;" data-i18n="navAlerts">Alerts</button>
+                    <button type="button" id="open-pricing-btn" class="nav-link" style="background: none; border: none; cursor: pointer;" data-i18n="navPricing">Pricing</button>
+                    <a href="#app-footer" class="nav-link" data-i18n="navAbout">About</a>
                 </nav>
+
+                <!-- Language Switcher -->
+                <div class="lang-switcher" role="radiogroup" aria-label="Select Language">
+                    <button type="button" class="lang-btn active" data-lang="en" aria-label="English">EN</button>
+                    <button type="button" class="lang-btn" data-lang="hi" aria-label="Hindi">HI</button>
+                    <button type="button" class="lang-btn" data-lang="gu" aria-label="Gujarati">GU</button>
+                </div>
+
                 <div class="live-status" role="status" aria-label="Inventory system active">
                     <span class="live-dot" aria-hidden="true"></span>
-                    <span class="live-label">Live sync <span id="live-sync-time">19:30</span></span>
+                    <span class="live-label"><span data-i18n="liveSync">Live sync</span> <span id="live-sync-time">19:30</span></span>
                 </div>
             </div>
         </div>
@@ -152,12 +162,20 @@
 
     <main id="main-content" class="app-main">
         <div class="main-container">
+            <!-- Mandatory Legal Source Attribution Banner (Absolute Rule 3) -->
+            <div class="mandatory-disclaimer-banner" role="note" aria-label="Mandatory medical and source attribution notice">
+                <svg class="icon" aria-hidden="true"><use href="#icon-alert-triangle"></use></svg>
+                <div data-i18n="mandatoryNotice">
+                    Data sourced from eRaktKosh (Ministry of Health & Family Welfare, Govt. of India). Not an official service. Always call the blood bank to confirm before travelling.
+                </div>
+            </div>
+
             <!-- Hero Section -->
             <section class="hero-section" aria-labelledby="hero-title">
                 <div class="hero-content">
-                    <span class="hero-kicker">Emergency Blood Intelligence Network</span>
-                    <h1 id="hero-title" class="hero-title">Find verified blood availability, in minutes.</h1>
-                    <p class="hero-sub">Direct connection to 4,680+ registered blood centres across 36 states and union territories. Stock verified against national data records.</p>
+                    <span class="hero-kicker" data-i18n="heroKicker">Emergency Blood Intelligence Network</span>
+                    <h1 id="hero-title" class="hero-title" data-i18n="heroTitle">Find verified blood availability, in minutes.</h1>
+                    <p class="hero-sub" data-i18n="heroSub">Direct connection to 4,680+ registered blood centres across 36 states and union territories. Stock verified against national data records.</p>
                 </div>
 
                 <!-- Emergency Finder & Filter Panel -->
@@ -456,12 +474,172 @@
         </div>
     </div>
 
+    <!-- Shareable Emergency SOS Modal -->
+    <div id="sos-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="sos-modal-title">
+        <div class="modal-container" role="document">
+            <div class="modal-header">
+                <div>
+                    <span class="tag tag-vol" id="sos-modal-badge">Direct Transfusion Assistance</span>
+                    <h3 id="sos-modal-title" class="modal-title" data-i18n="sosTitle">Emergency Blood Availability SOS Card</h3>
+                    <p class="modal-subtitle">Share verified facility coordinates and availability with family, doctors, or patient groups.</p>
+                </div>
+                <button type="button" id="sos-close-btn" class="close-btn" aria-label="Close SOS modal">
+                    <svg class="icon"><use href="#icon-x"></use></svg>
+                </button>
+            </div>
+
+            <div class="modal-body" style="padding: 1.25rem 1.75rem;">
+                <div id="sos-preview-text" class="sos-preview-card"></div>
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem;">
+                    <button type="button" id="sos-copy-btn" class="btn btn-primary" style="flex: 1;">
+                        <svg class="icon"><use href="#icon-share-2"></use></svg>
+                        <span data-i18n="sosCopyBtn">Copy SOS Message</span>
+                    </button>
+                    <a id="sos-whatsapp-btn" href="#" target="_blank" rel="noopener" class="btn btn-text" style="flex: 1; border: 1px solid var(--line); justify-content: center; background: #25D366; color: #FFFFFF; font-weight: 600;">
+                        <span data-i18n="sosWhatsAppBtn">Share via WhatsApp</span>
+                    </a>
+                </div>
+                <div id="sos-copy-feedback" style="font-size: 0.8125rem; color: var(--stock-instock); margin-top: 0.5rem; text-align: center; display: none;" data-i18n="sosCopied">
+                    SOS card copied to clipboard!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transparent Pricing Modal -->
+    <div id="pricing-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pricing-modal-title">
+        <div class="modal-container" role="document" style="max-width: 860px;">
+            <div class="modal-header">
+                <div>
+                    <span class="tag tag-neutral">Commercial Entitlements</span>
+                    <h3 id="pricing-modal-title" class="modal-title">Honest Plans in Indian Rupees (₹)</h3>
+                    <p class="modal-subtitle">Subsidized community access funded by enterprise developer API tiers and hospital analytics.</p>
+                </div>
+                <button type="button" id="pricing-close-btn" class="close-btn" aria-label="Close pricing modal">
+                    <svg class="icon"><use href="#icon-x"></use></svg>
+                </button>
+            </div>
+
+            <div class="modal-body" style="padding: 1.25rem 1.75rem;">
+                <div class="pricing-grid">
+                    <div class="pricing-card">
+                        <div>
+                            <h4>Community</h4>
+                            <div class="pricing-price">₹0 <span style="font-size: 0.8125rem; color: var(--ink-500); font-weight: normal;">/ forever</span></div>
+                            <ul class="pricing-features">
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Live emergency search</li>
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Real-time map &amp; directions</li>
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>60 API requests/minute</li>
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Universal Bombay Radar</li>
+                            </ul>
+                        </div>
+                        <button type="button" class="btn btn-text" style="width: 100%; border: 1px solid var(--line);">Current Plan</button>
+                    </div>
+
+                    <div class="pricing-card featured">
+                        <span class="pricing-plan-badge">Popular</span>
+                        <div>
+                            <h4>Pro Alerts</h4>
+                            <div class="pricing-price">₹299 <span style="font-size: 0.8125rem; color: var(--ink-500); font-weight: normal;">/ month</span></div>
+                            <ul class="pricing-features">
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>10 Instant Telegram alerts</li>
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Quiet hours emergency bypass</li>
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>300 API requests/minute</li>
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Priority facility verification</li>
+                            </ul>
+                        </div>
+                        <button type="button" class="btn btn-primary" style="width: 100%;">Select Pro Plan</button>
+                    </div>
+
+                    <div class="pricing-card">
+                        <div>
+                            <h4>Developer API</h4>
+                            <div class="pricing-price">₹999 <span style="font-size: 0.8125rem; color: var(--ink-500); font-weight: normal;">/ month</span></div>
+                            <ul class="pricing-features">
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>1,200 API requests/minute</li>
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Full historical lakehouse access</li>
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Webhook sync dispatch</li>
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>25 Automated stock monitors</li>
+                            </ul>
+                        </div>
+                        <button type="button" class="btn btn-text" style="width: 100%; border: 1px solid var(--line);">Get API Keys</button>
+                    </div>
+
+                    <div class="pricing-card">
+                        <div>
+                            <h4>NGO &amp; Team</h4>
+                            <div class="pricing-price">₹2,999 <span style="font-size: 0.8125rem; color: var(--ink-500); font-weight: normal;">/ month</span></div>
+                            <ul class="pricing-features">
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>100 District alert subscriptions</li>
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Monthly Deficit CSV export</li>
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Camp Location Suggester</li>
+                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Multi-seat coordinator seats</li>
+                            </ul>
+                        </div>
+                        <button type="button" class="btn btn-text" style="width: 100%; border: 1px solid var(--line);">Contact NGO Desk</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Subscription Modal -->
+    <div id="alert-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="alert-modal-title">
+        <div class="modal-container" role="document">
+            <div class="modal-header">
+                <div>
+                    <span class="tag tag-neutral">Automated Notifications</span>
+                    <h3 id="alert-modal-title" class="modal-title" data-i18n="alertModalTitle">Set Stock Availability Alert</h3>
+                    <p class="modal-subtitle" data-i18n="alertModalSub">Receive instant notifications when required blood units are reported.</p>
+                </div>
+                <button type="button" id="alert-close-btn" class="close-btn" aria-label="Close alert modal">
+                    <svg class="icon"><use href="#icon-x"></use></svg>
+                </button>
+            </div>
+
+            <div class="modal-body" style="padding: 1.25rem 1.75rem;">
+                <form id="alert-subscription-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <label for="alert-email" class="field-label" data-i18n="emailLabel">Your Email Address</label>
+                        <input type="email" id="alert-email" class="custom-input" required placeholder="coordinator@example.org">
+                    </div>
+                    <div>
+                        <label for="alert-telegram" class="field-label">Telegram Chat ID (Optional)</label>
+                        <input type="text" id="alert-telegram" class="custom-input" placeholder="e.g. 123456789">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                        <div>
+                            <label for="alert-group" class="field-label">Blood Group</label>
+                            <select id="alert-group" class="custom-select">
+                                <option value="O-">O- (Universal)</option>
+                                <option value="O+">O+</option>
+                                <option value="A-">A-</option>
+                                <option value="A+">A+</option>
+                                <option value="B-">B-</option>
+                                <option value="B+">B+</option>
+                                <option value="AB-">AB-</option>
+                                <option value="AB+">AB+</option>
+                                <option value="Bombay (Oh+)">Bombay (Oh+)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="alert-threshold" class="field-label" data-i18n="thresholdLabel">Min Units Threshold</label>
+                            <input type="number" id="alert-threshold" class="custom-input" value="1" min="1" max="100">
+                        </div>
+                    </div>
+                    <div id="alert-form-status" style="display: none; padding: 0.5rem; border-radius: var(--radius-sm); font-size: 0.8125rem;"></div>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;" data-i18n="subscribeBtn">Activate Alert Subscription</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Quiet Editorial Footer -->
     <footer class="app-footer" id="app-footer">
         <div class="footer-container">
             <div class="footer-top">
                 <div class="footer-brand">
-                    <span class="footer-brand-title">RaktSetu Lakehouse</span>
+                    <span class="footer-brand-title">BloodGrid Lakehouse</span>
                     <p class="footer-brand-desc">National blood bank data intelligence system. Providing transparent, verified blood availability to patients, families, and emergency teams across India.</p>
                 </div>
                 <div class="footer-emergency">
@@ -474,24 +652,25 @@
             </div>
 
             <div class="footer-disclaimer">
-                <p><strong>Clinical notice:</strong> Always contact the blood bank by phone before travelling to confirm real-time reservation. RaktSetu lakehouse records are synchronized with public blood registers and may experience minor reporting delays.</p>
+                <p><strong>Clinical notice:</strong> Data sourced from eRaktKosh (Ministry of Health & Family Welfare, Govt. of India). Not an official service. Always contact the blood bank by phone before travelling to confirm real-time reservation.</p>
             </div>
 
             <div class="footer-bottom">
                 <div class="footer-meta">
-                    <span>Data: DuckDB + dbt Core via RaktSetu lakehouse snapshots</span>
+                    <span>Data: DuckDB + dbt Core via BloodGrid Lakehouse snapshots</span>
                     <span class="footer-sep">•</span>
                     <span>Last refreshed: Today</span>
                 </div>
                 <div class="footer-links">
                     <a href="https://github.com/radhey803/eraktkosh-blood-lakehouse" target="_blank" rel="noopener">GitHub repository</a>
                     <span class="footer-sep">•</span>
-                    <a href="/api/docs" target="_blank" rel="noopener">FastAPI OpenAPI documentation</a>
+                    <a href="/docs" target="_blank" rel="noopener">OpenAPI Documentation</a>
                 </div>
             </div>
         </div>
     </footer>
 
+    <script src="/static/translations.js"></script>
     <script src="/static/app.js"></script>
 </body>
 

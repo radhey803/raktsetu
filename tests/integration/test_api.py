@@ -118,3 +118,70 @@ def test_user_registration_and_login():
     assert login_data["success"] is True
     assert "tokens" in login_data
     assert "access_token" in login_data["tokens"]
+
+
+def test_robots_txt_and_sitemap_xml():
+    # robots.txt
+    robots = client.get("/robots.txt")
+    assert robots.status_code == 200
+    assert "Sitemap: https://bloodgrid.in/sitemap.xml" in robots.text
+
+    # sitemap.xml
+    sitemap = client.get("/sitemap.xml")
+    assert sitemap.status_code == 200
+    assert "<urlset" in sitemap.text
+    assert "https://bloodgrid.in/blood-banks/" in sitemap.text
+
+
+def test_district_seo_landing_page():
+    resp = client.get("/blood-banks/gujarat/anand")
+    assert resp.status_code == 200
+    assert "text/html" in resp.headers["content-type"]
+    assert "Blood Banks in Anand, Gujarat" in resp.text
+    assert "schema.org" in resp.text
+    assert "MedicalOrganization" in resp.text
+    # Attribution notice present
+    assert "Data sourced from eRaktKosh" in resp.text
+
+
+def test_reports_shortages_csv_export():
+    resp = client.get("/v1/reports/district-shortages.csv?state=Gujarat")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "text/csv; charset=utf-8"
+    assert "attachment; filename=" in resp.headers["content-disposition"]
+    content = resp.text
+    assert "State,District,Component,Blood_Group" in content
+
+
+def test_reports_donation_camp_suggester():
+    resp = client.get("/v1/reports/donation-camp-suggester?state=Gujarat&blood_group=O-")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["success"] is True
+    assert "suggested_locations" in data
+    assert len(data["suggested_locations"]) > 0
+    first = data["suggested_locations"][0]
+    assert "camp_priority_score" in first
+    assert "recommendation" in first
+
+
+def test_forecasting_stub_honest_accumulation():
+    resp = client.get("/v1/reports/forecasting-stub")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "DATA_ACCUMULATION_PHASE"
+    assert data["feature_flag"] == "ml_forecasting_disabled"
+    assert data["required_real_snapshot_days"] == 60
+    assert "Synthetic or random forecasting is strictly prohibited" in data["message"]
+
+
+def test_pricing_endpoint():
+    resp = client.get("/v1/reports/pricing")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["currency"] == "INR"
+    assert "free" in data["plans"]
+    assert "pro" in data["plans"]
+    assert "developer" in data["plans"]
+    assert "organization" in data["plans"]
+

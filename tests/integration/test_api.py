@@ -4,7 +4,6 @@ Integration Tests: BloodGrid API
 Validates all public, v1, and authentication endpoints against the serving DuckDB database.
 """
 
-import pytest
 from starlette.testclient import TestClient
 
 from bloodgrid.api.main import app
@@ -100,19 +99,19 @@ def test_user_registration_and_login():
     pwd = "StrongPassword123!"
 
     # 1. Register
-    reg_resp = client.post("/v1/auth/register", json={
-        "email": email,
-        "password": pwd,
-        "full_name": "Dr. Ramesh Patel",
-        "organization_name": "Apollo Clinic"
-    })
+    reg_resp = client.post(
+        "/v1/auth/register",
+        json={
+            "email": email,
+            "password": pwd,
+            "full_name": "Dr. Ramesh Patel",
+            "organization_name": "Apollo Clinic",
+        },
+    )
     assert reg_resp.status_code in (200, 409)  # 200 or 409 if already registered
 
     # 2. Login
-    login_resp = client.post("/v1/auth/login", json={
-        "email": email,
-        "password": pwd
-    })
+    login_resp = client.post("/v1/auth/login", json={"email": email, "password": pwd})
     assert login_resp.status_code == 200
     login_data = login_resp.json()
     assert login_data["success"] is True
@@ -192,11 +191,9 @@ def test_frontend_pages_serve_html():
         ("/dashboard", "Developer Console"),
         ("/terms", "Terms of Service"),
         ("/privacy", "Privacy Policy"),
-        ("/disclaimer", "Source Attribution Disclaimer")
+        ("/disclaimer", "Source Attribution Disclaimer"),
     ]:
         resp = client.get(path)
         assert resp.status_code == 200
         assert "text/html" in resp.headers["content-type"]
         assert expected_text in resp.text
-
-

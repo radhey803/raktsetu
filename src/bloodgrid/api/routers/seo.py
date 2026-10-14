@@ -13,13 +13,13 @@ Acts as the primary organic search acquisition engine for patients & NGOs.
 import html
 import json
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Optional
+
 import duckdb
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from bloodgrid.api.deps import get_db
-from bloodgrid.config import settings
 from bloodgrid.geo.geocode import resolve_facility_lat_lng
 
 router = APIRouter(tags=["Programmatic SEO & Search Acquisition"])
@@ -43,8 +43,8 @@ def get_robots_txt():
 def get_sitemap_xml(con: duckdb.DuckDBPyConnection = Depends(get_db)):
     """Generates dynamic sitemap.xml covering all active states and districts in India."""
     results = con.execute("""
-        SELECT DISTINCT state_name, district_name 
-        FROM main_gold.dim_blood_banks 
+        SELECT DISTINCT state_name, district_name
+        FROM main_gold.dim_blood_banks
         WHERE state_name IS NOT NULL AND district_name IS NOT NULL
         ORDER BY state_name, district_name;
     """).fetchall()
@@ -52,12 +52,16 @@ def get_sitemap_xml(con: duckdb.DuckDBPyConnection = Depends(get_db)):
     today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     xml_lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ]
 
     # Root and main pages
-    xml_lines.append(f"  <url><loc>https://bloodgrid.in/</loc><lastmod>{today_str}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>")
-    xml_lines.append(f"  <url><loc>https://bloodgrid.in/pricing</loc><lastmod>{today_str}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>")
+    xml_lines.append(
+        f"  <url><loc>https://bloodgrid.in/</loc><lastmod>{today_str}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>"
+    )
+    xml_lines.append(
+        f"  <url><loc>https://bloodgrid.in/pricing</loc><lastmod>{today_str}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>"
+    )
 
     # District programmatic pages
     for state, district in results:
@@ -78,18 +82,20 @@ def render_district_seo_page(
     state: str,
     district: str,
     blood_group: Optional[str] = None,
-    con: duckdb.DuckDBPyConnection = Depends(get_db)
+    con: duckdb.DuckDBPyConnection = Depends(get_db),
 ):
     """
     Renders high-speed, accessible, server-rendered SEO page for a specific district and blood group.
     """
     state_clean = state.replace("-", " ").title()
     dist_clean = district.replace("-", " ").title()
-    group_clean = blood_group.upper().replace("-VE", "-").replace("+VE", "+") if blood_group else None
+    group_clean = (
+        blood_group.upper().replace("-VE", "-").replace("+VE", "+") if blood_group else None
+    )
 
     # Fetch facilities in this district
     sql = """
-        SELECT 
+        SELECT
             b.hospital_code, b.hospital_name, b.hospital_type, b.hospital_contact,
             b.hospital_address, b.source_updated_at,
             COALESCE(r.reliability_score, 0), COALESCE(r.reliability_tier, 'UNKNOWN')
@@ -102,14 +108,18 @@ def render_district_seo_page(
     facilities = con.execute(sql, [state_clean, dist_clean]).fetchall()
 
     if not facilities:
-        raise HTTPException(status_code=404, detail=f"No blood banks recorded for {dist_clean}, {state_clean}")
+        raise HTTPException(
+            status_code=404, detail=f"No blood banks recorded for {dist_clean}, {state_clean}"
+        )
 
     # Canonical URL
     canonical_url = f"https://bloodgrid.in/blood-banks/{state.lower()}/{district.lower()}"
     if group_clean:
         canonical_url += f"/{group_clean.lower()}"
 
-    title = f"Blood Banks in {dist_clean}, {state_clean} - Live Stock & Emergency Contacts | BloodGrid"
+    title = (
+        f"Blood Banks in {dist_clean}, {state_clean} - Live Stock & Emergency Contacts | BloodGrid"
+    )
     if group_clean:
         title = f"{group_clean} Blood Availability in {dist_clean}, {state_clean} - Live Stock | BloodGrid"
 
@@ -123,25 +133,23 @@ def render_district_seo_page(
     for f in facilities[:10]:
         hcode, hname, htype, hcontact, haddr, _, rscore, _ = f
         lat, lng, prec = resolve_facility_lat_lng(hcode, hname, haddr, state_clean, dist_clean, con)
-        jsonld_entities.append({
-            "@context": "https://schema.org",
-            "@type": "MedicalOrganization",
-            "name": hname,
-            "medicalSpecialty": "TransfusionMedicine",
-            "address": {
-                "@type": "PostalAddress",
-                "streetAddress": haddr or dist_clean,
-                "addressLocality": dist_clean,
-                "addressRegion": state_clean,
-                "addressCountry": "IN"
-            },
-            "geo": {
-                "@type": "GeoCoordinates",
-                "latitude": lat,
-                "longitude": lng
-            },
-            "telephone": hcontact[:30] if hcontact else None
-        })
+        jsonld_entities.append(
+            {
+                "@context": "https://schema.org",
+                "@type": "MedicalOrganization",
+                "name": hname,
+                "medicalSpecialty": "TransfusionMedicine",
+                "address": {
+                    "@type": "PostalAddress",
+                    "streetAddress": haddr or dist_clean,
+                    "addressLocality": dist_clean,
+                    "addressRegion": state_clean,
+                    "addressCountry": "IN",
+                },
+                "geo": {"@type": "GeoCoordinates", "latitude": lat, "longitude": lng},
+                "telephone": hcontact[:30] if hcontact else None,
+            }
+        )
 
     # Render clean HTML page
     cards_html = []
@@ -151,15 +159,15 @@ def render_district_seo_page(
         <article class="facility-card" style="border: 1px solid #E9E1E0; border-radius: 8px; padding: 1.25rem; background: #FFFFFF; margin-bottom: 1rem;">
             <div style="display: flex; justify-content: space-between; align-items: baseline;">
                 <h3 style="font-family: Georgia, serif; font-size: 1.15rem; color: #1A1214; margin-bottom: 0.35rem;">{html.escape(hname)}</h3>
-                <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: #FDF4F5; color: #D21F3C; font-weight: 600;">{html.escape(htype or 'Blood Centre')}</span>
+                <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: #FDF4F5; color: #D21F3C; font-weight: 600;">{html.escape(htype or "Blood Centre")}</span>
             </div>
             <p style="color: #6E6265; font-size: 0.85rem; margin-bottom: 0.5rem;">{html.escape(haddr or dist_clean)}</p>
             <div style="font-size: 0.85rem; margin-bottom: 0.75rem;">
-                <strong>Contact:</strong> <span>{html.escape(hcontact or 'Call directory')}</span>
+                <strong>Contact:</strong> <span>{html.escape(hcontact or "Call directory")}</span>
             </div>
             <div style="display: flex; gap: 0.5rem;">
-                <a href="tel:{html.escape((hcontact or '').split(',')[0].replace('Phone:', '').strip())}" style="display: inline-block; padding: 6px 12px; background: #D21F3C; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">Call Hospital</a>
-                <a href="https://maps.google.com/?q={html.escape(hname + ', ' + dist_clean)}" target="_blank" rel="noopener" style="display: inline-block; padding: 6px 12px; border: 1px solid #E9E1E0; color: #1A1214; text-decoration: none; border-radius: 6px; font-size: 0.8rem;">Directions ↗</a>
+                <a href="tel:{html.escape((hcontact or "").split(",")[0].replace("Phone:", "").strip())}" style="display: inline-block; padding: 6px 12px; background: #D21F3C; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">Call Hospital</a>
+                <a href="https://maps.google.com/?q={html.escape(hname + ", " + dist_clean)}" target="_blank" rel="noopener" style="display: inline-block; padding: 6px 12px; border: 1px solid #E9E1E0; color: #1A1214; text-decoration: none; border-radius: 6px; font-size: 0.8rem;">Directions ↗</a>
             </div>
         </article>
         """)
@@ -172,7 +180,7 @@ def render_district_seo_page(
     <title>{html.escape(title)}</title>
     <meta name="description" content="{html.escape(description)}">
     <link rel="canonical" href="{canonical_url}">
-    
+
     <!-- Open Graph -->
     <meta property="og:title" content="{html.escape(title)}">
     <meta property="og:description" content="{html.escape(description)}">

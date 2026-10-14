@@ -6,7 +6,8 @@ user authentication, and API key management.
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -49,7 +50,9 @@ class ApiKeyCreateRequest(BaseModel):
 class ApiKeyCreatedResponse(BaseModel):
     key_id: str
     key_name: str
-    api_key_secret: str = Field(..., description="Secret key shown ONCE upon creation. Store safely.")
+    api_key_secret: str = Field(
+        ..., description="Secret key shown ONCE upon creation. Store safely."
+    )
     tier: str
     rate_limit: str
     created_at: datetime

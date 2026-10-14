@@ -7,8 +7,6 @@ Strict validation proving that:
 3. Bombay (Oh-) and Rh-negative phenotypes are correctly isolated
 """
 
-import pytest
-
 
 def normalize_blood_group(bg_raw: str) -> str:
     cleaned = bg_raw.strip().upper().replace(" ", "")

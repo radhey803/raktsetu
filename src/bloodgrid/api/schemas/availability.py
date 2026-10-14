@@ -5,7 +5,8 @@ Pydantic v2 schemas for blood banks, stock items, and availability search result
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, Optional
+
 from pydantic import BaseModel, Field
 
 

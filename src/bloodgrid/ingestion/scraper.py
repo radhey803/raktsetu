@@ -18,7 +18,6 @@ import random
 import time
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
@@ -33,11 +32,13 @@ BASE_URL = "https://eraktkosh.mohfw.gov.in/eraktkoshPortal/eraktkosh/blood-avail
 
 class CircuitBreakerError(Exception):
     """Raised when the scraper aborts due to an unacceptably high error rate."""
+
     pass
 
 
 class RunIntervalGuardError(Exception):
     """Raised when attempting a full run within the minimum interval guard period."""
+
     pass
 
 
@@ -49,7 +50,7 @@ async def fetch_district_data(
     district_name: str,
     district_id: str,
     max_retries: int = 3,
-    timeout_sec: int = 15
+    timeout_sec: int = 15,
 ) -> Tuple[bool, List[Dict[str, Any]], Optional[str]]:
     """
     Fetches raw inventory for a single district with polite exponential backoff.
@@ -69,10 +70,15 @@ async def fetch_district_data(
                 async with session.get(url, headers=headers, timeout=timeout) as response:
                     # Respect HTTP 429 (Too Many Requests) or 5xx server errors
                     if response.status == 429 or response.status >= 500:
-                        backoff = (2 ** attempt) + random.uniform(0.5, 1.5)
+                        backoff = (2**attempt) + random.uniform(0.5, 1.5)
                         logger.warning(
                             "HTTP %d on district %s (%s). Backing off %.1fs (attempt %d/%d)",
-                            response.status, district_name, state_name, backoff, attempt, max_retries
+                            response.status,
+                            district_name,
+                            state_name,
+                            backoff,
+                            attempt,
+                            max_retries,
                         )
                         await asyncio.sleep(backoff)
                         continue
@@ -98,12 +104,16 @@ async def fetch_district_data(
                             logger.error("JSON decode error for %s: %s", district_name, jde)
                             return False, [], f"JSON decode error: {jde}"
                     else:
-                        logger.warning("Unexpected status %d for %s", response.status, district_name)
+                        logger.warning(
+                            "Unexpected status %d for %s", response.status, district_name
+                        )
             except (aiohttp.ClientError, asyncio.TimeoutError) as err:
                 if attempt == max_retries:
-                    logger.error("Failed to fetch %s after %d attempts: %s", district_name, attempt, err)
+                    logger.error(
+                        "Failed to fetch %s after %d attempts: %s", district_name, attempt, err
+                    )
                     return False, [], str(err)
-                backoff = (2 ** attempt) + random.uniform(0.5, 1.5)
+                backoff = (2**attempt) + random.uniform(0.5, 1.5)
                 await asyncio.sleep(backoff)
 
     return False, [], "Max retries exceeded"
@@ -112,7 +122,7 @@ async def fetch_district_data(
 async def scrape_nationwide(
     concurrency: Optional[int] = None,
     timeout_sec: Optional[int] = None,
-    target_districts: Optional[List[Dict[str, str]]] = None
+    target_districts: Optional[List[Dict[str, str]]] = None,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
     Asynchronously crawls eRaktKosh across all districts in India with concurrency
@@ -144,17 +154,21 @@ async def scrape_nationwide(
             for dist in state.get("districts", []):
                 d_id = str(dist.get("districtCode", ""))
                 d_name = dist.get("districtName", "")
-                district_tasks_info.append({
-                    "state_name": s_name,
-                    "state_id": s_id,
-                    "district_name": d_name,
-                    "district_id": d_id
-                })
+                district_tasks_info.append(
+                    {
+                        "state_name": s_name,
+                        "state_id": s_id,
+                        "district_name": d_name,
+                        "district_id": d_id,
+                    }
+                )
 
     total_districts = len(district_tasks_info)
     logger.info(
         "Starting polite nationwide scrape: %d districts, concurrency cap: %d, run_id: %s",
-        total_districts, concurrency_limit, run_id
+        total_districts,
+        concurrency_limit,
+        run_id,
     )
 
     all_records: List[Dict[str, Any]] = []
@@ -172,7 +186,7 @@ async def scrape_nationwide(
                 state_id=d["state_id"],
                 district_name=d["district_name"],
                 district_id=d["district_id"],
-                timeout_sec=timeout
+                timeout_sec=timeout,
             )
             for d in district_tasks_info
         ]
@@ -187,14 +201,20 @@ async def scrape_nationwide(
                 all_records.extend(banks)
             else:
                 failed_districts += 1
-                failed_district_errors[f"{d_info['state_name']}:{d_info['district_name']}"] = err or "Unknown"
+                failed_district_errors[f"{d_info['state_name']}:{d_info['district_name']}"] = (
+                    err or "Unknown"
+                )
 
     elapsed = time.time() - start_time
     error_rate = (failed_districts / total_districts * 100.0) if total_districts > 0 else 0.0
 
     logger.info(
         "Scrape completed in %.2fs. Success: %d, Failed: %d, Error Rate: %.1f%%, Total Facilities: %d",
-        elapsed, successful_districts, failed_districts, error_rate, len(all_records)
+        elapsed,
+        successful_districts,
+        failed_districts,
+        error_rate,
+        len(all_records),
     )
 
     # Circuit Breaker check
@@ -213,7 +233,7 @@ async def scrape_nationwide(
         "error_rate_pct": round(error_rate, 2),
         "total_facilities": len(all_records),
         "duration_seconds": round(elapsed, 2),
-        "failed_samples": dict(list(failed_district_errors.items())[:10])
+        "failed_samples": dict(list(failed_district_errors.items())[:10]),
     }
 
     return all_records, summary

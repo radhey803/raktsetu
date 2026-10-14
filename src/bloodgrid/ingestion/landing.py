@@ -12,6 +12,7 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -22,15 +23,24 @@ logger = logging.getLogger("bloodgrid.landing")
 
 def get_landing_dir(dt: datetime) -> Path:
     """Returns partitioned landing directory path: data/landing/dt=YYYY-MM-DD/hh=HH/"""
-    partition_path = settings.landing_dir / f"dt={dt.strftime('%Y-%m-%d')}" / f"hh={dt.strftime('%H')}"
+    partition_path = (
+        settings.landing_dir / f"dt={dt.strftime('%Y-%m-%d')}" / f"hh={dt.strftime('%H')}"
+    )
     partition_path.mkdir(parents=True, exist_ok=True)
     return partition_path
 
 
+def compute_file_sha256(file_path: Path) -> str:
+    """Computes SHA-256 digest of a file."""
+    sha256 = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        while chunk := f.read(65536):
+            sha256.update(chunk)
+    return sha256.hexdigest()
+
+
 def write_raw_landing(
-    records: List[Dict[str, Any]],
-    run_id: str,
-    scraped_at: datetime
+    records: List[Dict[str, Any]], run_id: str, scraped_at: datetime
 ) -> Tuple[Path, str, int]:
     """
     Serializes raw scraped records directly to an immutable Parquet file.
@@ -47,7 +57,10 @@ def write_raw_landing(
     # Build Arrow arrays preserving raw dictionaries/strings
     run_ids = [run_id] * len(records)
     scraped_timestamps = [scraped_at] * len(records)
-    h_codes = [int(r.get("hospitalCode")) if str(r.get("hospitalCode", "")).isdigit() else None for r in records]
+    h_codes = [
+        int(r.get("hospitalCode")) if str(r.get("hospitalCode", "")).isdigit() else None
+        for r in records
+    ]
     h_names = [str(r.get("hospitalname", "") or "") for r in records]
     states = [str(r.get("State", "") or "") for r in records]
     districts = [str(r.get("District", "") or "") for r in records]
@@ -56,37 +69,50 @@ def write_raw_landing(
     contacts = [str(r.get("hospitalcontact", "") or "") for r in records]
     addresses = [str(r.get("hospitaladd", "") or "") for r in records]
     entry_dates = [str(r.get("entrydate", "") or "") for r in records]
-    components_raw = [json.dumps(r.get("components")) if isinstance(r.get("components"), (dict, list)) else str(r.get("components", "") or "") for r in records]
+    components_raw = [
+        json.dumps(r.get("components"))
+        if isinstance(r.get("components"), (dict, list))
+        else str(r.get("components", "") or "")
+        for r in records
+    ]
     raw_payloads = [json.dumps(r) for r in records]
 
-    table = pa.Table.from_arrays([
-        pa.array(run_ids, type=pa.string()),
-        pa.array(scraped_timestamps, type=pa.timestamp("us")),
-        pa.array(h_codes, type=pa.int64()),
-        pa.array(h_names, type=pa.string()),
-        pa.array(states, type=pa.string()),
-        pa.array(districts, type=pa.string()),
-        pa.array(types, type=pa.string()),
-        pa.array(facilities, type=pa.string()),
-        pa.array(contacts, type=pa.string()),
-        pa.array(addresses, type=pa.string()),
-        pa.array(entry_dates, type=pa.string()),
-        pa.array(components_raw, type=pa.string()),
-        pa.array(raw_payloads, type=pa.string()),
-    ], names=[
-        "run_id", "scraped_at", "hospital_code", "hospital_name", "state_name",
-        "district_name", "hospital_type", "facility_type", "hospital_contact",
-        "hospital_address", "entry_date_raw", "components_raw", "raw_payload"
-    ])
+    table = pa.Table.from_arrays(
+        [
+            pa.array(run_ids, type=pa.string()),
+            pa.array(scraped_timestamps, type=pa.timestamp("us")),
+            pa.array(h_codes, type=pa.int64()),
+            pa.array(h_names, type=pa.string()),
+            pa.array(states, type=pa.string()),
+            pa.array(districts, type=pa.string()),
+            pa.array(types, type=pa.string()),
+            pa.array(facilities, type=pa.string()),
+            pa.array(contacts, type=pa.string()),
+            pa.array(addresses, type=pa.string()),
+            pa.array(entry_dates, type=pa.string()),
+            pa.array(components_raw, type=pa.string()),
+            pa.array(raw_payloads, type=pa.string()),
+        ],
+        names=[
+            "run_id",
+            "scraped_at",
+            "hospital_code",
+            "hospital_name",
+            "state_name",
+            "district_name",
+            "hospital_type",
+            "facility_type",
+            "hospital_contact",
+            "hospital_address",
+            "entry_date_raw",
+            "components_raw",
+            "raw_payload",
+        ],
+    )
 
     pq.write_table(table, parquet_path, compression="zstd")
 
-    # Compute SHA-256 checksum of the written Parquet file
-    sha256 = hashlib.sha256()
-    with open(parquet_path, "rb") as f:
-        while chunk := f.read(65536):
-            sha256.update(chunk)
-    file_sha256 = sha256.hexdigest()
+    file_sha256 = compute_file_sha256(parquet_path)
 
     parquet_path_resolved = parquet_path.resolve()
     base_dir_resolved = settings.base_dir.resolve()
@@ -101,13 +127,18 @@ def write_raw_landing(
         "parquet_file": rel_path,
         "row_count": len(records),
         "sha256": file_sha256,
-        "source": "https://eraktkosh.mohfw.gov.in"
+        "source": "https://eraktkosh.mohfw.gov.in",
     }
 
     with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=2)
 
-    logger.info("Landing zone write complete: %s (Rows: %d, SHA: %s)", parquet_path.name, len(records), file_sha256[:8])
+    logger.info(
+        "Landing zone write complete: %s (Rows: %d, SHA: %s)",
+        parquet_path.name,
+        len(records),
+        file_sha256[:8],
+    )
     return parquet_path, file_sha256, len(records)
 
 
@@ -126,12 +157,16 @@ def apply_retention_policy(retention_days: int = 30) -> int:
         try:
             folder_date = datetime.strptime(date_str, "%Y-%m-%d")
             if folder_date < cutoff:
-                for file in dt_dir.glob("**/*"):
-                    file.unlink(missing_ok=True)
-                dt_dir.rmdir()
+                import shutil
+
+                shutil.rmtree(dt_dir, ignore_errors=True)
                 removed_count += 1
                 logger.info("Evicted expired landing partition: %s", dt_dir)
         except ValueError:
             continue
 
     return removed_count
+
+
+# Alias for backward compatibility and test ergonomics
+enforce_rolling_retention = apply_retention_policy

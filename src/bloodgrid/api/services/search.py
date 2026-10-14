@@ -7,6 +7,7 @@ Eliminates all raw regex string searches.
 """
 
 from typing import Any, Dict, List, Optional, Tuple
+
 import duckdb
 
 from bloodgrid.geo.geocode import resolve_facility_lat_lng
@@ -22,40 +23,44 @@ def execute_emergency_search(
     search_query: Optional[str] = None,
     sort: str = "freshness",
     limit: int = 50,
-    offset: int = 0
+    offset: int = 0,
 ) -> Tuple[List[Dict[str, Any]], int]:
     """
     Structured analytical query matching exact blood group and component quantities.
     Returns (results_list, total_matching_facilities).
     """
-    # 1. Base query joining dim_blood_banks with mart_reliability_score
-    params: List[Any] = []
+    # 1. Base query filters
+    where_params: List[Any] = []
     where_clauses: List[str] = ["1=1"]
 
     if state and state.upper() != "ALL":
         where_clauses.append("LOWER(b.state_name) = LOWER(?)")
-        params.append(state.strip())
+        where_params.append(state.strip())
 
     if district and district.upper() != "ALL":
         where_clauses.append("LOWER(b.district_name) = LOWER(?)")
-        params.append(district.strip())
+        where_params.append(district.strip())
 
     if search_query and search_query.strip():
         q = f"%{search_query.strip().lower()}%"
         where_clauses.append("(LOWER(b.hospital_name) LIKE ? OR LOWER(b.hospital_address) LIKE ?)")
-        params.extend([q, q])
+        where_params.extend([q, q])
 
-    # 2. Filtering by component and blood group if specified
+    # 2. Filtering by component and blood group on the stock join
     stock_filter_sql = ""
+    join_params: List[Any] = []
     if component and component.upper() != "ALL":
         stock_filter_sql += " AND s.component_name = ?"
-        params.append(component)
+        join_params.append(component)
     if blood_group and blood_group.upper() != "ALL":
         stock_filter_sql += " AND s.blood_group = ?"
-        params.append(blood_group)
+        join_params.append(blood_group)
     if min_units > 0:
         stock_filter_sql += " AND s.units >= ?"
-        params.append(min_units)
+        join_params.append(min_units)
+
+    # Note: join_params comes first because LEFT JOIN ... ON {stock_filter_sql} is before WHERE
+    base_params = join_params + where_params
 
     # Count total matching facilities
     count_sql = f"""
@@ -67,7 +72,7 @@ def execute_emergency_search(
     if blood_group and blood_group.upper() != "ALL":
         count_sql += " AND s.units > 0"
 
-    total_count = con.execute(count_sql, params).fetchone()[0]
+    total_count = con.execute(count_sql, base_params).fetchone()[0]
 
     # Ordering
     order_clause = "r.days_since_update ASC NULLS LAST, r.reliability_score DESC"
@@ -78,7 +83,7 @@ def execute_emergency_search(
 
     # Data fetch query
     fetch_sql = f"""
-        SELECT 
+        SELECT
             b.hospital_code,
             b.hospital_name,
             b.hospital_type,
@@ -101,28 +106,31 @@ def execute_emergency_search(
         fetch_sql += " AND s.units > 0"
 
     fetch_sql += f"""
-        GROUP BY 
+        GROUP BY
             b.hospital_code, b.hospital_name, b.hospital_type, b.facility_type,
             b.state_name, b.district_name, b.hospital_contact, b.hospital_address,
             b.source_updated_at, r.days_since_update, r.reliability_score, r.reliability_tier
         ORDER BY {order_clause}
         LIMIT ? OFFSET ?;
     """
-    params.extend([limit, offset])
+    fetch_params = base_params + [limit, offset]
 
-    rows = con.execute(fetch_sql, params).fetchall()
+    rows = con.execute(fetch_sql, fetch_params).fetchall()
 
     facility_codes = [r[0] for r in rows]
 
     # Fetch 4x2 matrix stock breakdown for returned facilities
     all_stock_map: Dict[int, Dict[str, Dict[str, int]]] = {}
     if facility_codes:
-        stock_rows = con.execute(f"""
+        stock_rows = con.execute(
+            f"""
             SELECT hospital_code, component_name, blood_group, units
             FROM main_gold.fct_stock_current
-            WHERE hospital_code IN ({','.join(['?'] * len(facility_codes))})
+            WHERE hospital_code IN ({",".join(["?"] * len(facility_codes))})
             ORDER BY hospital_code, component_name, blood_group;
-        """, facility_codes).fetchall()
+        """,
+            facility_codes,
+        ).fetchall()
 
         for hcode, comp, bg, u in stock_rows:
             if hcode not in all_stock_map:
@@ -146,7 +154,7 @@ def execute_emergency_search(
             state=state_n,
             district=dist_n,
             con=con,
-            allow_network_lookup=False
+            allow_network_lookup=False,
         )
 
         h_stocks = all_stock_map.get(hcode, {})
@@ -156,26 +164,28 @@ def execute_emergency_search(
         stock_summary_parts = [f"{bg} : {u}" for bg, u in comp_stock.items() if u > 0]
         stock_str = ", ".join(stock_summary_parts)
 
-        results.append({
-            "code": hcode,
-            "name": hname,
-            "type": r[2] or "Govt.",
-            "facility": r[3] or "Blood Centre",
-            "state": state_n,
-            "district": dist_n,
-            "contact": r[6] or "",
-            "address": addr,
-            "last_updated": str(r[8]) if r[8] else "Unknown",
-            "days_stale": r[9],
-            "reliability_score": r[10],
-            "reliability_tier": r[11],
-            "matched_units": r[12],
-            "stock": stock_str,
-            "component": target_comp,
-            "all_stock": h_stocks,
-            "lat": lat,
-            "lng": lng,
-            "precision": prec
-        })
+        results.append(
+            {
+                "code": hcode,
+                "name": hname,
+                "type": r[2] or "Govt.",
+                "facility": r[3] or "Blood Centre",
+                "state": state_n,
+                "district": dist_n,
+                "contact": r[6] or "",
+                "address": addr,
+                "last_updated": str(r[8]) if r[8] else "Unknown",
+                "days_stale": r[9],
+                "reliability_score": r[10],
+                "reliability_tier": r[11],
+                "matched_units": r[12],
+                "stock": stock_str,
+                "component": target_comp,
+                "all_stock": h_stocks,
+                "lat": lat,
+                "lng": lng,
+                "precision": prec,
+            }
+        )
 
     return results, total_count

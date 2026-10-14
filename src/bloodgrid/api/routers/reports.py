@@ -10,9 +10,9 @@ and transfusion coordinators:
 
 import io
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Optional
+
 import duckdb
-import pandas as pd
 from fastapi import APIRouter, Depends, Query, Response
 
 from bloodgrid.api.deps import get_db
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/v1/reports", tags=["NGO, CSR & Analytical Reports"])
 def export_shortage_report_csv(
     state: Optional[str] = Query(None),
     component: Optional[str] = Query("Packed Red Blood Cells"),
-    con: duckdb.DuckDBPyConnection = Depends(get_db)
+    con: duckdb.DuckDBPyConnection = Depends(get_db),
 ):
     """Generates downlodable CSV report of district blood deficits for planning donation drives."""
     params = []
@@ -40,7 +40,7 @@ def export_shortage_report_csv(
         params.append(component.strip())
 
     sql = f"""
-        SELECT 
+        SELECT
             state_name AS State,
             district_name AS District,
             component_name AS Component,
@@ -63,7 +63,7 @@ def export_shortage_report_csv(
     return Response(
         content=csv_bytes,
         media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
@@ -72,7 +72,7 @@ def suggest_donation_camp_locations(
     state: Optional[str] = Query(None),
     blood_group: Optional[str] = Query("O-"),
     limit: int = Query(10, ge=1, le=50),
-    con: duckdb.DuckDBPyConnection = Depends(get_db)
+    con: duckdb.DuckDBPyConnection = Depends(get_db),
 ):
     """
     Identifies districts with critical blood deficits where donation drives
@@ -90,7 +90,7 @@ def suggest_donation_camp_locations(
         params.append(blood_group.strip())
 
     sql = f"""
-        SELECT 
+        SELECT
             state_name,
             district_name,
             component_name,
@@ -99,7 +99,7 @@ def suggest_donation_camp_locations(
             stocked_banks,
             total_units,
             shortage_status,
-            CASE 
+            CASE
                 WHEN total_units = 0 THEN 100
                 WHEN total_units <= 5 THEN 80
                 WHEN total_units <= 15 THEN 50
@@ -125,18 +125,15 @@ def suggest_donation_camp_locations(
             "current_units": r[6],
             "status": r[7],
             "camp_priority_score": r[8],
-            "recommendation": f"Schedule immediate mobile donation camp targeting {r[3]} donors in {r[1]}."
+            "recommendation": f"Schedule immediate mobile donation camp targeting {r[3]} donors in {r[1]}.",
         }
         for idx, r in enumerate(rows)
     ]
 
     return {
         "success": True,
-        "criteria": {
-            "state": state or "Nationwide",
-            "blood_group": blood_group or "All"
-        },
-        "suggested_locations": suggestions
+        "criteria": {"state": state or "Nationwide", "blood_group": blood_group or "All"},
+        "suggested_locations": suggestions,
     }
 
 
@@ -147,7 +144,9 @@ def get_forecasting_status(con: duckdb.DuckDBPyConnection = Depends(get_db)):
     Adheres strictly to Rule 1: ZERO fake data or fabricated forecasts.
     ML demand forecasting requires >= 60 days of genuine real lakehouse snapshots.
     """
-    dates_cnt = con.execute("SELECT COUNT(DISTINCT snapshot_date) FROM main_gold.fct_stock_snapshot;").fetchone()[0]
+    dates_cnt = con.execute(
+        "SELECT COUNT(DISTINCT snapshot_date) FROM main_gold.fct_stock_snapshot;"
+    ).fetchone()[0]
 
     return {
         "status": "DATA_ACCUMULATION_PHASE",
@@ -159,7 +158,7 @@ def get_forecasting_status(con: duckdb.DuckDBPyConnection = Depends(get_db)):
             f"Machine learning demand forecasting is disabled until at least 60 days of real, continuous "
             f"lakehouse snapshots are recorded. Current real history: {dates_cnt} day(s). "
             f"Synthetic or random forecasting is strictly prohibited by BloodGrid core principles."
-        )
+        ),
     }
 
 
@@ -169,5 +168,5 @@ def get_pricing_tiers():
     return {
         "currency": "INR",
         "plans": settings.pricing_plans,
-        "note": "Prices are configurable via application configuration."
+        "note": "Prices are configurable via application configuration.",
     }

@@ -7,14 +7,9 @@ Validates the mathematical scoring contract (0 - 100 points):
 3. Component Completeness: 25 pts
 """
 
-import pytest
-
 
 def calculate_reliability_score(
-    days_since_update: int,
-    has_valid_phone: bool,
-    has_address: bool,
-    distinct_components_count: int
+    days_since_update: int, has_valid_phone: bool, has_address: bool, distinct_components_count: int
 ) -> tuple[int, str]:
     # 1. Freshness Points (0-50)
     if days_since_update <= 1:
@@ -55,10 +50,7 @@ def calculate_reliability_score(
 
 def test_perfect_reliability_score():
     score, tier = calculate_reliability_score(
-        days_since_update=0,
-        has_valid_phone=True,
-        has_address=True,
-        distinct_components_count=4
+        days_since_update=0, has_valid_phone=True, has_address=True, distinct_components_count=4
     )
     assert score == 100
     assert tier == "HIGH"
@@ -66,10 +58,7 @@ def test_perfect_reliability_score():
 
 def test_stale_data_score_penalty():
     score, tier = calculate_reliability_score(
-        days_since_update=45,
-        has_valid_phone=True,
-        has_address=True,
-        distinct_components_count=3
+        days_since_update=45, has_valid_phone=True, has_address=True, distinct_components_count=3
     )
     # 0 freshness + 25 contact + 25 completeness = 50
     assert score == 50
@@ -78,10 +67,7 @@ def test_stale_data_score_penalty():
 
 def test_critically_unreliable_facility():
     score, tier = calculate_reliability_score(
-        days_since_update=90,
-        has_valid_phone=False,
-        has_address=False,
-        distinct_components_count=0
+        days_since_update=90, has_valid_phone=False, has_address=False, distinct_components_count=0
     )
     assert score == 0
     assert tier == "LOW"

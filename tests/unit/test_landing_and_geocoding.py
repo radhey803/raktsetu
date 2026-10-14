@@ -5,11 +5,6 @@ Tests immutable landing zone generation, SHA-256 manifest integrity,
 and geocoding centroid resolution.
 """
 
-import tempfile
-from datetime import datetime
-from pathlib import Path
-import pytest
-
 from bloodgrid.geo.geocode import get_district_fallback, make_facility_key
 
 

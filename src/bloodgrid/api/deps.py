@@ -8,6 +8,7 @@ and authentication validation for paid tiers.
 import logging
 import uuid
 from typing import Generator, Optional
+
 import duckdb
 from fastapi import Header, HTTPException, Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -27,7 +28,7 @@ def get_db() -> Generator[duckdb.DuckDBPyConnection, None, None]:
     if not db_file.exists():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Serving database is not initialized. Run pipeline first."
+            detail="Serving database is not initialized. Run pipeline first.",
         )
 
     con = duckdb.connect(str(db_file), read_only=True)
@@ -51,7 +52,7 @@ def get_request_id(request: Request) -> str:
 
 async def verify_api_key_or_jwt(
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
-    credentials: Optional[HTTPAuthorizationCredentials] = Security(security_bearer)
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(security_bearer),
 ) -> dict:
     """
     Validates either an API Key or Bearer JWT token for paid/restricted endpoints.
@@ -62,7 +63,7 @@ async def verify_api_key_or_jwt(
             return {"auth_type": "api_key", "tier": "pro", "key_id": x_api_key[:16]}
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or malformed API key provided in X-API-Key header"
+            detail="Invalid or malformed API key provided in X-API-Key header",
         )
 
     if credentials and credentials.credentials:
@@ -71,23 +72,21 @@ async def verify_api_key_or_jwt(
         if token == settings.api_key_secret or len(token) > 20:
             return {"auth_type": "jwt", "user_id": "authenticated_user", "tier": "pro"}
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Bearer authentication token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Bearer authentication token"
         )
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Authentication required. Provide X-API-Key header or Bearer token."
+        detail="Authentication required. Provide X-API-Key header or Bearer token.",
     )
 
 
 async def get_optional_auth(
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
-    credentials: Optional[HTTPAuthorizationCredentials] = Security(security_bearer)
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(security_bearer),
 ) -> Optional[dict]:
     """Allows endpoints to accept optional authentication for guest checkouts."""
     try:
         return await verify_api_key_or_jwt(x_api_key, credentials)
     except HTTPException:
         return None
-

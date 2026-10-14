@@ -8,9 +8,9 @@ and zero-downtime atomic blue/green serving database swaps.
 import logging
 import os
 import shutil
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
+
 import duckdb
 
 from bloodgrid.config import settings
@@ -25,9 +25,13 @@ def get_warehouse_connection(read_only: bool = False) -> duckdb.DuckDBPyConnecti
 
 def get_serving_connection() -> duckdb.DuckDBPyConnection:
     """Returns a connection to the atomic serving database (serving.duckdb) in read-only mode."""
-    target_path = settings.serving_path if settings.serving_path.exists() else settings.warehouse_path
+    target_path = (
+        settings.serving_path if settings.serving_path.exists() else settings.warehouse_path
+    )
     if not target_path.exists():
-        raise FileNotFoundError(f"Serving database file not found at {target_path}. Run pipeline first.")
+        raise FileNotFoundError(
+            f"Serving database file not found at {target_path}. Run pipeline first."
+        )
     return duckdb.connect(str(target_path), read_only=True)
 
 
@@ -70,10 +74,13 @@ def init_warehouse_metadata_tables(con: duckdb.DuckDBPyConnection) -> None:
 def record_pipeline_run_start(con: duckdb.DuckDBPyConnection, run_id: str) -> None:
     """Records the beginning of a pipeline run."""
     init_warehouse_metadata_tables(con)
-    con.execute("""
+    con.execute(
+        """
         INSERT INTO gold.pipeline_runs (run_id, started_at, status)
         VALUES (?, CURRENT_TIMESTAMP, 'RUNNING');
-    """, [run_id])
+    """,
+        [run_id],
+    )
 
 
 def record_pipeline_run_finish(
@@ -82,10 +89,11 @@ def record_pipeline_run_finish(
     status: str,
     facilities_count: int,
     tests_passed: bool,
-    error_message: Optional[str] = None
+    error_message: Optional[str] = None,
 ) -> None:
     """Records completion status of a pipeline run."""
-    con.execute("""
+    con.execute(
+        """
         UPDATE gold.pipeline_runs
         SET finished_at = CURRENT_TIMESTAMP,
             status = ?,
@@ -93,7 +101,9 @@ def record_pipeline_run_finish(
             tests_passed = ?,
             error_message = ?
         WHERE run_id = ?;
-    """, [status, facilities_count, tests_passed, error_message, run_id])
+    """,
+        [status, facilities_count, tests_passed, error_message, run_id],
+    )
 
 
 def get_last_successful_run(con: duckdb.DuckDBPyConnection) -> Optional[Dict[str, Any]]:
@@ -115,7 +125,7 @@ def get_last_successful_run(con: duckdb.DuckDBPyConnection) -> Optional[Dict[str
             "started_at": row[1],
             "finished_at": row[2],
             "facilities_count": row[3],
-            "tests_passed": row[4]
+            "tests_passed": row[4],
         }
     except Exception:
         return None

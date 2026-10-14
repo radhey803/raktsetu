@@ -9,12 +9,10 @@ dbt silver unnesting.
 import ast
 import json
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
 import duckdb
-import pyarrow as pa
-import pyarrow.parquet as pq
 
 from bloodgrid.config import settings
 
@@ -46,8 +44,7 @@ def clean_to_json_str(val: any) -> str:
 
 
 def ingest_landing_to_bronze(
-    con: duckdb.DuckDBPyConnection,
-    parquet_path: Optional[Path] = None
+    con: duckdb.DuckDBPyConnection, parquet_path: Optional[Path] = None
 ) -> int:
     """
     Ingests raw Parquet file into bronze.raw_inventory.
@@ -91,7 +88,7 @@ def ingest_landing_to_bronze(
             district_name, hospital_type, facility_type, hospital_contact,
             hospital_address, entry_date_raw, components_raw, raw_payload
         )
-        SELECT 
+        SELECT
             run_id,
             scraped_at,
             hospital_code,
@@ -109,8 +106,14 @@ def ingest_landing_to_bronze(
     """)
 
     # Count loaded records
-    row_count = con.execute("SELECT COUNT(*) FROM read_parquet(?);", [str(target_file)]).fetchone()[0]
+    row_count = con.execute("SELECT COUNT(*) FROM read_parquet(?);", [str(target_file)]).fetchone()[
+        0
+    ]
     total_bronze = con.execute("SELECT COUNT(*) FROM bronze.raw_inventory;").fetchone()[0]
 
-    logger.info("Bronze ingestion complete: %d records added. Total bronze rows: %d", row_count, total_bronze)
+    logger.info(
+        "Bronze ingestion complete: %d records added. Total bronze rows: %d",
+        row_count,
+        total_bronze,
+    )
     return row_count

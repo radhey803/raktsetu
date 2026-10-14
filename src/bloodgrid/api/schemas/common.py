@@ -5,6 +5,7 @@ Pydantic v2 data models for standard API responses, pagination, and error envelo
 """
 
 from typing import Any, Generic, List, Optional, TypeVar
+
 from pydantic import BaseModel, Field
 
 T = TypeVar("T")
@@ -13,7 +14,9 @@ T = TypeVar("T")
 class ErrorDetail(BaseModel):
     code: str = Field(..., description="Machine-readable error classification code")
     message: str = Field(..., description="Human-readable description of the error")
-    details: Optional[Any] = Field(default=None, description="Optional granular field-level diagnostics")
+    details: Optional[Any] = Field(
+        default=None, description="Optional granular field-level diagnostics"
+    )
 
 
 class ErrorResponse(BaseModel):

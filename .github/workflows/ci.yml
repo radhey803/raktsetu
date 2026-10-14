@@ -43,6 +43,10 @@ jobs:
           uv run dbt deps --project-dir dbt --profiles-dir dbt
           uv run dbt build --project-dir dbt --profiles-dir dbt --target dev
 
+      - name: Security Vulnerability Scan (pip-audit)
+        run: |
+          uv run pip-audit
+
       - name: Build Docker Container
         run: |
           docker build -t bloodgrid:ci .

@@ -15,6 +15,7 @@ import logging
 import re
 import time
 from typing import Dict, Optional, Tuple
+
 import duckdb
 import httpx
 
@@ -100,7 +101,6 @@ DISTRICT_CENTROIDS: Dict[str, Tuple[float, float]] = {
     "gir somnath": (20.9042, 70.3653),
     "devbhumi dwarka": (22.2442, 68.9685),
     "botad": (22.1706, 71.6667),
-
     # Maharashtra
     "mumbai": (19.0760, 72.8777),
     "mumbai suburban": (19.1136, 72.8697),
@@ -111,7 +111,6 @@ DISTRICT_CENTROIDS: Dict[str, Tuple[float, float]] = {
     "aurangabad": (19.8762, 75.3433),
     "solapur": (17.6599, 75.9064),
     "kolhapur": (16.7050, 74.2433),
-
     # Delhi NCR
     "central delhi": (28.6448, 77.2167),
     "east delhi": (28.6276, 77.2950),
@@ -123,7 +122,6 @@ DISTRICT_CENTROIDS: Dict[str, Tuple[float, float]] = {
     "gautam buddha nagar": (28.5355, 77.3910),
     "gurugram": (28.4595, 77.0266),
     "faridabad": (28.4089, 77.3178),
-
     # Karnataka
     "bangalore urban": (12.9716, 77.5946),
     "bengaluru urban": (12.9716, 77.5946),
@@ -132,44 +130,37 @@ DISTRICT_CENTROIDS: Dict[str, Tuple[float, float]] = {
     "belgaum": (15.8497, 74.4977),
     "dharwad": (15.4589, 75.0078),
     "mangalore": (12.9141, 74.8560),
-
     # Tamil Nadu
     "chennai": (13.0827, 80.2707),
     "coimbatore": (11.0168, 76.9558),
     "madurai": (9.9252, 78.1198),
     "tiruchirappalli": (10.7905, 78.7047),
     "salem": (11.6643, 78.1460),
-
     # West Bengal
     "kolkata": (22.5726, 88.3639),
     "howrah": (22.5958, 88.2636),
     "north 24 parganas": (22.7212, 88.4839),
     "south 24 parganas": (22.1583, 88.5422),
     "darjeeling": (27.0410, 88.2663),
-
     # Telangana
     "hyderabad": (17.3850, 78.4867),
     "rangareddy": (17.2403, 78.4294),
     "warangal": (17.9689, 79.5941),
-
     # Rajasthan
     "jaipur": (26.9124, 75.7873),
     "jodhpur": (26.2389, 73.0243),
     "udaipur": (24.5854, 73.7125),
     "kota": (25.2138, 75.8648),
-
     # Uttar Pradesh
     "lucknow": (26.8467, 80.9462),
     "kanpur nagar": (26.4499, 80.3319),
     "varanasi": (25.3176, 82.9739),
     "agra": (27.1767, 78.0081),
     "prayagraj": (25.4358, 81.8463),
-
     # Kerala
     "thiruvananthapuram": (8.5241, 76.9366),
     "ernakulam": (9.9816, 76.2999),
     "kozhikode": (11.2588, 75.7804),
-
     # Madhya Pradesh
     "bhopal": (23.2599, 77.4126),
     "indore": (22.7196, 75.8577),
@@ -184,14 +175,19 @@ def make_facility_key(hospital_name: str, district: str, state: str) -> str:
     return hashlib.md5(raw.encode("utf-8")).hexdigest()
 
 
-def get_cached_coordinates(con: duckdb.DuckDBPyConnection, facility_key: str) -> Optional[Tuple[float, float, str]]:
+def get_cached_coordinates(
+    con: duckdb.DuckDBPyConnection, facility_key: str
+) -> Optional[Tuple[float, float, str]]:
     """Checks DuckDB geocode_cache table."""
     try:
-        row = con.execute("""
+        row = con.execute(
+            """
             SELECT latitude, longitude, precision
             FROM gold.geocode_cache
             WHERE facility_key = ?;
-        """, [facility_key]).fetchone()
+        """,
+            [facility_key],
+        ).fetchone()
         if row and row[0] is not None and row[1] is not None:
             return float(row[0]), float(row[1]), str(row[2])
     except Exception:
@@ -208,20 +204,25 @@ def store_cached_coordinates(
     address: str,
     lat: float,
     lng: float,
-    precision: str
+    precision: str,
 ) -> None:
     """Persists geocoded coordinate into DuckDB geocode_cache table."""
     try:
-        con.execute("""
-            INSERT OR REPLACE INTO gold.geocode_cache 
+        con.execute(
+            """
+            INSERT OR REPLACE INTO gold.geocode_cache
             (facility_key, hospital_name, state_name, district_name, address, latitude, longitude, precision, geocoded_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);
-        """, [facility_key, hospital_name, state, district, address, lat, lng, precision])
+        """,
+            [facility_key, hospital_name, state, district, address, lat, lng, precision],
+        )
     except Exception as e:
         logger.warning("Failed to cache geocode result: %s", e)
 
 
-def get_district_fallback(hospital_code: Optional[int], state: str, district: str) -> Tuple[float, float, str]:
+def get_district_fallback(
+    hospital_code: Optional[int], state: str, district: str
+) -> Tuple[float, float, str]:
     """
     Computes deterministic centroid with slight spatial jitter to keep individual
     hospital markers distinguishable on high-zoom maps.
@@ -242,6 +243,7 @@ def get_district_fallback(hospital_code: Optional[int], state: str, district: st
         angle = (h_hash % 360) * (3.14159265 / 180.0)
         radius = ((h_hash % 100) / 100.0) * 0.015  # ~1.5 km maximum offset
         import math
+
         lat = base_lat + (radius * math.sin(angle))
         lng = base_lng + (radius * math.cos(angle))
         return round(lat, 5), round(lng, 5), "district_centroid"
@@ -259,17 +261,9 @@ def query_nominatim(query: str) -> Optional[Tuple[float, float, str]]:
     if elapsed < 1.1:
         time.sleep(1.1 - elapsed)
 
-    headers = {
-        "User-Agent": settings.nominatim_user_agent,
-        "Accept-Language": "en"
-    }
+    headers = {"User-Agent": settings.nominatim_user_agent, "Accept-Language": "en"}
     url = "https://nominatim.openstreetmap.org/search"
-    params = {
-        "q": query,
-        "format": "json",
-        "limit": 1,
-        "countrycodes": "in"
-    }
+    params = {"q": query, "format": "json", "limit": 1, "countrycodes": "in"}
 
     try:
         _LAST_NOMINATIM_REQUEST_TS = time.time()
@@ -281,7 +275,9 @@ def query_nominatim(query: str) -> Optional[Tuple[float, float, str]]:
                     lat = float(data[0]["lat"])
                     lon = float(data[0]["lon"])
                     osm_type = data[0].get("type", "")
-                    precision = "exact" if osm_type in ("hospital", "clinic", "amenity") else "street"
+                    precision = (
+                        "exact" if osm_type in ("hospital", "clinic", "amenity") else "street"
+                    )
                     return lat, lon, precision
     except Exception as e:
         logger.debug("Nominatim lookup failed for %s: %s", query, e)
@@ -296,7 +292,7 @@ def resolve_facility_lat_lng(
     state: str,
     district: str,
     con: Optional[duckdb.DuckDBPyConnection] = None,
-    allow_network_lookup: bool = False
+    allow_network_lookup: bool = False,
 ) -> Tuple[float, float, str]:
     """
     Main resolution entry point:
@@ -321,7 +317,15 @@ def resolve_facility_lat_lng(
             lat, lon, precision = result
             if con:
                 store_cached_coordinates(
-                    con, facility_key, hospital_name, state, district, hospital_address, lat, lon, precision
+                    con,
+                    facility_key,
+                    hospital_name,
+                    state,
+                    district,
+                    hospital_address,
+                    lat,
+                    lon,
+                    precision,
                 )
             return lat, lon, precision
 

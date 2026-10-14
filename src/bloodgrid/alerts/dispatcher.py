@@ -16,6 +16,7 @@ For soft-launch, Telegram and Transactional Email provide zero-cost, immediate d
 
 import logging
 from typing import Optional
+
 import httpx
 
 from bloodgrid.alerts.rules import AlertSubscription, generate_unsubscribe_token
@@ -25,9 +26,7 @@ logger = logging.getLogger("bloodgrid.alerts")
 
 
 async def dispatch_telegram_alert(
-    chat_id: str,
-    message: str,
-    bot_token: Optional[str] = None
+    chat_id: str, message: str, bot_token: Optional[str] = None
 ) -> bool:
     """Dispatches a notification via Telegram Bot API."""
     token = bot_token or settings.telegram_bot_token
@@ -36,11 +35,7 @@ async def dispatch_telegram_alert(
         return False
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": message,
-        "parse_mode": "HTML"
-    }
+    payload = {"chat_id": chat_id, "text": message, "parse_mode": "HTML"}
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -56,14 +51,14 @@ async def dispatch_telegram_alert(
     return False
 
 
-async def dispatch_email_alert(
-    recipient_email: str,
-    subject: str,
-    body_text: str
-) -> bool:
+async def dispatch_email_alert(recipient_email: str, subject: str, body_text: str) -> bool:
     """Dispatches a notification via SMTP / SendGrid."""
     if not settings.smtp_host or not settings.smtp_user:
-        logger.info("[Mock Email Dispatch] To: %s | Subject: %s | Host unconfigured", recipient_email, subject)
+        logger.info(
+            "[Mock Email Dispatch] To: %s | Subject: %s | Host unconfigured",
+            recipient_email,
+            subject,
+        )
         return True
 
     # Real SMTP delivery when configured in .env
@@ -71,14 +66,12 @@ async def dispatch_email_alert(
     return True
 
 
-async def dispatch_alert(
-    rule: AlertSubscription,
-    hospital_name: str,
-    units_available: int
-) -> bool:
+async def dispatch_alert(rule: AlertSubscription, hospital_name: str, units_available: int) -> bool:
     """Top-level dispatcher routing to appropriate channel with legal notice & unsubscribe link."""
     unsub_token = generate_unsubscribe_token(rule.rule_id, rule.user_email)
-    unsub_link = f"https://bloodgrid.in/api/v1/alerts/unsubscribe?rule_id={rule.rule_id}&token={unsub_token}"
+    unsub_link = (
+        f"https://bloodgrid.in/api/v1/alerts/unsubscribe?rule_id={rule.rule_id}&token={unsub_token}"
+    )
 
     message = (
         f"🩸 <b>BloodGrid Real-time Inventory Alert</b>\n\n"
@@ -94,6 +87,10 @@ async def dispatch_alert(
     if rule.channel == "telegram" and rule.telegram_chat_id:
         return await dispatch_telegram_alert(rule.telegram_chat_id, message)
     elif rule.channel == "email":
-        return await dispatch_email_alert(rule.user_email, f"BloodGrid Alert: {rule.blood_group} Stock in {rule.district}", message)
+        return await dispatch_email_alert(
+            rule.user_email,
+            f"BloodGrid Alert: {rule.blood_group} Stock in {rule.district}",
+            message,
+        )
 
     return False

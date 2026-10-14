@@ -6,11 +6,9 @@ security headers, CORS policies, rate limiting, and static SPA serving.
 """
 
 import logging
-import os
 import time
 import uuid
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,7 +39,9 @@ async def lifespan(app: FastAPI):
         con.close()
         logger.info("Serving database mounted successfully. Active facilities: %d", count)
     except Exception as e:
-        logger.warning("Serving database check at startup: %s. Run pipeline if not generated yet.", e)
+        logger.warning(
+            "Serving database check at startup: %s. Run pipeline if not generated yet.", e
+        )
 
     yield
 
@@ -54,7 +54,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 app.state.limiter = limiter
@@ -70,7 +70,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
-    expose_headers=["X-Request-ID"]
+    expose_headers=["X-Request-ID"],
 )
 
 
@@ -160,7 +160,6 @@ def serve_disclaimer_page():
     return {"message": "Clinical and Data Disclaimer"}
 
 
-
 @app.get("/healthz", tags=["Observability"])
 def liveness_probe():
     """Kubernetes / Docker liveness probe."""
@@ -176,4 +175,8 @@ def readiness_probe():
         con.close()
         return {"status": "ready", "database": "serving.duckdb"}
     except Exception as e:
-        return Response(content=f'{{"status":"not ready","error":"{e}"}}', status_code=503, media_type="application/json")
+        return Response(
+            content=f'{{"status":"not ready","error":"{e}"}}',
+            status_code=503,
+            media_type="application/json",
+        )

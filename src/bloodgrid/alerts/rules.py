@@ -16,6 +16,7 @@ import hashlib
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 from bloodgrid.config import settings
@@ -30,7 +31,9 @@ class AlertSubscription(BaseModel):
     district: str
     component: str = "Packed Red Blood Cells"
     blood_group: str = "O-"
-    trigger_type: str = Field(default="AVAILABILITY_SURGE", description="AVAILABILITY_SURGE or DEFICIT_ALERT")
+    trigger_type: str = Field(
+        default="AVAILABILITY_SURGE", description="AVAILABILITY_SURGE or DEFICIT_ALERT"
+    )
     min_units_threshold: int = Field(default=1, ge=0)
     is_emergency: bool = Field(default=False, description="Emergency overrides quiet hours")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -59,9 +62,7 @@ def is_in_quiet_hours(dt: Optional[datetime] = None) -> bool:
 
 
 def evaluate_alert_rule(
-    rule: AlertSubscription,
-    available_units: int,
-    recent_alert_dispatches: List[Dict[str, Any]]
+    rule: AlertSubscription, available_units: int, recent_alert_dispatches: List[Dict[str, Any]]
 ) -> tuple[bool, Optional[str]]:
     """
     Evaluates an alert subscription against current stock units.

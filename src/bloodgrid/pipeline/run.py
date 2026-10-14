@@ -12,13 +12,11 @@ Unified command-line interface powered by Typer for end-to-end data lifecycle:
 
 import asyncio
 import logging
-import os
 import shutil
 import subprocess
-import sys
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -29,20 +27,20 @@ from rich.table import Table
 
 from bloodgrid.config import settings
 from bloodgrid.ingestion.landing import write_raw_landing
-from bloodgrid.ingestion.scraper import scrape_nationwide, CircuitBreakerError
+from bloodgrid.ingestion.scraper import CircuitBreakerError, scrape_nationwide
 from bloodgrid.warehouse.connection import (
+    atomic_swap_serving_database,
+    get_last_successful_run,
     get_warehouse_connection,
     init_warehouse_metadata_tables,
-    record_pipeline_run_start,
     record_pipeline_run_finish,
-    get_last_successful_run,
-    atomic_swap_serving_database,
+    record_pipeline_run_start,
 )
 from bloodgrid.warehouse.loader import ingest_landing_to_bronze
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger("bloodgrid.pipeline")
 console = Console()
@@ -60,7 +58,9 @@ def check_run_interval_guard(con: duckdb.DuckDBPyConnection, min_hours: float, f
         finished_at = last_run["finished_at"]
         if isinstance(finished_at, str):
             finished_at = datetime.fromisoformat(finished_at)
-        elapsed = datetime.utcnow() - finished_at
+        if finished_at.tzinfo is None:
+            finished_at = finished_at.replace(tzinfo=timezone.utc)
+        elapsed = datetime.now(timezone.utc) - finished_at
         if elapsed < timedelta(hours=min_hours):
             remaining = (timedelta(hours=min_hours) - elapsed).total_seconds() / 60
             err_msg = (
@@ -74,9 +74,15 @@ def check_run_interval_guard(con: duckdb.DuckDBPyConnection, min_hours: float, f
 
 @app.command()
 def scrape(
-    concurrency: int = typer.Option(settings.scraper_concurrency, "--concurrency", "-c", help="Max concurrent HTTP requests"),
-    timeout: int = typer.Option(settings.scraper_timeout_sec, "--timeout", "-t", help="HTTP request timeout in seconds"),
-    force: bool = typer.Option(False, "--force", "-f", help="Bypass the 3-hour minimum interval guard")
+    concurrency: int = typer.Option(
+        settings.scraper_concurrency, "--concurrency", "-c", help="Max concurrent HTTP requests"
+    ),
+    timeout: int = typer.Option(
+        settings.scraper_timeout_sec, "--timeout", "-t", help="HTTP request timeout in seconds"
+    ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Bypass the 3-hour minimum interval guard"
+    ),
 ):
     """Scrapes all 781 districts from eRaktKosh and writes immutable landing Parquet."""
     console.print("\n[bold red]🩸 STEP 1: Polite Nationwide Ingestion[/bold red]")
@@ -85,7 +91,9 @@ def scrape(
     con.close()
 
     try:
-        records, summary = asyncio.run(scrape_nationwide(concurrency=concurrency, timeout_sec=timeout))
+        records, summary = asyncio.run(
+            scrape_nationwide(concurrency=concurrency, timeout_sec=timeout)
+        )
         if not records:
             console.print("[bold red]❌ No records returned by scraper. Aborting.[/bold red]")
             raise typer.Exit(code=1)
@@ -94,7 +102,9 @@ def scrape(
         scraped_at = datetime.fromisoformat(summary["scraped_at"])
         parquet_path, sha256, count = write_raw_landing(records, run_id, scraped_at)
 
-        console.print(f"[bold green]✅ Ingestion Complete:[/bold green] {count:,} facilities saved to [cyan]{parquet_path}[/cyan] (SHA: {sha256[:10]})")
+        console.print(
+            f"[bold green]✅ Ingestion Complete:[/bold green] {count:,} facilities saved to [cyan]{parquet_path}[/cyan] (SHA: {sha256[:10]})"
+        )
         return parquet_path
     except CircuitBreakerError as cbe:
         console.print(f"[bold red]💥 Circuit Breaker Triggered:[/bold red] {cbe}")
@@ -103,7 +113,9 @@ def scrape(
 
 @app.command()
 def load(
-    parquet_file: Optional[Path] = typer.Option(None, "--file", "-f", help="Specific landing Parquet file to load")
+    parquet_file: Optional[Path] = typer.Option(
+        None, "--file", "-f", help="Specific landing Parquet file to load"
+    ),
 ):
     """Loads landing Parquet into DuckDB bronze.raw_inventory table."""
     console.print("\n[bold red]📥 STEP 2: Ingest Landing Parquet into Bronze[/bold red]")
@@ -111,7 +123,9 @@ def load(
     init_warehouse_metadata_tables(con)
     try:
         count = ingest_landing_to_bronze(con, parquet_file)
-        console.print(f"[bold green]✅ Bronze Ingested:[/bold green] {count:,} records loaded into bronze.raw_inventory.")
+        console.print(
+            f"[bold green]✅ Bronze Ingested:[/bold green] {count:,} records loaded into bronze.raw_inventory."
+        )
     finally:
         con.close()
 
@@ -121,9 +135,14 @@ def transform():
     """Runs dbt build to compile and materialize Silver and Gold analytical marts."""
     console.print("\n[bold red]⚙️ STEP 3: dbt Build Transformations[/bold red]")
     cmd = [
-        "uv", "run", "dbt", "build",
-        "--project-dir", str(settings.dbt_project_dir),
-        "--profiles-dir", str(settings.dbt_project_dir)
+        "uv",
+        "run",
+        "dbt",
+        "build",
+        "--project-dir",
+        str(settings.dbt_project_dir),
+        "--profiles-dir",
+        str(settings.dbt_project_dir),
     ]
     result = subprocess.run(cmd, cwd=settings.base_dir, capture_output=False)
     if result.returncode != 0:
@@ -156,7 +175,9 @@ def test():
             console.print(f"[bold red]❌ {err_msg}[/bold red]")
             raise typer.Exit(code=3)
 
-    console.print("[bold green]✅ Anomaly gate passed! No critical data volume regressions detected.[/bold green]")
+    console.print(
+        "[bold green]✅ Anomaly gate passed! No critical data volume regressions detected.[/bold green]"
+    )
 
 
 @app.command()
@@ -169,18 +190,22 @@ def publish():
     # Build clean copy for serving
     shutil.copyfile(settings.warehouse_path, staging_file)
     atomic_swap_serving_database(staging_file, serving_file)
-    console.print(f"[bold green]✅ Published Serving Database:[/bold green] [cyan]{serving_file}[/cyan]")
+    console.print(
+        f"[bold green]✅ Published Serving Database:[/bold green] [cyan]{serving_file}[/cyan]"
+    )
 
 
 @app.command()
 def all(
     concurrency: int = typer.Option(settings.scraper_concurrency, "--concurrency", "-c"),
     force: bool = typer.Option(False, "--force", "-f", help="Bypass minimum run interval guard"),
-    skip_scrape: bool = typer.Option(False, "--skip-scrape", help="Skip network scrape and build from existing bronze")
+    skip_scrape: bool = typer.Option(
+        False, "--skip-scrape", help="Skip network scrape and build from existing bronze"
+    ),
 ):
     """Executes the complete production pipeline from end to end."""
     run_id = f"pipeline_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
-    started_at = datetime.utcnow()
+    datetime.utcnow()
     start_time = time.time()
 
     console.print(f"[bold magenta]🩸 BLOODGRID END-TO-END PIPELINE: {run_id}[/bold magenta]")
@@ -218,15 +243,21 @@ def all(
 
         elapsed = time.time() - start_time
         con = get_warehouse_connection(read_only=False)
-        facility_count = con.execute("SELECT COUNT(*) FROM main_gold.dim_blood_banks;").fetchone()[0]
+        facility_count = con.execute("SELECT COUNT(*) FROM main_gold.dim_blood_banks;").fetchone()[
+            0
+        ]
         record_pipeline_run_finish(con, run_id, "SUCCESS", facility_count, tests_passed=True)
         con.close()
 
-        console.print(f"\n[bold green]🎉 PIPELINE COMPLETED IN {elapsed:.2f}s! Facilities: {facility_count:,}[/bold green]\n")
+        console.print(
+            f"\n[bold green]🎉 PIPELINE COMPLETED IN {elapsed:.2f}s! Facilities: {facility_count:,}[/bold green]\n"
+        )
 
     except Exception as exc:
         con = get_warehouse_connection(read_only=False)
-        record_pipeline_run_finish(con, run_id, "FAILED", 0, tests_passed=False, error_message=str(exc))
+        record_pipeline_run_finish(
+            con, run_id, "FAILED", 0, tests_passed=False, error_message=str(exc)
+        )
         con.close()
         console.print(f"[bold red]❌ Pipeline failed: {exc}[/bold red]")
         raise typer.Exit(code=1)
@@ -237,7 +268,7 @@ def status():
     """Displays last successful run metadata and warehouse health status."""
     con = get_warehouse_connection(read_only=True)
     try:
-        last_run = get_last_successful_run(con)
+        get_last_successful_run(con)
         recent_runs = con.execute("""
             SELECT run_id, started_at, finished_at, status, facilities_count, tests_passed
             FROM gold.pipeline_runs
@@ -256,7 +287,13 @@ def status():
 
     for r in recent_runs:
         status_style = "bold green" if r[3] == "SUCCESS" else "bold red"
-        table.add_row(r[0], str(r[1])[:19], f"[{status_style}]{r[3]}[/{status_style}]", str(r[4] or 0), str(r[5]))
+        table.add_row(
+            r[0],
+            str(r[1])[:19],
+            f"[{status_style}]{r[3]}[/{status_style}]",
+            str(r[4] or 0),
+            str(r[5]),
+        )
 
     console.print(table)
 

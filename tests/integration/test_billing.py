@@ -13,17 +13,15 @@ Validates:
 
 import hashlib
 import hmac
-import json
-import pytest
+
 from starlette.testclient import TestClient
 
 from bloodgrid.api.main import app
 from bloodgrid.api.routers.billing import (
+    PLAN_ENTITLEMENTS,
     calculate_gst_breakup,
     verify_razorpay_signature,
-    PLAN_ENTITLEMENTS,
 )
-from bloodgrid.config import settings
 
 client = TestClient(app)
 
@@ -35,7 +33,12 @@ def test_calculate_gst_breakup():
     assert breakup["cgst_rate_pct"] == 9.0
     assert breakup["sgst_rate_pct"] == 9.0
     assert breakup["igst_rate_pct"] == 0.0
-    assert round(breakup["taxable_amount_inr"] + breakup["cgst_amount_inr"] + breakup["sgst_amount_inr"]) == 299
+    assert (
+        round(
+            breakup["taxable_amount_inr"] + breakup["cgst_amount_inr"] + breakup["sgst_amount_inr"]
+        )
+        == 299
+    )
 
     # Inter-state (IGST 18%)
     breakup_inter = calculate_gst_breakup(999.0, is_inter_state=True)
@@ -53,12 +56,15 @@ def test_razorpay_signature_verification_helper():
 
 
 def test_create_subscription_order():
-    resp = client.post("/v1/billing/create-order", json={
-        "plan": "pro",
-        "billing_name": "Test Hospital Coordinator",
-        "billing_email": "billing@testhosp.org",
-        "gstin": "24AAAAA0000A1Z5"
-    })
+    resp = client.post(
+        "/v1/billing/create-order",
+        json={
+            "plan": "pro",
+            "billing_name": "Test Hospital Coordinator",
+            "billing_email": "billing@testhosp.org",
+            "gstin": "24AAAAA0000A1Z5",
+        },
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["success"] is True
@@ -81,13 +87,10 @@ def test_webhook_payment_captured_and_idempotency():
                     "id": "pay_test_998877",
                     "order_id": order_id,
                     "amount": 29900,
-                    "notes": {
-                        "user_email": "doctor@hospital.org",
-                        "plan": "pro"
-                    }
+                    "notes": {"user_email": "doctor@hospital.org", "plan": "pro"},
                 }
             }
-        }
+        },
     }
 
     # 1. First delivery -> processed
@@ -110,23 +113,15 @@ def test_webhook_payment_failed_initiates_grace_period():
     event_id = "evt_fail_998811"
 
     # Seed order first
-    client.post("/v1/billing/create-order", json={
-        "plan": "developer",
-        "billing_name": "Dev Team",
-        "billing_email": "dev@startup.io"
-    })
+    client.post(
+        "/v1/billing/create-order",
+        json={"plan": "developer", "billing_name": "Dev Team", "billing_email": "dev@startup.io"},
+    )
 
     payload = {
         "id": event_id,
         "event": "payment.failed",
-        "payload": {
-            "payment": {
-                "entity": {
-                    "id": "pay_failed_123",
-                    "order_id": order_id
-                }
-            }
-        }
+        "payload": {"payment": {"entity": {"id": "pay_failed_123", "order_id": order_id}}},
     }
 
     resp = client.post("/v1/billing/webhook", json=payload)

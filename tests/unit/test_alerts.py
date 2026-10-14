@@ -6,13 +6,11 @@ and daily dispatch limits.
 """
 
 from datetime import datetime, timedelta, timezone
-import pytest
 
 from bloodgrid.alerts.rules import (
     AlertSubscription,
     evaluate_alert_rule,
     generate_unsubscribe_token,
-    is_in_quiet_hours,
 )
 
 
@@ -25,7 +23,7 @@ def test_availability_surge_triggers():
         blood_group="O-",
         trigger_type="AVAILABILITY_SURGE",
         min_units_threshold=2,
-        is_emergency=True  # Bypasses quiet hours
+        is_emergency=True,  # Bypasses quiet hours
     )
 
     # When 0 units, should not trigger
@@ -45,7 +43,7 @@ def test_deficit_alert_triggers():
         district="Anand",
         trigger_type="DEFICIT_ALERT",
         min_units_threshold=10,
-        is_emergency=True
+        is_emergency=True,
     )
 
     # When 15 units available, no deficit
@@ -65,7 +63,7 @@ def test_daily_rate_cap_enforced():
         district="Anand",
         alerts_sent_today=5,
         max_alerts_per_day=5,
-        is_emergency=True
+        is_emergency=True,
     )
     dispatch, reason = evaluate_alert_rule(rule, available_units=10, recent_alert_dispatches=[])
     assert dispatch is False
@@ -78,18 +76,20 @@ def test_deduplication_within_24_hours():
         user_email="user@test.com",
         state="Gujarat",
         district="Anand",
-        is_emergency=True
+        is_emergency=True,
     )
     recent_dispatches = [
         {
             "rule_id": "rule_anand_o_neg",
             "last_units": 4,
-            "dispatched_at": datetime.now(timezone.utc) - timedelta(hours=2)
+            "dispatched_at": datetime.now(timezone.utc) - timedelta(hours=2),
         }
     ]
 
     # Same units within 24h -> deduplicated
-    dispatch, reason = evaluate_alert_rule(rule, available_units=4, recent_alert_dispatches=recent_dispatches)
+    dispatch, reason = evaluate_alert_rule(
+        rule, available_units=4, recent_alert_dispatches=recent_dispatches
+    )
     assert dispatch is False
     assert "Deduplicated" in reason
 

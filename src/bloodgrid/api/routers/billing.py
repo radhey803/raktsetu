@@ -19,10 +19,11 @@ import hmac
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
+from typing import Dict, Optional
+
 import razorpay
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from pydantic import BaseModel, Field
 
 from bloodgrid.api.deps import get_optional_auth, verify_api_key_or_jwt
 from bloodgrid.config import settings
@@ -38,9 +39,7 @@ _USAGE_METERING_STORE: Dict[str, dict] = {}
 
 # Initialize Razorpay Client (Test credentials safe in dev)
 try:
-    razorpay_client = razorpay.Client(
-        auth=(settings.razorpay_key_id, settings.razorpay_key_secret)
-    )
+    razorpay_client = razorpay.Client(auth=(settings.razorpay_key_id, settings.razorpay_key_secret))
 except Exception as e:
     logger.warning("Razorpay client initialization in test mode: %s", e)
     razorpay_client = None
@@ -52,7 +51,9 @@ class CreateOrderRequest(BaseModel):
     billing_name: str
     billing_email: str
     billing_address: Optional[str] = None
-    gstin: Optional[str] = Field(default=None, description="Optional 15-character Indian GSTIN for B2B input tax credit")
+    gstin: Optional[str] = Field(
+        default=None, description="Optional 15-character Indian GSTIN for B2B input tax credit"
+    )
 
 
 class EntitlementsSpec(BaseModel):
@@ -73,7 +74,7 @@ PLAN_ENTITLEMENTS: Dict[str, EntitlementsSpec] = {
         history_depth_days=14,
         csv_exports_allowed=False,
         camp_suggester_allowed=False,
-        ml_forecast_access=False
+        ml_forecast_access=False,
     ),
     "pro": EntitlementsSpec(
         tier="pro",
@@ -82,7 +83,7 @@ PLAN_ENTITLEMENTS: Dict[str, EntitlementsSpec] = {
         history_depth_days=60,
         csv_exports_allowed=False,
         camp_suggester_allowed=False,
-        ml_forecast_access=False
+        ml_forecast_access=False,
     ),
     "developer": EntitlementsSpec(
         tier="developer",
@@ -91,7 +92,7 @@ PLAN_ENTITLEMENTS: Dict[str, EntitlementsSpec] = {
         history_depth_days=365,
         csv_exports_allowed=True,
         camp_suggester_allowed=True,
-        ml_forecast_access=False
+        ml_forecast_access=False,
     ),
     "organization": EntitlementsSpec(
         tier="organization",
@@ -100,8 +101,8 @@ PLAN_ENTITLEMENTS: Dict[str, EntitlementsSpec] = {
         history_depth_days=730,
         csv_exports_allowed=True,
         camp_suggester_allowed=True,
-        ml_forecast_access=True
-    )
+        ml_forecast_access=True,
+    ),
 }
 
 
@@ -130,7 +131,7 @@ def calculate_gst_breakup(amount_inr: float, is_inter_state: bool = False) -> di
             "sgst_amount_inr": 0.0,
             "igst_rate_pct": 18.0,
             "igst_amount_inr": tax_total,
-            "total_invoice_inr": amount_inr
+            "total_invoice_inr": amount_inr,
         }
     else:
         half_tax = round(tax_total / 2, 2)
@@ -143,14 +144,13 @@ def calculate_gst_breakup(amount_inr: float, is_inter_state: bool = False) -> di
             "sgst_amount_inr": half_tax,
             "igst_rate_pct": 0.0,
             "igst_amount_inr": 0.0,
-            "total_invoice_inr": amount_inr
+            "total_invoice_inr": amount_inr,
         }
 
 
 @router.post("/create-order", summary="Initiate Razorpay Subscription Order")
 def create_subscription_order(
-    req: CreateOrderRequest,
-    auth: Optional[dict] = Depends(get_optional_auth)
+    req: CreateOrderRequest, auth: Optional[dict] = Depends(get_optional_auth)
 ):
     """
     Generates a checkout order token. Enforces zero card data touching BloodGrid servers.
@@ -159,7 +159,7 @@ def create_subscription_order(
     if plan_key not in settings.pricing_plans or plan_key == "free":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid commercial plan '{req.plan}'. Choose 'pro', 'developer', or 'organization'."
+            detail=f"Invalid commercial plan '{req.plan}'. Choose 'pro', 'developer', or 'organization'.",
         )
 
     plan_info = settings.pricing_plans[plan_key]
@@ -171,11 +171,7 @@ def create_subscription_order(
         "amount": amount_paise,
         "currency": "INR",
         "receipt": receipt_id,
-        "notes": {
-            "user_email": req.billing_email,
-            "plan": plan_key,
-            "gstin": req.gstin or "N/A"
-        }
+        "notes": {"user_email": req.billing_email, "plan": plan_key, "gstin": req.gstin or "N/A"},
     }
 
     # Generate real Razorpay order if credentials exist, otherwise mock order for testing
@@ -197,7 +193,7 @@ def create_subscription_order(
         "amount_inr": price_inr,
         "status": "pending_payment",
         "created_at": datetime.now(timezone.utc),
-        "gst_details": gst_details
+        "gst_details": gst_details,
     }
 
     return {
@@ -209,14 +205,13 @@ def create_subscription_order(
         "amount_inr": price_inr,
         "plan_name": plan_info["name"],
         "gst_breakup": gst_details,
-        "pci_dss_notice": "No card details touch our servers. Transacted directly via Razorpay PCI-DSS certified gateway."
+        "pci_dss_notice": "No card details touch our servers. Transacted directly via Razorpay PCI-DSS certified gateway.",
     }
 
 
 @router.post("/webhook", summary="Razorpay Signature-Verified Webhook")
 async def handle_razorpay_webhook(
-    request: Request,
-    x_razorpay_signature: Optional[str] = Header(None)
+    request: Request, x_razorpay_signature: Optional[str] = Header(None)
 ):
     """
     Idempotent webhook handler verifying Razorpay HMAC-SHA256 signature.
@@ -227,10 +222,11 @@ async def handle_razorpay_webhook(
     # In dev/test mode without webhook secret, allow mock testing
     secret = settings.razorpay_webhook_secret
     if secret and secret != "placeholder_webhook_secret":
-        if not x_razorpay_signature or not verify_razorpay_signature(body, x_razorpay_signature, secret):
+        if not x_razorpay_signature or not verify_razorpay_signature(
+            body, x_razorpay_signature, secret
+        ):
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid Razorpay webhook signature"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Razorpay webhook signature"
             )
 
     try:
@@ -263,16 +259,18 @@ async def handle_razorpay_webhook(
             "order_id": order_id,
             "user_email": email,
             "plan": plan,
-            "amount_inr": payment_entity.get("amount", 29900) / 100
+            "amount_inr": payment_entity.get("amount", 29900) / 100,
         }
 
-        sub_record.update({
-            "status": "active",
-            "payment_id": payment_entity.get("id"),
-            "activated_at": now,
-            "current_period_end": now + timedelta(days=30),
-            "grace_period_until": None
-        })
+        sub_record.update(
+            {
+                "status": "active",
+                "payment_id": payment_entity.get("id"),
+                "activated_at": now,
+                "current_period_end": now + timedelta(days=30),
+                "grace_period_until": None,
+            }
+        )
         _SUBSCRIPTIONS_STORE[order_id] = sub_record
         logger.info("Subscription activated for %s on plan %s", email, plan)
 
@@ -282,11 +280,12 @@ async def handle_razorpay_webhook(
         if order_id in _SUBSCRIPTIONS_STORE:
             # Grant 3-day grace period before downgrade
             grace_until = now + timedelta(days=3)
-            _SUBSCRIPTIONS_STORE[order_id].update({
-                "status": "grace_period",
-                "grace_period_until": grace_until
-            })
-            logger.warning("Payment failed for order %s. Set to grace period until %s", order_id, grace_until)
+            _SUBSCRIPTIONS_STORE[order_id].update(
+                {"status": "grace_period", "grace_period_until": grace_until}
+            )
+            logger.warning(
+                "Payment failed for order %s. Set to grace period until %s", order_id, grace_until
+            )
 
     elif event_type == "subscription.cancelled":
         sub_entity = payload_data.get("subscription", {}).get("entity", {})
@@ -308,7 +307,7 @@ def get_user_entitlements(auth: dict = Depends(verify_api_key_or_jwt)):
         "success": True,
         "user_email": auth.get("email"),
         "tier": user_tier,
-        "entitlements": entitlements
+        "entitlements": entitlements,
     }
 
 
@@ -319,12 +318,15 @@ def get_usage_metering(auth: dict = Depends(verify_api_key_or_jwt)):
     tier = auth.get("tier", "free")
     limits = PLAN_ENTITLEMENTS.get(tier, PLAN_ENTITLEMENTS["free"])
 
-    user_usage = _USAGE_METERING_STORE.get(email, {
-        "api_calls_this_month": 142,
-        "alerts_dispatched_this_month": 2,
-        "billing_cycle_start": (datetime.now(timezone.utc) - timedelta(days=12)).isoformat(),
-        "billing_cycle_end": (datetime.now(timezone.utc) + timedelta(days=18)).isoformat()
-    })
+    user_usage = _USAGE_METERING_STORE.get(
+        email,
+        {
+            "api_calls_this_month": 142,
+            "alerts_dispatched_this_month": 2,
+            "billing_cycle_start": (datetime.now(timezone.utc) - timedelta(days=12)).isoformat(),
+            "billing_cycle_end": (datetime.now(timezone.utc) + timedelta(days=18)).isoformat(),
+        },
+    )
 
     return {
         "success": True,
@@ -334,8 +336,8 @@ def get_usage_metering(auth: dict = Depends(verify_api_key_or_jwt)):
         "quotas": {
             "max_active_alerts": limits.max_active_alerts,
             "rate_limit": limits.api_rate_limit,
-            "csv_exports_allowed": limits.csv_exports_allowed
-        }
+            "csv_exports_allowed": limits.csv_exports_allowed,
+        },
     }
 
 
@@ -351,32 +353,32 @@ def get_go_live_checklist():
                 "id": "kyc_verification",
                 "title": "Complete Razorpay Merchant KYC",
                 "description": "Submit Business PAN, Bank Account Cancelled Cheque, and Signatory Aadhaar in Razorpay Dashboard.",
-                "required": True
+                "required": True,
             },
             {
                 "id": "live_keys_rotation",
                 "title": "Swap API Keys in Production Environment",
                 "description": "Replace BLOODGRID_RAZORPAY_KEY_ID (rzp_test_...) and SECRET with rzp_live_... in hosting env vars.",
-                "required": True
+                "required": True,
             },
             {
                 "id": "webhook_secret_configuration",
                 "title": "Configure Live Webhook Endpoint",
                 "description": "Register https://bloodgrid.in/v1/billing/webhook in Razorpay dashboard with events payment.captured, order.paid, subscription.charged.",
-                "required": True
+                "required": True,
             },
             {
                 "id": "terms_and_refund_policy",
                 "title": "Publish Legal & Refund Policies",
                 "description": "Razorpay requires live Terms of Service, Privacy Policy, and Refund/Cancellation pages visible in the footer.",
-                "required": True
+                "required": True,
             },
             {
                 "id": "gstin_filing",
                 "title": "GSTIN Setup for B2B Input Tax Credit",
                 "description": "Ensure registered GSTIN is configured if claiming commercial B2B tax exemptions.",
-                "required": False
-            }
+                "required": False,
+            },
         ],
-        "zero_card_liability": "Verified: All payment credentials handled directly through Razorpay PCI-DSS certified iframe."
+        "zero_card_liability": "Verified: All payment credentials handled directly through Razorpay PCI-DSS certified iframe.",
     }

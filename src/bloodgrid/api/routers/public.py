@@ -12,7 +12,8 @@ Queries the verified serving database (serving.duckdb) with zero file locks.
 """
 
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
 import duckdb
 from fastapi import APIRouter, Depends, Query
 
@@ -31,7 +32,7 @@ def health_check(con: duckdb.DuckDBPyConnection = Depends(get_db)):
         "status": "healthy",
         "engine": "DuckDB Lakehouse + dbt Core",
         "version": "1.0.0",
-        "facilities_active": facility_count
+        "facilities_active": facility_count,
     }
 
 
@@ -41,20 +42,22 @@ def get_national_summary(con: duckdb.DuckDBPyConnection = Depends(get_db)):
     row_banks = con.execute("SELECT COUNT(*) FROM main_gold.dim_blood_banks;").fetchone()
     total_banks = row_banks[0] if row_banks else 0
 
-    row_states = con.execute("SELECT COUNT(DISTINCT state_name) FROM main_gold.dim_blood_banks;").fetchone()
+    row_states = con.execute(
+        "SELECT COUNT(DISTINCT state_name) FROM main_gold.dim_blood_banks;"
+    ).fetchone()
     total_states = row_states[0] if row_states else 0
 
     row_fresh = con.execute("""
-        SELECT COUNT(*) 
-        FROM main_gold.dim_blood_banks 
+        SELECT COUNT(*)
+        FROM main_gold.dim_blood_banks
         WHERE source_updated_at >= (CURRENT_TIMESTAMP - INTERVAL 24 HOUR);
     """).fetchone()
     fresh_banks = row_fresh[0] if row_fresh else 0
 
     row_stale = con.execute("""
-        SELECT COUNT(*) 
-        FROM main_gold.dim_blood_banks 
-        WHERE source_updated_at < (CURRENT_TIMESTAMP - INTERVAL 30 DAY) 
+        SELECT COUNT(*)
+        FROM main_gold.dim_blood_banks
+        WHERE source_updated_at < (CURRENT_TIMESTAMP - INTERVAL 30 DAY)
            OR source_updated_at IS NULL;
     """).fetchone()
     stale_banks = row_stale[0] if row_stale else 0
@@ -73,7 +76,7 @@ def get_national_summary(con: duckdb.DuckDBPyConnection = Depends(get_db)):
         "fresh_banks": fresh_banks,
         "stale_banks": stale_banks,
         "top_states": [{"state": s[0], "banks": s[1]} for s in top_states],
-        "source_attribution": settings.source_attribution
+        "source_attribution": settings.source_attribution,
     }
 
 
@@ -81,8 +84,8 @@ def get_national_summary(con: duckdb.DuckDBPyConnection = Depends(get_db)):
 def get_location_hierarchy(con: duckdb.DuckDBPyConnection = Depends(get_db)):
     """Returns distinct states and districts for dropdown selectors."""
     results = con.execute("""
-        SELECT DISTINCT state_name, district_name 
-        FROM main_gold.dim_blood_banks 
+        SELECT DISTINCT state_name, district_name
+        FROM main_gold.dim_blood_banks
         WHERE state_name IS NOT NULL AND district_name IS NOT NULL
         ORDER BY state_name, district_name;
     """).fetchall()
@@ -106,7 +109,7 @@ def search_hospitals(
     search_query: Optional[str] = Query(None),
     limit: int = Query(500, le=1000),
     offset: int = Query(0, ge=0),
-    con: duckdb.DuckDBPyConnection = Depends(get_db)
+    con: duckdb.DuckDBPyConnection = Depends(get_db),
 ):
     """Emergency SOS Search checking live inventory by exact component and blood group."""
     hospitals, total = execute_emergency_search(
@@ -117,13 +120,13 @@ def search_hospitals(
         district=district,
         search_query=search_query,
         limit=limit,
-        offset=offset
+        offset=offset,
     )
     return {
         "count": len(hospitals),
         "total": total,
         "hospitals": hospitals,
-        "source_attribution": settings.source_attribution
+        "source_attribution": settings.source_attribution,
     }
 
 
@@ -132,7 +135,7 @@ def get_hospital_history(
     hospital_code: int = Query(..., description="Hospital Code"),
     component: Optional[str] = Query("Packed Red Blood Cells"),
     days: int = Query(14, ge=1, le=90),
-    con: duckdb.DuckDBPyConnection = Depends(get_db)
+    con: duckdb.DuckDBPyConnection = Depends(get_db),
 ):
     """
     Returns time-series stock history for a specific hospital across all blood groups.
@@ -145,8 +148,9 @@ def get_hospital_history(
     min_date = date.today() - timedelta(days=days)
     target_comp = component or "Packed Red Blood Cells"
 
-    rows = con.execute("""
-        SELECT 
+    rows = con.execute(
+        """
+        SELECT
             snapshot_date,
             blood_group,
             units,
@@ -158,7 +162,9 @@ def get_hospital_history(
           AND component_name = ?
           AND snapshot_date >= ?
         ORDER BY snapshot_date ASC, blood_group ASC;
-    """, [hospital_code, target_comp, min_date]).fetchall()
+    """,
+        [hospital_code, target_comp, min_date],
+    ).fetchall()
 
     if not rows:
         return {
@@ -168,14 +174,16 @@ def get_hospital_history(
             "series": {},
             "summary": {},
             "distinct_days_available": distinct_dates_cnt,
-            "honest_empty_state_note": "Trend data builds up daily. Real snapshots accumulate with each scheduled run."
+            "honest_empty_state_note": "Trend data builds up daily. Real snapshots accumulate with each scheduled run.",
         }
 
     hosp_name = rows[0][3]
     district = rows[0][4]
     state = rows[0][5]
 
-    dates_set = sorted(list(set(r[0].strftime("%b %d") for r in rows)), key=lambda x: datetime.strptime(x, "%b %d"))
+    dates_set = sorted(
+        list(set(r[0].strftime("%b %d") for r in rows)), key=lambda x: datetime.strptime(x, "%b %d")
+    )
     date_to_idx = {d: i for i, d in enumerate(dates_set)}
 
     series: Dict[str, List[int]] = {}
@@ -197,7 +205,7 @@ def get_hospital_history(
             "current": current_val,
             "peak": max(vals) if vals else 0,
             "change": f"{'+' if diff > 0 else ''}{diff}",
-            "is_critical": current_val <= 2
+            "is_critical": current_val <= 2,
         }
 
     return {
@@ -211,9 +219,10 @@ def get_hospital_history(
         "summary": summary,
         "distinct_days_available": distinct_dates_cnt,
         "honest_empty_state_note": (
-            None if distinct_dates_cnt >= 2
+            None
+            if distinct_dates_cnt >= 2
             else "First snapshot recorded. Trend data builds up daily with each scheduled run."
-        )
+        ),
     }
 
 
@@ -224,14 +233,14 @@ def get_district_trends(
     component: Optional[str] = Query("Packed Red Blood Cells"),
     blood_group: Optional[str] = Query("O-"),
     days: int = Query(14, ge=1, le=90),
-    con: duckdb.DuckDBPyConnection = Depends(get_db)
+    con: duckdb.DuckDBPyConnection = Depends(get_db),
 ):
     """Aggregate district stock trend over time."""
     min_date = date.today() - timedelta(days=days)
     target_comp = component or "Packed Red Blood Cells"
 
     sql = """
-        SELECT 
+        SELECT
             snapshot_date,
             SUM(units) as total_units,
             COUNT(DISTINCT hospital_code) as reporting_banks,
@@ -262,5 +271,5 @@ def get_district_trends(
         "blood_group": blood_group,
         "dates": dates,
         "total_units": total_units,
-        "stocked_banks": stocked_banks
+        "stocked_banks": stocked_banks,
     }

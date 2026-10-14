@@ -7,11 +7,11 @@ shortage feeds, rare blood radar, and metadata.
 
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
+
 import duckdb
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 
 from bloodgrid.api.deps import get_db, get_request_id
-from bloodgrid.api.schemas.common import ErrorDetail, ErrorResponse, PaginatedResponse, PaginationMeta
 from bloodgrid.api.services.search import execute_emergency_search
 from bloodgrid.config import settings
 
@@ -21,15 +21,14 @@ router = APIRouter(prefix="/v1", tags=["V1 Public & Partner API"])
 @router.get(
     "/meta",
     summary="System and Warehouse Synchronization Metadata",
-    description="Returns latest pipeline sync status, total reporting facility counts, and source attribution."
+    description="Returns latest pipeline sync status, total reporting facility counts, and source attribution.",
 )
-def get_system_metadata(
-    request: Request,
-    con: duckdb.DuckDBPyConnection = Depends(get_db)
-):
+def get_system_metadata(request: Request, con: duckdb.DuckDBPyConnection = Depends(get_db)):
     req_id = get_request_id(request)
     facility_count = con.execute("SELECT COUNT(*) FROM main_gold.dim_blood_banks;").fetchone()[0]
-    total_stock_records = con.execute("SELECT COUNT(*) FROM main_gold.fct_stock_current;").fetchone()[0]
+    total_stock_records = con.execute(
+        "SELECT COUNT(*) FROM main_gold.fct_stock_current;"
+    ).fetchone()[0]
 
     last_run_row = con.execute("""
         SELECT run_id, started_at, finished_at, status, facilities_count, tests_passed
@@ -61,8 +60,8 @@ def get_system_metadata(
             "total_reporting_facilities": facility_count,
             "total_inventory_records": total_stock_records,
             "source_attribution": settings.source_attribution,
-            "disclaimer": "Not an official service. Always call the blood bank to confirm before travelling."
-        }
+            "disclaimer": "Not an official service. Always call the blood bank to confirm before travelling.",
+        },
     }
 
 
@@ -74,7 +73,7 @@ def list_blood_banks(
     min_reliability: int = Query(0, ge=0, le=100, description="Minimum reliability rating (0-100)"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    con: duckdb.DuckDBPyConnection = Depends(get_db)
+    con: duckdb.DuckDBPyConnection = Depends(get_db),
 ):
     req_id = get_request_id(request)
     params: List[Any] = []
@@ -101,7 +100,7 @@ def list_blood_banks(
     total = con.execute(count_sql, params).fetchone()[0]
 
     fetch_sql = f"""
-        SELECT 
+        SELECT
             b.hospital_code, b.hospital_name, b.hospital_type, b.facility_type,
             b.state_name, b.district_name, b.hospital_contact, b.hospital_address,
             b.source_updated_at,
@@ -128,7 +127,7 @@ def list_blood_banks(
             "address": r[7],
             "source_updated_at": r[8].isoformat() if r[8] else None,
             "reliability_score": r[9],
-            "reliability_tier": r[10]
+            "reliability_tier": r[10],
         }
         for r in rows
     ]
@@ -140,21 +139,20 @@ def list_blood_banks(
             "total": total,
             "limit": limit,
             "offset": offset,
-            "has_more": (offset + limit) < total
+            "has_more": (offset + limit) < total,
         },
-        "data": data
+        "data": data,
     }
 
 
 @router.get("/banks/{hospital_code}", summary="Facility Profile & Full Stock Matrix")
 def get_blood_bank_detail(
-    hospital_code: int,
-    request: Request,
-    con: duckdb.DuckDBPyConnection = Depends(get_db)
+    hospital_code: int, request: Request, con: duckdb.DuckDBPyConnection = Depends(get_db)
 ):
     req_id = get_request_id(request)
-    row = con.execute("""
-        SELECT 
+    row = con.execute(
+        """
+        SELECT
             b.hospital_code, b.hospital_name, b.hospital_type, b.facility_type,
             b.state_name, b.district_name, b.hospital_contact, b.hospital_address,
             b.source_updated_at,
@@ -164,18 +162,23 @@ def get_blood_bank_detail(
         FROM main_gold.dim_blood_banks b
         LEFT JOIN main_gold.mart_reliability_score r ON b.hospital_code = r.hospital_code
         WHERE b.hospital_code = ?;
-    """, [hospital_code]).fetchone()
+    """,
+        [hospital_code],
+    ).fetchone()
 
     if not row:
         raise HTTPException(status_code=404, detail=f"Facility code {hospital_code} not found")
 
     # Fetch stock breakdown
-    stock_rows = con.execute("""
+    stock_rows = con.execute(
+        """
         SELECT component_name, blood_group, units, source_updated_at
         FROM main_gold.fct_stock_current
         WHERE hospital_code = ?
         ORDER BY component_name, blood_group;
-    """, [hospital_code]).fetchall()
+    """,
+        [hospital_code],
+    ).fetchall()
 
     stock_matrix: Dict[str, Dict[str, int]] = {}
     for comp, bg, units, _ in stock_rows:
@@ -201,11 +204,11 @@ def get_blood_bank_detail(
                 "tier": row[10],
                 "freshness_points": row[11],
                 "contact_points": row[12],
-                "completeness_points": row[13]
+                "completeness_points": row[13],
             },
             "stock_matrix": stock_matrix,
-            "disclaimer": settings.source_attribution
-        }
+            "disclaimer": settings.source_attribution,
+        },
     }
 
 
@@ -220,7 +223,7 @@ def search_availability(
     sort: str = Query("freshness", pattern="^(freshness|units|reliability)$"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    con: duckdb.DuckDBPyConnection = Depends(get_db)
+    con: duckdb.DuckDBPyConnection = Depends(get_db),
 ):
     req_id = get_request_id(request)
     results, total = execute_emergency_search(
@@ -232,7 +235,7 @@ def search_availability(
         min_units=min_units,
         sort=sort,
         limit=limit,
-        offset=offset
+        offset=offset,
     )
 
     return {
@@ -242,10 +245,11 @@ def search_availability(
             "total": total,
             "limit": limit,
             "offset": offset,
-            "has_more": (offset + limit) < total
+            "has_more": (offset + limit) < total,
         },
         "data": results,
-        "disclaimer": settings.source_attribution
+        "source_attribution": settings.source_attribution,
+        "disclaimer": settings.source_attribution,
     }
 
 
@@ -255,7 +259,7 @@ def get_rare_blood_radar(
     rarity: Optional[str] = Query(None, description="ULTRA_RARE_BOMBAY or RH_NEGATIVE"),
     state: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=500),
-    con: duckdb.DuckDBPyConnection = Depends(get_db)
+    con: duckdb.DuckDBPyConnection = Depends(get_db),
 ):
     req_id = get_request_id(request)
     params: List[Any] = []
@@ -270,7 +274,7 @@ def get_rare_blood_radar(
         params.append(state.strip())
 
     sql = f"""
-        SELECT 
+        SELECT
             hospital_code, hospital_name, hospital_type, state_name, district_name,
             hospital_contact, hospital_address, component_name, blood_group, units,
             rarity_tier, source_updated_at, last_synced_at
@@ -296,7 +300,7 @@ def get_rare_blood_radar(
             "units": r[9],
             "rarity_tier": r[10],
             "source_updated_at": r[11].isoformat() if r[11] else None,
-            "last_synced_at": r[12].isoformat() if r[12] else None
+            "last_synced_at": r[12].isoformat() if r[12] else None,
         }
         for r in rows
     ]
@@ -306,7 +310,7 @@ def get_rare_blood_radar(
         "request_id": req_id,
         "count": len(data),
         "data": data,
-        "disclaimer": settings.source_attribution
+        "disclaimer": settings.source_attribution,
     }
 
 
@@ -317,7 +321,7 @@ def get_district_shortages(
     component: Optional[str] = Query("Packed Red Blood Cells"),
     shortage_only: bool = Query(True, description="Filter for deficits only"),
     limit: int = Query(100, ge=1, le=500),
-    con: duckdb.DuckDBPyConnection = Depends(get_db)
+    con: duckdb.DuckDBPyConnection = Depends(get_db),
 ):
     req_id = get_request_id(request)
     params: List[Any] = []
@@ -335,7 +339,7 @@ def get_district_shortages(
         where_clauses.append("shortage_status IN ('CRITICAL_DEPLETION', 'HIGH_SHORTAGE')")
 
     sql = f"""
-        SELECT 
+        SELECT
             state_name, district_name, component_name, blood_group,
             total_reporting_banks, stocked_banks, total_units, shortage_status
         FROM main_gold.mart_district_status
@@ -355,23 +359,16 @@ def get_district_shortages(
             "total_reporting_banks": r[4],
             "stocked_banks": r[5],
             "total_units": r[6],
-            "shortage_status": r[7]
+            "shortage_status": r[7],
         }
         for r in rows
     ]
 
-    return {
-        "success": True,
-        "request_id": req_id,
-        "count": len(data),
-        "data": data
-    }
+    return {"success": True, "request_id": req_id, "count": len(data), "data": data}
 
 
 @router.post("/meta/refresh", summary="Signed Refresh Webhook Trigger")
-def trigger_serving_refresh(
-    authorization: Optional[str] = Header(None)
-):
+def trigger_serving_refresh(authorization: Optional[str] = Header(None)):
     """
     Signed webhook called by the pipeline to trigger an instantaneous
     zero-downtime serving cache flush.
@@ -380,12 +377,12 @@ def trigger_serving_refresh(
     if not authorization or authorization != expected_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing webhook signature token in Authorization header"
+            detail="Invalid or missing webhook signature token in Authorization header",
         )
 
     return {
         "success": True,
         "status": "REFRESH_TRIGGERED",
         "timestamp": datetime.utcnow().isoformat(),
-        "serving_path": str(settings.serving_path)
+        "serving_path": str(settings.serving_path),
     }

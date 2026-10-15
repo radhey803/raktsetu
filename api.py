@@ -21,7 +21,8 @@ import duckdb
 from snapshot_manager import query_hospital_trend, query_district_trend
 from geo_coords import resolve_facility_lat_lng
 
-DB_PATH = os.path.join(WORKSPACE_DIR, "blood_warehouse.duckdb")
+SERVING_DB_PATH = os.path.join(WORKSPACE_DIR, "serving.duckdb")
+WAREHOUSE_DB_PATH = os.path.join(WORKSPACE_DIR, "blood_warehouse.duckdb")
 
 app = FastAPI(title="eRaktKosh Blood Lakehouse API", version="1.0.0")
 
@@ -35,10 +36,26 @@ app.add_middleware(
 )
 
 def get_db():
-    if not os.path.exists(DB_PATH):
-        raise HTTPException(status_code=500, detail="DuckDB warehouse file not found. Run pipeline first.")
-    # Always open in read_only mode to prevent locks and enable instant concurrent queries
-    return duckdb.connect(DB_PATH, read_only=True)
+    """
+    Connects to the database in read_only mode.
+    Prefers serving.duckdb for zero-lock concurrency, falling back to blood_warehouse.duckdb.
+    Attaches catalog alias so compiled dbt views resolve without BinderError.
+    """
+    for path in [SERVING_DB_PATH, WAREHOUSE_DB_PATH]:
+        if os.path.exists(path):
+            try:
+                con = duckdb.connect(path, read_only=True)
+                # Ensure cross-database dbt catalog references resolve
+                try:
+                    con.execute(f"ATTACH '{path}' AS blood_warehouse (READ_ONLY);")
+                except Exception:
+                    pass
+                return con
+            except Exception:
+                continue
+    raise HTTPException(status_code=500, detail="DuckDB database file not found or accessible. Run pipeline first.")
+
+
 
 # ----------------- API ENDPOINTS -----------------
 

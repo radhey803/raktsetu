@@ -6,6 +6,7 @@ and overwrite prevention.
 """
 
 from datetime import datetime, timezone
+
 import pyarrow.parquet as pq
 import pytest
 

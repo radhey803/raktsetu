@@ -31,7 +31,6 @@ from bloodlake.config import settings
 from bloodlake.db import get_warehouse_connection
 from bloodlake.scraper import (
     CircuitBreakerError,
-    RunIntervalGuardError,
     check_run_interval_guard,
     scrape_nationwide,
     write_landing_parquet,
@@ -67,10 +66,13 @@ def init_metadata_tables(con) -> None:
 def record_run_start(con, run_id: str) -> None:
     init_metadata_tables(con)
     now = datetime.now(timezone.utc)
-    con.execute("""
+    con.execute(
+        """
         INSERT INTO gold.pipeline_runs (run_id, started_at, status)
         VALUES (?, ?, 'RUNNING');
-    """, [run_id, now])
+    """,
+        [run_id, now],
+    )
 
 
 def record_run_finish(
@@ -82,7 +84,8 @@ def record_run_finish(
     error_message: Optional[str] = None,
 ) -> None:
     now = datetime.now(timezone.utc)
-    con.execute("""
+    con.execute(
+        """
         UPDATE gold.pipeline_runs
         SET finished_at = ?,
             status = ?,
@@ -90,7 +93,9 @@ def record_run_finish(
             tests_passed = ?,
             error_message = ?
         WHERE run_id = ?;
-    """, [now, status, facilities_count, tests_passed, error_message, run_id])
+    """,
+        [now, status, facilities_count, tests_passed, error_message, run_id],
+    )
 
 
 def get_last_successful_run(con) -> Optional[Dict[str, Any]]:
@@ -124,7 +129,9 @@ def ingest_landing_to_bronze(con, parquet_path: Optional[Path] = None) -> int:
     if not target_file:
         landing_files = sorted(settings.data_landing_dir.glob("dt=*/**/*.parquet"), reverse=True)
         if not landing_files:
-            raise FileNotFoundError(f"No landing Parquet files found in {settings.data_landing_dir}")
+            raise FileNotFoundError(
+                f"No landing Parquet files found in {settings.data_landing_dir}"
+            )
         target_file = landing_files[0]
 
     logger.info("Ingesting landing file into bronze.raw_inventory: %s", target_file)
@@ -171,15 +178,23 @@ def ingest_landing_to_bronze(con, parquet_path: Optional[Path] = None) -> int:
         FROM read_parquet('{target_file}');
     """)
 
-    row_count = con.execute("SELECT COUNT(*) FROM read_parquet(?);", [str(target_file)]).fetchone()[0]
+    row_count = con.execute("SELECT COUNT(*) FROM read_parquet(?);", [str(target_file)]).fetchone()[
+        0
+    ]
     total_bronze = con.execute("SELECT COUNT(*) FROM bronze.raw_inventory;").fetchone()[0]
-    logger.info("Bronze ingestion complete: %d records added. Total bronze rows: %d", row_count, total_bronze)
+    logger.info(
+        "Bronze ingestion complete: %d records added. Total bronze rows: %d",
+        row_count,
+        total_bronze,
+    )
     return row_count
 
 
 @app.command()
 def scrape(
-    concurrency: int = typer.Option(settings.scraper_concurrency, "--concurrency", "-c", help="Worker concurrency limit"),
+    concurrency: int = typer.Option(
+        settings.scraper_concurrency, "--concurrency", "-c", help="Worker concurrency limit"
+    ),
     force: bool = typer.Option(False, "--force", "-f", help="Bypass minimum interval guard"),
 ):
     """Executes polite nationwide async crawl of eRaktKosh and writes immutable landing Parquet."""
@@ -200,7 +215,9 @@ def scrape(
             raise RuntimeError("Scraper returned 0 facility records.")
 
         parquet_path, sha256, count = write_landing_parquet(records, run_id, now)
-        console.print(f"[bold green]✅ Ingestion Succeeded:[/bold green] {count:,} facilities collected.")
+        console.print(
+            f"[bold green]✅ Ingestion Succeeded:[/bold green] {count:,} facilities collected."
+        )
         console.print(f"📦 Landing File: [cyan]{parquet_path}[/cyan] (SHA-256: {sha256[:12]})")
     except CircuitBreakerError as cbe:
         console.print(f"[bold red]💥 Circuit Breaker Triggered:[/bold red] {cbe}")
@@ -209,7 +226,9 @@ def scrape(
 
 @app.command()
 def load(
-    parquet_file: Optional[Path] = typer.Option(None, "--file", "-f", help="Specific landing Parquet file to load"),
+    parquet_file: Optional[Path] = typer.Option(
+        None, "--file", "-f", help="Specific landing Parquet file to load"
+    ),
 ):
     """Loads landing Parquet into DuckDB bronze.raw_inventory table."""
     console.print("\n[bold red]📥 STEP 2: Ingest Landing Parquet into Bronze[/bold red]")
@@ -217,7 +236,9 @@ def load(
     init_metadata_tables(con)
     try:
         count = ingest_landing_to_bronze(con, parquet_file)
-        console.print(f"[bold green]✅ Bronze Ingested:[/bold green] {count:,} records added to bronze.raw_inventory.")
+        console.print(
+            f"[bold green]✅ Bronze Ingested:[/bold green] {count:,} records added to bronze.raw_inventory."
+        )
     finally:
         con.close()
 
@@ -238,9 +259,13 @@ def transform():
     ]
     result = subprocess.run(cmd, cwd=str(settings.base_dir), capture_output=False)
     if result.returncode != 0:
-        console.print("[bold red]❌ dbt build failed! Review model compilation errors above.[/bold red]")
+        console.print(
+            "[bold red]❌ dbt build failed! Review model compilation errors above.[/bold red]"
+        )
         raise typer.Exit(code=result.returncode)
-    console.print("[bold green]✅ dbt models and schema tests compiled & executed successfully![/bold green]")
+    console.print(
+        "[bold green]✅ dbt models and schema tests compiled & executed successfully![/bold green]"
+    )
 
 
 @app.command()
@@ -267,7 +292,9 @@ def test():
             console.print(f"[bold red]❌ {err_msg}[/bold red]")
             raise typer.Exit(code=3)
 
-    console.print("[bold green]✅ Anomaly gate passed! No data volume regressions detected.[/bold green]")
+    console.print(
+        "[bold green]✅ Anomaly gate passed! No data volume regressions detected.[/bold green]"
+    )
 
 
 @app.command()
@@ -279,14 +306,18 @@ def publish():
 
     shutil.copyfile(settings.warehouse_path, settings.serving_staging_path)
     os.replace(settings.serving_staging_path, settings.serving_path)
-    console.print(f"[bold green]✅ Published Serving Database:[/bold green] [cyan]{settings.serving_path}[/cyan]")
+    console.print(
+        f"[bold green]✅ Published Serving Database:[/bold green] [cyan]{settings.serving_path}[/cyan]"
+    )
 
 
 @app.command()
 def all(
     concurrency: int = typer.Option(settings.scraper_concurrency, "--concurrency", "-c"),
     force: bool = typer.Option(False, "--force", "-f", help="Bypass minimum interval guard"),
-    skip_scrape: bool = typer.Option(False, "--skip-scrape", help="Skip scrape and transform existing bronze"),
+    skip_scrape: bool = typer.Option(
+        False, "--skip-scrape", help="Skip scrape and transform existing bronze"
+    ),
 ):
     """Executes the complete production Lakehouse ELT pipeline end-to-end."""
     now = datetime.now(timezone.utc)
@@ -321,7 +352,9 @@ def all(
 
         elapsed = time.time() - start_time
         con = get_warehouse_connection(read_only=False)
-        facility_count = con.execute("SELECT COUNT(*) FROM main_gold.dim_blood_banks;").fetchone()[0]
+        facility_count = con.execute("SELECT COUNT(*) FROM main_gold.dim_blood_banks;").fetchone()[
+            0
+        ]
         record_run_finish(con, run_id, "SUCCESS", facility_count, tests_passed=True)
         con.close()
 

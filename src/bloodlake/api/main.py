@@ -8,7 +8,6 @@ Serves high-concurrency analytical queries from DuckDB and hosts the Vanilla JS/
 web interface from the web/ directory.
 """
 
-from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
@@ -77,9 +76,11 @@ if web_dir.exists():
 def legacy_summary(request: Request):
     from bloodlake.api.routes import get_national_summary
     from bloodlake.db import get_serving_connection
+
     con = get_serving_connection(read_only=True)
     try:
         from fastapi import Response
+
         res = Response()
         return get_national_summary(res, con)
     finally:
@@ -90,6 +91,7 @@ def legacy_summary(request: Request):
 def legacy_locations():
     from bloodlake.api.routes import get_locations
     from bloodlake.db import get_serving_connection
+
     con = get_serving_connection(read_only=True)
     try:
         return get_locations(con)
@@ -107,6 +109,7 @@ def legacy_search(
 ):
     from bloodlake.api.routes import get_blood_availability
     from bloodlake.db import get_serving_connection
+
     con = get_serving_connection(read_only=True)
     try:
         res = get_blood_availability(

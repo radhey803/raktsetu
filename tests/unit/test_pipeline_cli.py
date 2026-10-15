@@ -13,6 +13,7 @@ Tests pipeline command-line interface commands:
 """
 
 from unittest.mock import MagicMock, patch
+
 import duckdb
 from typer.testing import CliRunner
 
@@ -68,7 +69,9 @@ def test_cli_test_anomaly_gate():
             hospital_contact VARCHAR, hospital_address VARCHAR, source_updated_at TIMESTAMP
         );
     """)
-    mem_con.execute("INSERT INTO main_gold.dim_blood_banks (hospital_code, hospital_name) VALUES (1, 'H1');")
+    mem_con.execute(
+        "INSERT INTO main_gold.dim_blood_banks (hospital_code, hospital_name) VALUES (1, 'H1');"
+    )
     with patch("bloodlake.pipeline.get_warehouse_connection", return_value=mem_con):
         result = runner.invoke(app, ["test"])
         assert result.exit_code == 0
@@ -80,7 +83,9 @@ def test_cli_publish_command(tmp_path, monkeypatch):
     dummy_wh.write_text("DUMMY_WAREHOUSE")
     monkeypatch.setattr("bloodlake.config.settings.warehouse_path", dummy_wh)
     monkeypatch.setattr("bloodlake.config.settings.serving_path", tmp_path / "serving.duckdb")
-    monkeypatch.setattr("bloodlake.config.settings.serving_staging_path", tmp_path / "serving.duckdb.tmp")
+    monkeypatch.setattr(
+        "bloodlake.config.settings.serving_staging_path", tmp_path / "serving.duckdb.tmp"
+    )
 
     result = runner.invoke(app, ["publish"])
     assert result.exit_code == 0
@@ -96,8 +101,12 @@ def test_cli_scrape_command_mocked(tmp_path):
         patch("bloodlake.pipeline.write_landing_parquet") as mock_write,
         patch("bloodlake.pipeline.check_run_interval_guard"),
     ):
+
         async def fake_scrape(*args, **kwargs):
-            return [{"hospital_name": "Test Bank"}], {"run_id": "test_1", "scraped_at": "2026-10-14T12:00:00"}
+            return [{"hospital_name": "Test Bank"}], {
+                "run_id": "test_1",
+                "scraped_at": "2026-10-14T12:00:00",
+            }
 
         mock_scrape.side_effect = fake_scrape
         mock_write.return_value = (tmp_path / "test.parquet", "sha123", 1)
@@ -139,21 +148,29 @@ def test_cli_all_command_mocked(tmp_path):
     class ResilientConn:
         def __init__(self, con):
             self._con = con
+
         def close(self):
             pass
+
         def __getattr__(self, item):
             return getattr(self._con, item)
 
     conn_wrapper = ResilientConn(real_mem_con)
 
     async def fake_scrape(*args, **kwargs):
-        return [{"hospital_name": "Test Bank"}], {"run_id": "test_1", "scraped_at": "2026-10-14T12:00:00"}
+        return [{"hospital_name": "Test Bank"}], {
+            "run_id": "test_1",
+            "scraped_at": "2026-10-14T12:00:00",
+        }
 
     with (
         patch("bloodlake.pipeline.get_warehouse_connection", return_value=conn_wrapper),
         patch("bloodlake.pipeline.check_run_interval_guard"),
         patch("bloodlake.pipeline.scrape_nationwide", side_effect=fake_scrape),
-        patch("bloodlake.pipeline.write_landing_parquet", return_value=(tmp_path / "test.parquet", "sha123", 1)),
+        patch(
+            "bloodlake.pipeline.write_landing_parquet",
+            return_value=(tmp_path / "test.parquet", "sha123", 1),
+        ),
         patch("bloodlake.pipeline.ingest_landing_to_bronze"),
         patch("bloodlake.pipeline.transform"),
         patch("bloodlake.pipeline.test"),

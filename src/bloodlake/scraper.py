@@ -33,11 +33,13 @@ logger = logging.getLogger("bloodlake.scraper")
 
 class CircuitBreakerError(Exception):
     """Raised when the scraper aborts due to excessive API failures."""
+
     pass
 
 
 class RunIntervalGuardError(Exception):
     """Raised when a full crawl is attempted within the minimum interval guard window."""
+
     pass
 
 
@@ -103,10 +105,14 @@ async def fetch_district_data(
                             logger.error("JSON decode error for %s: %s", district_name, jde)
                             return False, [], f"JSON decode error: {jde}"
                     else:
-                        logger.warning("Unexpected status %d for %s", response.status, district_name)
+                        logger.warning(
+                            "Unexpected status %d for %s", response.status, district_name
+                        )
             except (aiohttp.ClientError, asyncio.TimeoutError) as err:
                 if attempt == max_retries:
-                    logger.error("Failed to fetch %s after %d attempts: %s", district_name, attempt, err)
+                    logger.error(
+                        "Failed to fetch %s after %d attempts: %s", district_name, attempt, err
+                    )
                     return False, [], str(err)
                 backoff = (2**attempt) + random.uniform(0.5, 1.5)
                 await asyncio.sleep(backoff)
@@ -146,12 +152,14 @@ async def scrape_nationwide(
             state_name = state_info.get("state_name", state_code)
             districts = state_info.get("districts", {})
             for dist_id, dist_name in districts.items():
-                tasks_metadata.append({
-                    "state_name": state_name,
-                    "state_code": str(state_code),
-                    "district_name": dist_name,
-                    "district_id": str(dist_id),
-                })
+                tasks_metadata.append(
+                    {
+                        "state_name": state_name,
+                        "state_code": str(state_code),
+                        "district_name": dist_name,
+                        "district_id": str(dist_id),
+                    }
+                )
 
     total_districts = len(tasks_metadata)
     logger.info(
@@ -377,4 +385,6 @@ def check_run_interval_guard(con, min_hours: float = 6.0, force: bool = False) -
     except Exception as e:
         if isinstance(e, RunIntervalGuardError):
             raise
-        logger.debug("Could not verify pipeline_runs for interval guard (tables may be uninitialized): %s", e)
+        logger.debug(
+            "Could not verify pipeline_runs for interval guard (tables may be uninitialized): %s", e
+        )

@@ -5,6 +5,7 @@ Tests end-to-end HTTP request handling against serving DuckDB database.
 """
 
 from fastapi.testclient import TestClient
+
 from bloodlake.api.main import app
 
 client = TestClient(app)
@@ -69,7 +70,9 @@ def test_availability_sql_search():
 
 
 def test_history_trend():
-    resp = client.get("/api/v1/history?hospital_code=1001&component=Packed+Red+Blood+Cells&blood_group=O-")
+    resp = client.get(
+        "/api/v1/history?hospital_code=1001&component=Packed+Red+Blood+Cells&blood_group=O-"
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "points" in data

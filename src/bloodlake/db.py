@@ -6,10 +6,11 @@ connections for the Lakehouse ELT pipeline. Implements zero-lock replica fallbac
 and automatic catalog alias attachment for dbt-compiled views.
 """
 
-import os
-import duckdb
 from typing import Generator
+
+import duckdb
 from fastapi import HTTPException
+
 from bloodlake.config import settings
 
 
@@ -39,7 +40,7 @@ def get_serving_connection(read_only: bool = True) -> duckdb.DuckDBPyConnection:
 
     raise HTTPException(
         status_code=500,
-        detail="DuckDB database file not found or inaccessible. Please run pipeline first."
+        detail="DuckDB database file not found or inaccessible. Please run pipeline first.",
     )
 
 

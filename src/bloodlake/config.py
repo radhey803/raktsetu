@@ -6,15 +6,12 @@ and Lakehouse thresholds using Pydantic Settings.
 """
 
 from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # Academic Project Metadata
     project_name: str = "eRaktKosh Blood Lakehouse"
@@ -40,7 +37,9 @@ class Settings(BaseSettings):
     data_raw_dir: Path = base_dir / "data" / "raw"
 
     # Scraper Parameters (Polite & Resilient)
-    eraktkosh_base_url: str = "https://eraktkosh.mohfw.gov.in/eraktkoshPortal/eraktkosh/blood-availability"
+    eraktkosh_base_url: str = (
+        "https://eraktkosh.mohfw.gov.in/eraktkoshPortal/eraktkosh/blood-availability"
+    )
     scraper_concurrency: int = 10
     scraper_timeout_seconds: int = 30
     scraper_max_retries: int = 3

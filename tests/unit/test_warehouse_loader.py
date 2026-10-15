@@ -10,8 +10,8 @@ import pyarrow.parquet as pq
 
 from bloodlake.pipeline import (
     get_last_successful_run,
-    init_metadata_tables,
     ingest_landing_to_bronze,
+    init_metadata_tables,
     record_run_finish,
     record_run_start,
 )

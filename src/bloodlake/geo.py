@@ -10,7 +10,7 @@ NOTE: All locations returned are marked with is_approximate_location = True
 """
 
 import hashlib
-from typing import Tuple, Dict
+from typing import Dict, Tuple
 
 STATE_COORDS: Dict[str, Tuple[float, float]] = {
     "andaman and nicobar islands": (11.6670, 92.7359),

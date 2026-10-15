@@ -128,12 +128,15 @@ async def test_fetch_district_data_retry_on_429_then_success():
 @pytest.mark.asyncio
 async def test_scrape_nationwide_with_targets():
     target_districts = [
-        {"state_name": "Gujarat", "state_code": "12", "district_name": "Anand", "district_id": "101"}
+        {
+            "state_name": "Gujarat",
+            "state_code": "12",
+            "district_name": "Anand",
+            "district_id": "101",
+        }
     ]
 
-    with patch(
-        "bloodlake.scraper.fetch_district_data", new_callable=AsyncMock
-    ) as mock_fetch:
+    with patch("bloodlake.scraper.fetch_district_data", new_callable=AsyncMock) as mock_fetch:
         mock_fetch.return_value = (True, [{"hospital_name": "Anand Red Cross"}], None)
 
         records, meta = await scrape_nationwide(
@@ -150,13 +153,16 @@ async def test_scrape_nationwide_with_targets():
 @pytest.mark.asyncio
 async def test_scrape_nationwide_circuit_breaker():
     target_districts = [
-        {"state_name": "State A", "state_code": "1", "district_name": f"Dist {i}", "district_id": str(i)}
+        {
+            "state_name": "State A",
+            "state_code": "1",
+            "district_name": f"Dist {i}",
+            "district_id": str(i),
+        }
         for i in range(1, 35)
     ]
 
-    with patch(
-        "bloodlake.scraper.fetch_district_data", new_callable=AsyncMock
-    ) as mock_fetch:
+    with patch("bloodlake.scraper.fetch_district_data", new_callable=AsyncMock) as mock_fetch:
         # All fail -> error rate = 100% > 20% threshold after 30
         mock_fetch.return_value = (False, [], "Connection timed out")
 

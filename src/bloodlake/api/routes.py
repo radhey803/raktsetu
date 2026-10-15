@@ -14,9 +14,9 @@ Provides analytical query endpoints powered directly by DuckDB Gold marts:
 - System Health (/healthz)
 """
 
-import json
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
+
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
@@ -43,7 +43,7 @@ router = APIRouter(tags=["eRaktKosh Lakehouse Analytics"])
 def health_check(con: duckdb.DuckDBPyConnection = Depends(get_db_session)):
     """Liveness probe verifying DuckDB connectivity."""
     try:
-        row = con.execute("SELECT 1;").fetchone()
+        con.execute("SELECT 1;").fetchone()
         return {
             "status": "healthy",
             "database": "DuckDB Lakehouse",
@@ -100,7 +100,9 @@ def get_national_summary(
     response.headers["Cache-Control"] = "public, max-age=60"
 
     total_banks = con.execute("SELECT COUNT(*) FROM main_gold.dim_blood_banks;").fetchone()[0]
-    total_states = con.execute("SELECT COUNT(DISTINCT state_name) FROM main_gold.dim_blood_banks;").fetchone()[0]
+    total_states = con.execute(
+        "SELECT COUNT(DISTINCT state_name) FROM main_gold.dim_blood_banks;"
+    ).fetchone()[0]
 
     fresh_row = con.execute("""
         SELECT COUNT(*)
@@ -220,7 +222,22 @@ def list_blood_banks(
 
     items = []
     for r in rows:
-        h_code, h_name, h_type, f_type, s_name, d_name, contact, address, updated_at, days_ago, freshness, alert, score, tier = r
+        (
+            h_code,
+            h_name,
+            h_type,
+            f_type,
+            s_name,
+            d_name,
+            contact,
+            address,
+            updated_at,
+            days_ago,
+            freshness,
+            alert,
+            score,
+            tier,
+        ) = r
         lat, lng, is_approx = resolve_facility_lat_lng(h_code, s_name, d_name)
         items.append(
             BloodBankItem(
@@ -329,7 +346,23 @@ def get_blood_availability(
 
     items = []
     for r in rows:
-        h_code, h_name, h_type, f_type, s_name, d_name, contact, address, comp, bg, units, updated_at, days_ago, score, tier = r
+        (
+            h_code,
+            h_name,
+            h_type,
+            f_type,
+            s_name,
+            d_name,
+            contact,
+            address,
+            comp,
+            bg,
+            units,
+            updated_at,
+            days_ago,
+            score,
+            tier,
+        ) = r
         lat, lng, is_approx = resolve_facility_lat_lng(h_code, s_name, d_name)
         items.append(
             BloodAvailabilityItem(
@@ -383,14 +416,17 @@ def get_facility_trend(
     hospital_name = h_row[0] if h_row else f"Hospital #{hospital_code}"
 
     # Query real snapshot points
-    rows = con.execute("""
+    rows = con.execute(
+        """
         SELECT snapshot_date, units
         FROM main_gold.fct_stock_snapshot
         WHERE hospital_code = ?
           AND component_name = ?
           AND blood_group = ?
         ORDER BY snapshot_date ASC;
-    """, [hospital_code, component, blood_group]).fetchall()
+    """,
+        [hospital_code, component, blood_group],
+    ).fetchall()
 
     points = [TrendPoint(snapshot_date=str(r[0]), units=r[1]) for r in rows]
     has_sufficient = len(points) >= 2

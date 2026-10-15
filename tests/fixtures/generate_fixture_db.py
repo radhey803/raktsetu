@@ -7,6 +7,7 @@ NEVER shipped to production or serving warehouse.
 """
 
 from pathlib import Path
+
 import duckdb
 
 FIXTURE_DB_PATH = Path(__file__).parent / "fixture_lakehouse.duckdb"

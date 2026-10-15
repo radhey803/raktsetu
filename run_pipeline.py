@@ -6,6 +6,7 @@ Parquet landing, DuckDB Bronze loading, dbt transformations, and anomaly validat
 """
 
 import sys
+
 from bloodlake.pipeline import app
 
 if __name__ == "__main__":

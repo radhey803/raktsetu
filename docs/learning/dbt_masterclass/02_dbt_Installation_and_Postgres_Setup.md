@@ -292,21 +292,21 @@ engine = create_engine(DB_URL)
 print("📂 Loading CSV...")
 df = pd.read_csv(
     "/home/radhey/Documents/project_idea/INDIA_blood_inventory_async.csv",
-    dtype=str  # Load everything as STRING (Bronze layer = raw!)
+    dtype=str,  # Load everything as STRING (Bronze layer = raw!)
 )
 
 # Add metadata columns
-df['_loaded_at'] = datetime.now().isoformat()
-df['_source_file'] = 'INDIA_blood_inventory_async.csv'
+df["_loaded_at"] = datetime.now().isoformat()
+df["_source_file"] = "INDIA_blood_inventory_async.csv"
 
 # Load into PostgreSQL (Bronze layer)
 print(f"📤 Loading {len(df)} rows into raw_blood_bank.blood_inventory_raw...")
 df.to_sql(
-    name='blood_inventory_raw',
-    schema='raw_blood_bank',
+    name="blood_inventory_raw",
+    schema="raw_blood_bank",
     con=engine,
-    if_exists='replace',  # Use 'append' for incremental loads
-    index=False
+    if_exists="replace",  # Use 'append' for incremental loads
+    index=False,
 )
 
 print(f"✅ Successfully loaded {len(df)} rows into Bronze layer!")

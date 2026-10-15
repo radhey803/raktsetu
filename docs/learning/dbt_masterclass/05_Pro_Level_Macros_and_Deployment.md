@@ -1286,25 +1286,25 @@ from airflow.providers.slack.operators.slack_webhook import SlackWebhookOperator
 # ============================================================
 
 default_args = {
-    'owner': 'data_engineering',
-    'depends_on_past': False,
-    'email': ['data-alerts@eraktkosh.gov.in'],
-    'email_on_failure': True,
-    'email_on_retry': False,
-    'retries': 3,
-    'retry_delay': timedelta(minutes=5),
-    'execution_timeout': timedelta(hours=2),
+    "owner": "data_engineering",
+    "depends_on_past": False,
+    "email": ["data-alerts@eraktkosh.gov.in"],
+    "email_on_failure": True,
+    "email_on_retry": False,
+    "retries": 3,
+    "retry_delay": timedelta(minutes=5),
+    "execution_timeout": timedelta(hours=2),
 }
 
 dag = DAG(
-    dag_id='blood_bank_dbt_pipeline',
+    dag_id="blood_bank_dbt_pipeline",
     default_args=default_args,
-    description='Daily blood bank data pipeline: Scrape → Load → Transform → Test',
-    schedule_interval='0 6 * * *',          # Every day at 6:00 AM IST
+    description="Daily blood bank data pipeline: Scrape → Load → Transform → Test",
+    schedule_interval="0 6 * * *",  # Every day at 6:00 AM IST
     start_date=datetime(2026, 1, 1),
     catchup=False,
-    tags=['blood_bank', 'dbt', 'production'],
-    max_active_runs=1,                       # Only one run at a time
+    tags=["blood_bank", "dbt", "production"],
+    max_active_runs=1,  # Only one run at a time
 )
 
 # ============================================================
@@ -1312,11 +1312,11 @@ dag = DAG(
 # ============================================================
 
 # Where your dbt project lives
-DBT_PROJECT_DIR = '/opt/airflow/dbt/blood_bank_dbt'
+DBT_PROJECT_DIR = "/opt/airflow/dbt/blood_bank_dbt"
 
 # Task 1: Run the eRaktKosh scraper
 extract_and_load = BashOperator(
-    task_id='extract_and_load_blood_data',
+    task_id="extract_and_load_blood_data",
     bash_command=f"""
         cd {DBT_PROJECT_DIR}/.. &&
         python async_scraper.py &&
@@ -1327,7 +1327,7 @@ extract_and_load = BashOperator(
 
 # Task 2: Check source freshness
 check_freshness = BashOperator(
-    task_id='check_source_freshness',
+    task_id="check_source_freshness",
     bash_command=f"""
         cd {DBT_PROJECT_DIR} &&
         dbt source freshness --target prod
@@ -1337,7 +1337,7 @@ check_freshness = BashOperator(
 
 # Task 3: Load seed data
 seed_reference_data = BashOperator(
-    task_id='seed_reference_data',
+    task_id="seed_reference_data",
     bash_command=f"""
         cd {DBT_PROJECT_DIR} &&
         dbt seed --target prod --full-refresh
@@ -1347,7 +1347,7 @@ seed_reference_data = BashOperator(
 
 # Task 4: Run staging models (Silver layer)
 run_staging = BashOperator(
-    task_id='run_staging_models',
+    task_id="run_staging_models",
     bash_command=f"""
         cd {DBT_PROJECT_DIR} &&
         dbt run --target prod --select staging.*
@@ -1357,7 +1357,7 @@ run_staging = BashOperator(
 
 # Task 5: Test staging models
 test_staging = BashOperator(
-    task_id='test_staging_models',
+    task_id="test_staging_models",
     bash_command=f"""
         cd {DBT_PROJECT_DIR} &&
         dbt test --target prod --select staging.*
@@ -1367,7 +1367,7 @@ test_staging = BashOperator(
 
 # Task 6: Run mart models (Gold layer)
 run_marts = BashOperator(
-    task_id='run_mart_models',
+    task_id="run_mart_models",
     bash_command=f"""
         cd {DBT_PROJECT_DIR} &&
         dbt run --target prod --select marts.*
@@ -1377,7 +1377,7 @@ run_marts = BashOperator(
 
 # Task 7: Test mart models
 test_marts = BashOperator(
-    task_id='test_mart_models',
+    task_id="test_mart_models",
     bash_command=f"""
         cd {DBT_PROJECT_DIR} &&
         dbt test --target prod --select marts.*
@@ -1387,7 +1387,7 @@ test_marts = BashOperator(
 
 # Task 8: Generate documentation
 generate_docs = BashOperator(
-    task_id='generate_dbt_docs',
+    task_id="generate_dbt_docs",
     bash_command=f"""
         cd {DBT_PROJECT_DIR} &&
         dbt docs generate --target prod
@@ -1397,8 +1397,8 @@ generate_docs = BashOperator(
 
 # Task 9: Notify on success
 notify_success = SlackWebhookOperator(
-    task_id='notify_success',
-    slack_webhook_conn_id='slack_data_team',
+    task_id="notify_success",
+    slack_webhook_conn_id="slack_data_team",
     message="""
     ✅ *Blood Bank Pipeline Succeeded*
     📅 Date: {{ ds }}

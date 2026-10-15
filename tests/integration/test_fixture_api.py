@@ -5,7 +5,6 @@ Proves that backend queries execute deterministically against an isolated synthe
 test database fixture (tests/fixtures/fixture_lakehouse.duckdb).
 """
 
-from pathlib import Path
 import duckdb
 import pytest
 from fastapi.testclient import TestClient

@@ -21,7 +21,7 @@ from async_scraper import scrape_entire_country_async
 from snapshot_manager import record_live_snapshot, seed_historical_backfill_if_empty
 
 # Paths
-DBT_DIR = os.path.join(WORKSPACE_DIR, "blood_project")
+DBT_DIR = os.path.join(WORKSPACE_DIR, "dbt") if os.path.exists(os.path.join(WORKSPACE_DIR, "dbt")) else os.path.join(WORKSPACE_DIR, "blood_project")
 DB_PATH = os.path.join(WORKSPACE_DIR, "blood_warehouse.duckdb")
 CSV_PATH = os.path.join(WORKSPACE_DIR, "INDIA_blood_inventory_async.csv")
 

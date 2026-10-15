@@ -37,13 +37,14 @@ serving.duckdb*
 # Data Files & Landing Zone
 data/landing/
 data/archive/
+data/raw/
 *.parquet
 *.csv
 !eraktkosh_all_metadata.json
 
 # dbt Artifacts & Logs
-dbt/target/
-dbt/dbt_packages/
+**/target/
+**/dbt_packages/
 dbt/logs/
 logs/
 

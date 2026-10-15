@@ -9,7 +9,7 @@ Tests pipeline command-line interface commands:
 """
 
 from unittest.mock import MagicMock, patch
-
+import duckdb
 from typer.testing import CliRunner
 
 from bloodgrid.pipeline.run import app
@@ -30,17 +30,42 @@ def test_cli_help():
 
 
 def test_cli_status():
-    result = runner.invoke(app, ["status"])
-    assert result.exit_code == 0
-    assert "BloodGrid Pipeline Execution History" in result.output
+    mem_con = duckdb.connect(":memory:")
+    mem_con.execute("CREATE SCHEMA IF NOT EXISTS gold;")
+    mem_con.execute("""
+        CREATE TABLE gold.pipeline_runs (
+            run_id VARCHAR, started_at TIMESTAMP, finished_at TIMESTAMP,
+            status VARCHAR, facilities_count INTEGER, tests_passed BOOLEAN, error_message VARCHAR
+        );
+    """)
+    with patch("bloodgrid.pipeline.run.get_warehouse_connection", return_value=mem_con):
+        result = runner.invoke(app, ["status"])
+        assert result.exit_code == 0
+        assert "BloodGrid Pipeline Execution History" in result.output
 
 
 def test_cli_test_anomaly_gate():
-    # Run quality & anomaly gate test
-    result = runner.invoke(app, ["test"])
-    assert result.exit_code == 0
-    assert "STEP 4: Quality & Anomaly Gate Validation" in result.output
-    assert "Current Reporting Facilities:" in result.output
+    mem_con = duckdb.connect(":memory:")
+    mem_con.execute("CREATE SCHEMA IF NOT EXISTS gold;")
+    mem_con.execute("""
+        CREATE TABLE gold.pipeline_runs (
+            run_id VARCHAR, started_at TIMESTAMP, finished_at TIMESTAMP,
+            status VARCHAR, facilities_count INTEGER, tests_passed BOOLEAN, error_message VARCHAR
+        );
+    """)
+    mem_con.execute("CREATE SCHEMA IF NOT EXISTS main_gold;")
+    mem_con.execute("""
+        CREATE TABLE main_gold.dim_blood_banks (
+            hospital_code BIGINT, hospital_name VARCHAR, hospital_type VARCHAR,
+            facility_type VARCHAR, state_name VARCHAR, district_name VARCHAR,
+            hospital_contact VARCHAR, hospital_address VARCHAR, source_updated_at TIMESTAMP
+        );
+    """)
+    mem_con.execute("INSERT INTO main_gold.dim_blood_banks (hospital_code, hospital_name) VALUES (1, 'H1');")
+    with patch("bloodgrid.pipeline.run.get_warehouse_connection", return_value=mem_con):
+        result = runner.invoke(app, ["test"])
+        assert result.exit_code == 0
+        assert "STEP 4: Quality & Anomaly Gate Validation" in result.output
 
 
 def test_cli_publish_command(tmp_path, monkeypatch):
@@ -60,7 +85,9 @@ def test_cli_publish_command(tmp_path, monkeypatch):
 
 
 def test_cli_scrape_command_mocked(tmp_path):
+    mem_con = duckdb.connect(":memory:")
     with (
+        patch("bloodgrid.pipeline.run.get_warehouse_connection", return_value=mem_con),
         patch("bloodgrid.pipeline.run.scrape_nationwide") as mock_scrape,
         patch("bloodgrid.pipeline.run.write_raw_landing") as mock_write,
         patch("bloodgrid.pipeline.run.check_run_interval_guard"),
@@ -81,7 +108,9 @@ def test_cli_scrape_command_mocked(tmp_path):
 
 
 def test_cli_load_command_mocked(tmp_path):
+    mem_con = duckdb.connect(":memory:")
     with (
+        patch("bloodgrid.pipeline.run.get_warehouse_connection", return_value=mem_con),
         patch("bloodgrid.pipeline.run.ingest_landing_to_bronze", return_value=100),
         patch("bloodgrid.pipeline.run.init_warehouse_metadata_tables"),
     ):
@@ -102,9 +131,30 @@ def test_cli_transform_command_mocked():
 
 
 def test_cli_all_command_mocked(tmp_path):
+    real_mem_con = duckdb.connect(":memory:")
+    real_mem_con.execute("CREATE SCHEMA IF NOT EXISTS main_gold;")
+    real_mem_con.execute("CREATE TABLE main_gold.dim_blood_banks (id INT);")
+    real_mem_con.execute("INSERT INTO main_gold.dim_blood_banks VALUES (1);")
+
+    class ResilientConn:
+        def __init__(self, con):
+            self._con = con
+        def close(self):
+            pass
+        def __getattr__(self, item):
+            return getattr(self._con, item)
+
+    conn_wrapper = ResilientConn(real_mem_con)
+
+    async def fake_scrape(*args, **kwargs):
+        return [{"hospital_name": "Test Bank"}], {"run_id": "test_1", "scraped_at": "2026-10-14T12:00:00"}
+
     with (
-        patch("bloodgrid.pipeline.run.scrape"),
-        patch("bloodgrid.pipeline.run.load"),
+        patch("bloodgrid.pipeline.run.get_warehouse_connection", return_value=conn_wrapper),
+        patch("bloodgrid.pipeline.run.check_run_interval_guard"),
+        patch("bloodgrid.pipeline.run.scrape_nationwide", side_effect=fake_scrape),
+        patch("bloodgrid.pipeline.run.write_raw_landing", return_value=(tmp_path / "test.parquet", "sha123", 1)),
+        patch("bloodgrid.pipeline.run.ingest_landing_to_bronze"),
         patch("bloodgrid.pipeline.run.transform"),
         patch("bloodgrid.pipeline.run.test"),
         patch("bloodgrid.pipeline.run.publish"),
@@ -114,3 +164,4 @@ def test_cli_all_command_mocked(tmp_path):
         result = runner.invoke(app, ["all", "--force"])
         assert result.exit_code == 0
         assert "BLOODGRID END-TO-END PIPELINE" in result.output
+

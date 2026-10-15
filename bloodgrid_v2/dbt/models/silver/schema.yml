@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: stg_blood_banks
+    description: "Standardized facility dimension staging model deduplicated to one row per hospital code"
+    columns:
+      - name: hospital_code
+        description: "Primary facility identifier"
+        tests:
+          - not_null
+          - unique
+      - name: hospital_name
+        description: "Facility name"
+        tests:
+          - not_null
+      - name: state_name
+        description: "State or Union Territory name"
+        tests:
+          - not_null
+
+  - name: stg_inventory_components
+    description: "Unnested blood component inventory by facility, component, normalized group, and non-negative units"
+    columns:
+      - name: hospital_code
+        description: "Reporting blood centre code"
+        tests:
+          - not_null
+      - name: component_name
+        description: "Clinical blood component"
+        tests:
+          - not_null
+      - name: blood_group
+        description: "Strictly normalized blood group (O+, O-, A+, A-, B+, B-, AB+, AB-, Bombay)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'Bombay (Oh+)', 'Bombay (Oh-)']
+      - name: units
+        description: "Available inventory in non-negative units"
+        tests:
+          - not_null

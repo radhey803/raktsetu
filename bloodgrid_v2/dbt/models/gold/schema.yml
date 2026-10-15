@@ -1,0 +1,118 @@
+version: 2
+
+models:
+  - name: dim_blood_banks
+    description: "Gold facility dimension table representing the canonical profile of each blood bank"
+    columns:
+      - name: hospital_code
+        description: "Primary key for blood bank facility"
+        tests:
+          - unique
+          - not_null
+      - name: hospital_name
+        description: "Facility name"
+        tests:
+          - not_null
+      - name: state_name
+        description: "State or UT"
+        tests:
+          - not_null
+
+  - name: fct_stock_snapshot
+    description: "Append-only time-series fact table tracking real inventory snapshots across all facilities and components"
+    columns:
+      - name: hospital_code
+        description: "Facility code"
+        tests:
+          - not_null
+      - name: component_name
+        description: "Clinical blood component"
+        tests:
+          - not_null
+      - name: blood_group
+        description: "Normalized blood group"
+        tests:
+          - not_null
+      - name: units
+        description: "Inventory units"
+        tests:
+          - not_null
+      - name: snapshot_date
+        description: "Calendar date of the snapshot"
+        tests:
+          - not_null
+
+  - name: fct_stock_current
+    description: "Latest stock snapshot per facility, component, and normalized blood group"
+    columns:
+      - name: hospital_code
+        description: "Facility code"
+        tests:
+          - not_null
+      - name: component_name
+        description: "Component name"
+        tests:
+          - not_null
+      - name: blood_group
+        description: "Normalized blood group"
+        tests:
+          - not_null
+      - name: units
+        description: "Units available"
+        tests:
+          - not_null
+
+  - name: mart_district_status
+    description: "District-level aggregation of stock by component, blood group, reporting facility counts, and deficit alerts"
+    columns:
+      - name: state_name
+        tests:
+          - not_null
+      - name: district_name
+        tests:
+          - not_null
+      - name: component_name
+        tests:
+          - not_null
+      - name: blood_group
+        tests:
+          - not_null
+      - name: total_units
+        tests:
+          - not_null
+
+  - name: mart_reliability_score
+    description: "Facility reliability rating (0-100) combining data freshness (50 pts), contact verification (25 pts), and component completeness (25 pts)"
+    columns:
+      - name: hospital_code
+        tests:
+          - unique
+          - not_null
+      - name: reliability_score
+        tests:
+          - not_null
+      - name: reliability_tier
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['HIGH', 'MODERATE', 'LOW']
+
+  - name: mart_stock_change
+    description: "7-day inventory consumption rate and days-of-cover estimates, only calculated when >= 7 real snapshot dates exist"
+    columns:
+      - name: hospital_code
+      - name: component_name
+      - name: blood_group
+
+  - name: mart_rare_blood_availability
+    description: "Emergency dispatch radar for ultra-rare Bombay phenotype and Rh-negative blood availability"
+    columns:
+      - name: hospital_code
+        tests:
+          - not_null
+      - name: blood_group
+        tests:
+          - not_null
+      - name: units
+        tests:
+          - not_null

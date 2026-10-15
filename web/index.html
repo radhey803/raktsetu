@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RaktSetu Lakehouse | National Blood Inventory & Emergency Network</title>
+    <title>eRaktKosh Blood Lakehouse | College Mini Project (MCA, CHARUSAT)</title>
     <meta name="description"
-        content="Real-time national blood inventory intelligence and verified emergency facility finder across 36 Indian states and union territories powered by RaktSetu Lakehouse.">
+        content="Real-time national blood inventory intelligence and verified emergency facility finder across 36 Indian states and union territories powered by DuckDB and dbt Medallion Lakehouse.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -119,6 +119,15 @@
             <polyline points="13 17 18 12 13 7"></polyline>
             <polyline points="6 17 11 12 6 7"></polyline>
         </symbol>
+        <symbol id="icon-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+        </symbol>
+        <symbol id="icon-shield-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <polyline points="9 12 11 14 15 10"></polyline>
+        </symbol>
     </svg>
 
     <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -126,13 +135,13 @@
     <!-- Top Sticky Header -->
     <header class="app-header">
         <div class="header-container">
-            <a href="/" class="brand" aria-label="BloodGrid Lakehouse Home">
+            <a href="/" class="brand" aria-label="eRaktKosh Blood Lakehouse Home">
                 <span class="brand-mark" aria-hidden="true">
                     <svg class="icon"><use href="#icon-droplet"></use></svg>
                 </span>
                 <span class="brand-name">
-                    <span class="brand-primary">BloodGrid</span>
-                    <span class="brand-sub" data-i18n="brandSub">Lakehouse</span>
+                    <span class="brand-primary">eRaktKosh</span>
+                    <span class="brand-sub">Blood Lakehouse</span>
                 </span>
             </a>
 
@@ -140,10 +149,10 @@
                 <nav class="header-nav" aria-label="Main Navigation">
                     <a href="#finder-section" class="nav-link" data-i18n="navFind">Find blood</a>
                     <a href="#chart-section" class="nav-link" data-i18n="navNetwork">Network</a>
-                    <button type="button" id="open-alerts-btn" class="nav-link" style="background: none; border: none; cursor: pointer;" data-i18n="navAlerts">Alerts</button>
-                    <button type="button" id="open-pricing-btn" class="nav-link" style="background: none; border: none; cursor: pointer;" data-i18n="navPricing">Pricing</button>
-                    <a href="/dashboard" class="nav-link">Console</a>
-                    <a href="#app-footer" class="nav-link" data-i18n="navAbout">About</a>
+                    <a href="#radar-section" class="nav-link" data-i18n="navRadar">Rare blood</a>
+                    <a href="#shortages-section" class="nav-link" data-i18n="navShortages">Shortages</a>
+                    <a href="#about-section" class="nav-link" data-i18n="navAbout">Architecture</a>
+                    <a href="/docs" target="_blank" rel="noopener" class="nav-link">API Docs</a>
                 </nav>
 
                 <!-- Language Switcher -->
@@ -167,16 +176,16 @@
             <div class="mandatory-disclaimer-banner" role="note" aria-label="Mandatory medical and source attribution notice">
                 <svg class="icon" aria-hidden="true"><use href="#icon-alert-triangle"></use></svg>
                 <div data-i18n="mandatoryNotice">
-                    Data sourced from eRaktKosh (Ministry of Health & Family Welfare, Govt. of India). Not an official service. Always call the blood bank to confirm before travelling.
+                    Data sourced from eRaktKosh (Ministry of Health &amp; Family Welfare, Govt. of India). Academic project, not an official service. Always call the blood bank to confirm before travelling.
                 </div>
             </div>
 
             <!-- Hero Section -->
             <section class="hero-section" aria-labelledby="hero-title">
                 <div class="hero-content">
-                    <span class="hero-kicker" data-i18n="heroKicker">Emergency Blood Intelligence Network</span>
-                    <h1 id="hero-title" class="hero-title" data-i18n="heroTitle">Find verified blood availability, in minutes.</h1>
-                    <p class="hero-sub" data-i18n="heroSub">Direct connection to 4,680+ registered blood centres across 36 states and union territories. Stock verified against national data records.</p>
+                    <span class="hero-kicker" data-i18n="heroKicker">CHARUSAT MCA Academic Project • 800 Marks Mini Project</span>
+                    <h1 id="hero-title" class="hero-title" data-i18n="heroTitle">National Blood Availability &amp; Shortage Intelligence</h1>
+                    <p class="hero-sub" data-i18n="heroSub">Direct ingestion from eRaktKosh (MoHFW, Govt. of India). Engineered with DuckDB, dbt Medallion Lakehouse architecture (Bronze &rarr; Silver &rarr; Gold), and append-only snapshot analytics across 4,680+ verified facilities.</p>
                 </div>
 
                 <!-- Emergency Finder & Filter Panel -->
@@ -409,6 +418,189 @@
                     </div>
                 </nav>
             </section>
+
+            <!-- Rare Blood Phenotype Radar Section -->
+            <section class="radar-section" id="radar-section" aria-labelledby="radar-title">
+                <div class="section-header">
+                    <div>
+                        <div class="section-tag-row">
+                            <span class="tag tag-vol">High Clinical Priority</span>
+                            <span class="tag tag-neutral">National Gold Mart</span>
+                        </div>
+                        <h2 id="radar-title" class="section-title">Rare Blood Phenotype Radar</h2>
+                        <p class="section-sub">Live tracking of Bombay Phenotype (Oh+, Oh-) and high-priority universal negative donor reserves across India.</p>
+                    </div>
+                    <span class="chart-source-note">Sourced from mart_rare_blood_availability</span>
+                </div>
+
+                <div class="radar-table-card">
+                    <div class="table-responsive">
+                        <table class="academic-table" id="rare-blood-table" aria-label="Rare blood inventory across facilities">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Facility Name</th>
+                                    <th scope="col">Location</th>
+                                    <th scope="col">Phenotype</th>
+                                    <th scope="col">Component</th>
+                                    <th scope="col" class="text-right">Available Units</th>
+                                    <th scope="col">Emergency Contact</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rare-blood-tbody">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">Loading rare phenotype inventory...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer-note">
+                        <span>Notice: Bombay blood group (Oh) occurs in ~1 in 10,000 individuals in India. Transfusions require homologous H-deficient donors.</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- District Supply Deficit Radar Section -->
+            <section class="shortages-section" id="shortages-section" aria-labelledby="shortages-title">
+                <div class="section-header">
+                    <div>
+                        <div class="section-tag-row">
+                            <span class="tag tag-govt">Shortage Early Warning</span>
+                            <span class="tag tag-neutral">Aggregated by District</span>
+                        </div>
+                        <h2 id="shortages-title" class="section-title">District Deficit Radar</h2>
+                        <p class="section-sub">Districts experiencing acute supply depletion (0–2 units) aggregated across all reporting blood centres.</p>
+                    </div>
+                    <div class="shortage-controls">
+                        <label for="shortage-state-filter" class="field-label sr-only">Filter State</label>
+                        <select id="shortage-state-filter" class="custom-select select-sm">
+                            <option value="ALL">All States</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="radar-table-card">
+                    <div class="table-responsive">
+                        <table class="academic-table" id="shortages-table" aria-label="District blood shortage summary">
+                            <thead>
+                                <tr>
+                                    <th scope="col">District</th>
+                                    <th scope="col">State</th>
+                                    <th scope="col">Inspected Group</th>
+                                    <th scope="col" class="text-right">Total Units</th>
+                                    <th scope="col" class="text-right">Reporting Centres</th>
+                                    <th scope="col">Deficit Severity</th>
+                                </tr>
+                            </thead>
+                            <tbody id="shortages-tbody">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">Loading district shortage data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer-note">
+                        <span>Calculated dynamically in mart_district_status by summarizing real facility units per component.</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- About, Methodology & Lakehouse Architecture Section -->
+            <section class="about-section" id="about-section" aria-labelledby="about-title">
+                <div class="section-header">
+                    <div>
+                        <span class="hero-kicker">Technical Architecture &amp; Methodology</span>
+                        <h2 id="about-title" class="section-title">Medallion Lakehouse Architecture</h2>
+                        <p class="section-sub">A production-grade ELT pipeline designed with DuckDB and dbt Core for the MCA Mini Project at CHARUSAT.</p>
+                    </div>
+                </div>
+
+                <div class="methodology-grid">
+                    <!-- Layer 1: Bronze -->
+                    <div class="method-card">
+                        <div class="method-card-header">
+                            <span class="method-layer-badge badge-bronze">Bronze Layer</span>
+                            <h3 class="method-card-title">Immutable Landing &amp; Ingestion</h3>
+                        </div>
+                        <p class="method-card-desc">Asynchronous scraper querying eRaktKosh district endpoints with polite concurrency (Semaphore 10), identifiable academic User-Agent, and circuit breakers. Each scrape writes an immutable timestamped Parquet snapshot verified with SHA-256 before append-only loading into DuckDB raw tables.</p>
+                        <ul class="method-card-list">
+                            <li>Zero CSV round-trip corruption</li>
+                            <li>Immutable timestamped landing files</li>
+                            <li>Pipeline run tracking with row-count metrics</li>
+                        </ul>
+                    </div>
+
+                    <!-- Layer 2: Silver -->
+                    <div class="method-card">
+                        <div class="method-card-header">
+                            <span class="method-layer-badge badge-silver">Silver Layer</span>
+                            <h3 class="method-card-title">Unnesting &amp; Strict Normalization</h3>
+                        </div>
+                        <p class="method-card-desc">dbt staging models unnest nested component structures into atomic rows per (facility, component, blood_group, units). Utilizes a strict SQL normalizer macro guaranteeing clinical distinction between B+ vs AB+ and O+ vs Bombay Oh+.</p>
+                        <ul class="method-card-list">
+                            <li>35 dbt contract &amp; data quality tests</li>
+                            <li>Pure relational schema: one row per component group</li>
+                            <li>Strict Rh factor and Bombay phenotype taxonomy</li>
+                        </ul>
+                    </div>
+
+                    <!-- Layer 3: Gold -->
+                    <div class="method-card">
+                        <div class="method-card-header">
+                            <span class="method-layer-badge badge-gold">Gold Layer</span>
+                            <h3 class="method-card-title">Dimensional Marts &amp; Analytics</h3>
+                        </div>
+                        <p class="method-card-desc">Dimensional and aggregate marts powering sub-millisecond analytical queries. Replaces fragile application-layer regex parsing with pure SQL aggregations on <code class="code-inline">fct_stock_current</code> and incremental <code class="code-inline">fct_stock_snapshot</code>.</p>
+                        <ul class="method-card-list">
+                            <li>Reliability scoring algorithm (0–100 scale)</li>
+                            <li>Append-only snapshots with zero fake data</li>
+                            <li>Atomic blue/green serving database swap</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Reliability Formula & Academic Ethics -->
+                <div class="formula-card">
+                    <div class="formula-grid">
+                        <div class="formula-col">
+                            <h4 class="formula-title">Facility Reliability Scoring Algorithm</h4>
+                            <p class="formula-desc">Every facility receives a computed trustworthiness score between 0 and 100 based on three objective criteria:</p>
+                            <div class="formula-breakdown">
+                                <div class="formula-row">
+                                    <span class="formula-metric">Data Freshness (50 pts)</span>
+                                    <span class="formula-points">Updated &le;24h (50 pts) &bull; &le;7d (30 pts) &bull; &le;30d (10 pts)</span>
+                                </div>
+                                <div class="formula-row">
+                                    <span class="formula-metric">Contact Validity (25 pts)</span>
+                                    <span class="formula-points">Verifiable 10-digit mobile, landline, or active registry phone</span>
+                                </div>
+                                <div class="formula-row">
+                                    <span class="formula-metric">Inventory Completeness (25 pts)</span>
+                                    <span class="formula-points">Comprehensive component reporting across all 8 standard blood groups</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="formula-col">
+                            <h4 class="formula-title">Academic Ethics &amp; Source Attribution</h4>
+                            <p class="formula-desc">This project is developed solely for academic research and educational demonstration as part of the MCA degree at CHARUSAT. It does not replace official emergency services.</p>
+                            <div class="ethics-list">
+                                <div class="ethics-item">
+                                    <svg class="icon"><use href="#icon-shield-check"></use></svg>
+                                    <span><strong>Zero Fake Data Policy:</strong> Multi-day trends reflect genuine periodic scrapes. No artificial backfills.</span>
+                                </div>
+                                <div class="ethics-item">
+                                    <svg class="icon"><use href="#icon-shield-check"></use></svg>
+                                    <span><strong>Honest Location Labeling:</strong> Pins represent district-centroid approximations, explicitly labeled.</span>
+                                </div>
+                                <div class="ethics-item">
+                                    <svg class="icon"><use href="#icon-shield-check"></use></svg>
+                                    <span><strong>Source Politeness:</strong> Rate-limited requests with polite delays and an identifiable User-Agent.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </main>
 
@@ -461,7 +653,6 @@
                         </tbody>
                     </table>
                 </div>
-                <!-- Backwards-compatibility fallback container for existing code -->
                 <div id="modal-summary-pills" class="sr-only"></div>
             </div>
 
@@ -470,7 +661,7 @@
             </div>
 
             <div class="modal-footer">
-                <span class="modal-source-note">Verified against append-only DuckDB snapshots. Daily tracking detects evolving shortages before official registry updates.</span>
+                <span class="modal-source-note">Verified against append-only DuckDB snapshots. Multi-day trajectories reflect real incremental runs of the data pipeline.</span>
             </div>
         </div>
     </div>
@@ -507,141 +698,13 @@
         </div>
     </div>
 
-    <!-- Transparent Pricing Modal -->
-    <div id="pricing-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pricing-modal-title">
-        <div class="modal-container" role="document" style="max-width: 860px;">
-            <div class="modal-header">
-                <div>
-                    <span class="tag tag-neutral">Commercial Entitlements</span>
-                    <h3 id="pricing-modal-title" class="modal-title">Honest Plans in Indian Rupees (₹)</h3>
-                    <p class="modal-subtitle">Subsidized community access funded by enterprise developer API tiers and hospital analytics.</p>
-                </div>
-                <button type="button" id="pricing-close-btn" class="close-btn" aria-label="Close pricing modal">
-                    <svg class="icon"><use href="#icon-x"></use></svg>
-                </button>
-            </div>
-
-            <div class="modal-body" style="padding: 1.25rem 1.75rem;">
-                <div class="pricing-grid">
-                    <div class="pricing-card">
-                        <div>
-                            <h4>Community</h4>
-                            <div class="pricing-price">₹0 <span style="font-size: 0.8125rem; color: var(--ink-500); font-weight: normal;">/ forever</span></div>
-                            <ul class="pricing-features">
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Live emergency search</li>
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Real-time map &amp; directions</li>
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>60 API requests/minute</li>
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Universal Bombay Radar</li>
-                            </ul>
-                        </div>
-                        <button type="button" class="btn btn-text" style="width: 100%; border: 1px solid var(--line);">Current Plan</button>
-                    </div>
-
-                    <div class="pricing-card featured">
-                        <span class="pricing-plan-badge">Popular</span>
-                        <div>
-                            <h4>Pro Alerts</h4>
-                            <div class="pricing-price">₹299 <span style="font-size: 0.8125rem; color: var(--ink-500); font-weight: normal;">/ month</span></div>
-                            <ul class="pricing-features">
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>10 Instant Telegram alerts</li>
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Quiet hours emergency bypass</li>
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>300 API requests/minute</li>
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Priority facility verification</li>
-                            </ul>
-                        </div>
-                        <button type="button" class="btn btn-primary" style="width: 100%;">Select Pro Plan</button>
-                    </div>
-
-                    <div class="pricing-card">
-                        <div>
-                            <h4>Developer API</h4>
-                            <div class="pricing-price">₹999 <span style="font-size: 0.8125rem; color: var(--ink-500); font-weight: normal;">/ month</span></div>
-                            <ul class="pricing-features">
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>1,200 API requests/minute</li>
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Full historical lakehouse access</li>
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Webhook sync dispatch</li>
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>25 Automated stock monitors</li>
-                            </ul>
-                        </div>
-                        <button type="button" class="btn btn-text" style="width: 100%; border: 1px solid var(--line);">Get API Keys</button>
-                    </div>
-
-                    <div class="pricing-card">
-                        <div>
-                            <h4>NGO &amp; Team</h4>
-                            <div class="pricing-price">₹2,999 <span style="font-size: 0.8125rem; color: var(--ink-500); font-weight: normal;">/ month</span></div>
-                            <ul class="pricing-features">
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>100 District alert subscriptions</li>
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Monthly Deficit CSV export</li>
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Camp Location Suggester</li>
-                                <li><svg class="icon" style="width: 14px; height: 14px; color: var(--stock-instock); vertical-align: middle; margin-right: 4px;"><use href="#icon-arrow-up"></use></svg>Multi-seat coordinator seats</li>
-                            </ul>
-                        </div>
-                        <button type="button" class="btn btn-text" style="width: 100%; border: 1px solid var(--line);">Contact NGO Desk</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Alert Subscription Modal -->
-    <div id="alert-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="alert-modal-title">
-        <div class="modal-container" role="document">
-            <div class="modal-header">
-                <div>
-                    <span class="tag tag-neutral">Automated Notifications</span>
-                    <h3 id="alert-modal-title" class="modal-title" data-i18n="alertModalTitle">Set Stock Availability Alert</h3>
-                    <p class="modal-subtitle" data-i18n="alertModalSub">Receive instant notifications when required blood units are reported.</p>
-                </div>
-                <button type="button" id="alert-close-btn" class="close-btn" aria-label="Close alert modal">
-                    <svg class="icon"><use href="#icon-x"></use></svg>
-                </button>
-            </div>
-
-            <div class="modal-body" style="padding: 1.25rem 1.75rem;">
-                <form id="alert-subscription-form" style="display: flex; flex-direction: column; gap: 1rem;">
-                    <div>
-                        <label for="alert-email" class="field-label" data-i18n="emailLabel">Your Email Address</label>
-                        <input type="email" id="alert-email" class="custom-input" required placeholder="coordinator@example.org">
-                    </div>
-                    <div>
-                        <label for="alert-telegram" class="field-label">Telegram Chat ID (Optional)</label>
-                        <input type="text" id="alert-telegram" class="custom-input" placeholder="e.g. 123456789">
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                        <div>
-                            <label for="alert-group" class="field-label">Blood Group</label>
-                            <select id="alert-group" class="custom-select">
-                                <option value="O-">O- (Universal)</option>
-                                <option value="O+">O+</option>
-                                <option value="A-">A-</option>
-                                <option value="A+">A+</option>
-                                <option value="B-">B-</option>
-                                <option value="B+">B+</option>
-                                <option value="AB-">AB-</option>
-                                <option value="AB+">AB+</option>
-                                <option value="Bombay (Oh+)">Bombay (Oh+)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="alert-threshold" class="field-label" data-i18n="thresholdLabel">Min Units Threshold</label>
-                            <input type="number" id="alert-threshold" class="custom-input" value="1" min="1" max="100">
-                        </div>
-                    </div>
-                    <div id="alert-form-status" style="display: none; padding: 0.5rem; border-radius: var(--radius-sm); font-size: 0.8125rem;"></div>
-                    <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;" data-i18n="subscribeBtn">Activate Alert Subscription</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quiet Editorial Footer -->
+    <!-- Quiet Editorial Academic Footer -->
     <footer class="app-footer" id="app-footer">
         <div class="footer-container">
             <div class="footer-top">
                 <div class="footer-brand">
-                    <span class="footer-brand-title">BloodGrid Lakehouse</span>
-                    <p class="footer-brand-desc">National blood bank data intelligence system. Providing transparent, verified blood availability to patients, families, and emergency teams across India.</p>
+                    <span class="footer-brand-title">eRaktKosh Blood Lakehouse</span>
+                    <p class="footer-brand-desc">National blood center inventory intelligence lakehouse. Academic Mini Project for Master of Computer Applications (MCA), Charotar University of Science and Technology (CHARUSAT).</p>
                 </div>
                 <div class="footer-emergency">
                     <span class="emergency-label">National emergency helplines</span>
@@ -658,16 +721,20 @@
 
             <div class="footer-bottom">
                 <div class="footer-meta">
-                    <span>eRaktKosh Blood Lakehouse • MCA Academic Project • CHARUSAT</span>
-                    <span class="footer-sep">•</span>
+                    <span>eRaktKosh Blood Lakehouse &bull; MCA Academic Project &bull; CHARUSAT</span>
+                    <span class="footer-sep">&bull;</span>
                     <span>Engine: DuckDB + dbt Core Medallion Architecture</span>
                 </div>
                 <div class="footer-links">
                     <a href="/docs" target="_blank" rel="noopener">OpenAPI Specification</a>
-                    <span class="footer-sep">•</span>
-                    <a href="#search-section">Emergency Finder</a>
-                    <span class="footer-sep">•</span>
-                    <a href="#radar-section">Shortage Radar</a>
+                    <span class="footer-sep">&bull;</span>
+                    <a href="#finder-section">Emergency Finder</a>
+                    <span class="footer-sep">&bull;</span>
+                    <a href="#radar-section">Rare Blood</a>
+                    <span class="footer-sep">&bull;</span>
+                    <a href="#shortages-section">Shortages</a>
+                    <span class="footer-sep">&bull;</span>
+                    <a href="#about-section">Architecture</a>
                 </div>
             </div>
         </div>

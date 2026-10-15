@@ -29,6 +29,8 @@ async function initDashboard() {
     await loadLocations();
     setupEventListeners();
     searchHospitals();
+    loadRareBloodInventory();
+    loadDistrictShortages();
     updateLiveSyncTime();
     checkSyncFreshness();
 }
@@ -188,13 +190,21 @@ async function loadLocations() {
         locationsMap = await res.json();
 
         const stateSelect = document.getElementById('state-select');
+        const shortageStateFilter = document.getElementById('shortage-state-filter');
         const sortedStates = Object.keys(locationsMap).sort();
 
         sortedStates.forEach(state => {
             const opt = document.createElement('option');
             opt.value = state;
             opt.textContent = state;
-            stateSelect.appendChild(opt);
+            if (stateSelect) stateSelect.appendChild(opt);
+
+            if (shortageStateFilter) {
+                const optShortage = document.createElement('option');
+                optShortage.value = state;
+                optShortage.textContent = state;
+                shortageStateFilter.appendChild(optShortage);
+            }
         });
     } catch (err) {
         console.error('Failed to load locations:', err);
@@ -369,17 +379,13 @@ function setupEventListeners() {
         });
     });
 
-    // Pricing modal handlers
-    const openPricingBtn = document.getElementById('open-pricing-btn');
-    const closePricingBtn = document.getElementById('pricing-close-btn');
-    if (openPricingBtn) openPricingBtn.addEventListener('click', openPricingModal);
-    if (closePricingBtn) closePricingBtn.addEventListener('click', closePricingModal);
-
-    // Alerts modal handlers
-    const openAlertsBtn = document.getElementById('open-alerts-btn');
-    const closeAlertsBtn = document.getElementById('alert-close-btn');
-    if (openAlertsBtn) openAlertsBtn.addEventListener('click', openAlertModal);
-    if (closeAlertsBtn) closeAlertsBtn.addEventListener('click', closeAlertModal);
+    // District shortage state filter listener
+    const shortageStateFilter = document.getElementById('shortage-state-filter');
+    if (shortageStateFilter) {
+        shortageStateFilter.addEventListener('change', () => {
+            loadDistrictShortages(shortageStateFilter.value);
+        });
+    }
 
     // SOS modal handlers
     const closeSosBtn = document.getElementById('sos-close-btn');
@@ -397,28 +403,6 @@ function setupEventListeners() {
                 }).catch(() => {
                     alert('Copied to clipboard!');
                 });
-            }
-        });
-    }
-
-    // Alert subscription form submit
-    const alertForm = document.getElementById('alert-subscription-form');
-    if (alertForm) {
-        alertForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const statusEl = document.getElementById('alert-form-status');
-            const email = document.getElementById('alert-email').value;
-            const group = document.getElementById('alert-group').value;
-            const threshold = document.getElementById('alert-threshold').value;
-            const st = document.getElementById('state-select').value;
-            const dist = document.getElementById('district-select').value;
-
-            if (statusEl) {
-                statusEl.style.display = 'block';
-                statusEl.style.background = 'var(--stock-instock-bg)';
-                statusEl.style.color = 'var(--stock-instock)';
-                statusEl.innerHTML = `<strong>Alert active:</strong> Monitoring <strong>${escapeHTML(group)}</strong> in ${dist !== 'ALL' ? escapeHTML(dist) : 'selected district'}. Notifications will be sent to <strong>${escapeHTML(email)}</strong>.`;
-                setTimeout(() => { closeAlertModal(); statusEl.style.display = 'none'; alertForm.reset(); }, 2000);
             }
         });
     }
@@ -772,17 +756,27 @@ function createHospitalCard(h) {
         `;
     }).join('');
 
+    const score = h.reliability_score !== undefined ? h.reliability_score : 50;
+    const tier = (h.reliability_tier || (score >= 80 ? 'HIGH' : score >= 50 ? 'MEDIUM' : 'LOW')).toLowerCase();
+    const relBadge = `<span class="badge-reliability tier-${tier}">
+        <svg class="icon" style="width: 12px; height: 12px;"><use href="#icon-shield-check"></use></svg>
+        <span>Reliability ${score}/100</span>
+    </span>`;
+
     return `
         <article class="hospital-card ${isStale ? 'card-stale' : ''}">
             <div class="card-head">
                 <h3 class="card-title" title="${escapeHTML(h.name)}">${escapeHTML(h.name)}</h3>
-                <span class="tag ${typeClass}">${escapeHTML(typeLabel)}</span>
+                <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                    <span class="tag ${typeClass}">${escapeHTML(typeLabel)}</span>
+                    ${relBadge}
+                </div>
             </div>
 
             <div class="card-meta">
                 <div class="meta-line">
                     <svg class="icon"><use href="#icon-map-pin"></use></svg>
-                    <span>${escapeHTML(h.district)}, ${escapeHTML(h.state)}</span>
+                    <span>${escapeHTML(h.district)}, ${escapeHTML(h.state)} <span class="loc-approx-badge">• approximate location, district level</span></span>
                 </div>
                 <div class="meta-line">
                     <span class="freshness-line">
@@ -1177,7 +1171,7 @@ function renderBloodMapMarkers(hospitals) {
                 <div>
                     <span class="tag tag-govt" style="font-size: 0.65rem;">${escapeHTML(h.type || 'Blood Centre')}</span>
                     <h4 class="popup-title">${escapeHTML(h.name)}</h4>
-                    <p class="popup-loc">${escapeHTML(h.district)}, ${escapeHTML(h.state)}</p>
+                    <p class="popup-loc">${escapeHTML(h.district)}, ${escapeHTML(h.state)}<br><span class="loc-approx-badge">approximate location, district level</span></p>
                 </div>
                 <div class="popup-stock-box">
                     <strong>${escapeHTML(h.component || 'PRBC')} Stock:</strong><br>
@@ -1273,35 +1267,83 @@ function closeSosModal() {
     document.body.style.overflow = '';
 }
 
-function openPricingModal() {
-    const modal = document.getElementById('pricing-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+// ----------------- 9. RARE BLOOD RADAR & DISTRICT DEFICIT RADAR -----------------
+async function loadRareBloodInventory() {
+    const tbody = document.getElementById('rare-blood-tbody');
+    if (!tbody) return;
+
+    try {
+        const res = await fetch('/api/rare');
+        const items = await res.json();
+
+        if (!items || items.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No rare phenotype stocks currently reported across registered facilities.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = items.map(item => {
+            const rawContact = item.hospital_contact || '';
+            const phoneMatch = rawContact.match(/Phone:\s*([0-9\-\s,]+)/i);
+            const primaryPhone = phoneMatch ? phoneMatch[1].trim().split(',')[0].trim() : (rawContact || 'Check registry');
+
+            return `
+                <tr>
+                    <td><strong>${escapeHTML(item.hospital_name)}</strong></td>
+                    <td>${escapeHTML(item.district_name)}, ${escapeHTML(item.state_name)}</td>
+                    <td><span class="tag tag-govt" style="background: var(--red-50); color: var(--red-500); border-color: var(--red-100); font-weight: 700;">${escapeHTML(item.blood_group)}</span></td>
+                    <td>${escapeHTML(item.component_name)}</td>
+                    <td class="text-right" style="font-weight: 700; color: var(--stock-instock);">${item.units.toLocaleString('en-IN')} units</td>
+                    <td>
+                        ${primaryPhone && primaryPhone !== '-' ? `<a href="tel:${primaryPhone}" class="btn-outline" style="height: 26px; font-size: 0.75rem; padding: 0 8px;">${escapeHTML(primaryPhone)}</a>` : '<span class="text-muted">Not listed</span>'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error('Failed to load rare blood inventory:', err);
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Unable to load rare inventory from mart.</td></tr>`;
     }
 }
 
-function closePricingModal() {
-    const modal = document.getElementById('pricing-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-        document.body.style.overflow = '';
-    }
-}
+async function loadDistrictShortages(stateFilter = 'ALL') {
+    const tbody = document.getElementById('shortages-tbody');
+    if (!tbody) return;
 
-function openAlertModal() {
-    const modal = document.getElementById('alert-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-    }
-}
+    try {
+        let url = '/api/shortages?blood_group=O-&component=Packed+Red+Blood+Cells';
+        if (stateFilter && stateFilter !== 'ALL') {
+            url += `&state=${encodeURIComponent(stateFilter)}`;
+        }
+        const res = await fetch(url);
+        const items = await res.json();
 
-function closeAlertModal() {
-    const modal = document.getElementById('alert-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-        document.body.style.overflow = '';
+        if (!items || items.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No critical shortages detected in selected region.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = items.map(d => {
+            let severityBadge = '<span class="tag tag-govt">High Deficit</span>';
+            if (d.shortage_status === 'MODERATE_SHORTAGE') {
+                severityBadge = '<span class="tag tag-priv">Moderate</span>';
+            } else if (d.shortage_status === 'NORMAL') {
+                severityBadge = '<span class="tag tag-vol">Normal</span>';
+            }
+
+            return `
+                <tr>
+                    <td><strong>${escapeHTML(d.district_name)}</strong></td>
+                    <td>${escapeHTML(d.state_name)}</td>
+                    <td><code class="code-inline">${escapeHTML(d.blood_group)} ${escapeHTML(d.component_name)}</code></td>
+                    <td class="text-right" style="font-weight: 700; color: ${d.total_units === 0 ? 'var(--stock-critical)' : 'var(--stock-low)'};">${d.total_units.toLocaleString('en-IN')}</td>
+                    <td class="text-right">${d.reporting_banks || d.total_reporting_banks || 1}</td>
+                    <td>${severityBadge}</td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error('Failed to load district shortages:', err);
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Unable to load district shortage radar.</td></tr>`;
     }
 }
 

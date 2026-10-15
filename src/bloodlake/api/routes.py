@@ -14,8 +14,8 @@ Provides analytical query endpoints powered directly by DuckDB Gold marts:
 - System Health (/healthz)
 """
 
-from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -458,12 +458,20 @@ def get_district_shortages(
     con: duckdb.DuckDBPyConnection = Depends(get_db_session),
 ):
     """District-level shortage radar highlighting critical deficit areas."""
-    where_clauses = ["d.blood_group = ?", "d.component_name = ?"]
-    params = [blood_group or "O-", component or "Packed Red Blood Cells"]
+    bg_val = blood_group if isinstance(blood_group, str) else getattr(blood_group, "default", "O-")
+    comp_val = (
+        component
+        if isinstance(component, str)
+        else getattr(component, "default", "Packed Red Blood Cells")
+    )
+    st_val = state if isinstance(state, str) else getattr(state, "default", None)
 
-    if state and state != "ALL":
+    where_clauses = ["d.blood_group = ?", "d.component_name = ?"]
+    params = [bg_val or "O-", comp_val or "Packed Red Blood Cells"]
+
+    if st_val and st_val != "ALL":
         where_clauses.append("d.state_name = ?")
-        params.append(state)
+        params.append(st_val)
 
     where_sql = " AND ".join(where_clauses)
     query_sql = f"""
@@ -532,3 +540,105 @@ def get_rare_blood_inventory(
         )
         for r in rows
     ]
+
+
+@router.get("/api/history", include_in_schema=False)
+def get_multi_group_history(
+    hospital_code: int = Query(..., description="Hospital Code"),
+    component: str = Query("Packed Red Blood Cells", description="Blood Component"),
+    days: int = Query(14, ge=1, le=90, description="History window in days"),
+    con: duckdb.DuckDBPyConnection = Depends(get_db_session),
+) -> Dict[str, Any]:
+    """
+    Returns time-series history for a hospital and component across all blood groups.
+    ZERO FAKE DATA: Strictly queried from real append-only rows in main_gold.fct_stock_snapshot.
+    """
+    h_row = con.execute(
+        "SELECT hospital_name, district_name, state_name FROM main_gold.dim_blood_banks WHERE hospital_code = ? LIMIT 1;",
+        [hospital_code],
+    ).fetchone()
+    hosp_name = h_row[0] if h_row else f"Hospital #{hospital_code}"
+    district = h_row[1] if h_row else ""
+    state = h_row[2] if h_row else ""
+
+    min_date = date.today() - timedelta(days=days)
+    rows = con.execute(
+        """
+        SELECT
+            snapshot_date,
+            blood_group,
+            units
+        FROM main_gold.fct_stock_snapshot
+        WHERE hospital_code = ?
+          AND component_name = ?
+          AND snapshot_date >= ?
+        ORDER BY snapshot_date ASC, blood_group ASC;
+    """,
+        [hospital_code, component, min_date],
+    ).fetchall()
+
+    if not rows:
+        return {
+            "hospital_code": hospital_code,
+            "hospital_name": hosp_name,
+            "district": district,
+            "state": state,
+            "component": component,
+            "dates": [],
+            "series": {},
+            "summary": {},
+        }
+
+    dates_raw = sorted(list(set(r[0] for r in rows)))
+    dates_set = [d.strftime("%b %d") for d in dates_raw]
+    date_to_idx = {d: i for i, d in enumerate(dates_set)}
+
+    series: Dict[str, List[int]] = {}
+    for r in rows:
+        sdate = r[0].strftime("%b %d")
+        bg = r[1]
+        units = r[2]
+        if bg not in series:
+            series[bg] = [0] * len(dates_set)
+        idx = date_to_idx[sdate]
+        series[bg][idx] = units
+
+    summary = {}
+    for bg, vals in series.items():
+        current_val = vals[-1] if vals else 0
+        initial_val = vals[0] if vals else 0
+        diff = current_val - initial_val
+        summary[bg] = {
+            "current": current_val,
+            "peak": max(vals) if vals else 0,
+            "change_7d": f"{'+' if diff > 0 else ''}{diff}",
+            "is_critical": current_val <= 2,
+        }
+
+    return {
+        "hospital_code": hospital_code,
+        "hospital_name": hosp_name,
+        "district": district,
+        "state": state,
+        "component": component,
+        "dates": dates_set,
+        "series": series,
+        "summary": summary,
+    }
+
+
+@router.get("/api/shortages", include_in_schema=False)
+def legacy_district_shortages(
+    state: Optional[str] = Query(None),
+    blood_group: Optional[str] = Query("O-"),
+    component: Optional[str] = Query("Packed Red Blood Cells"),
+    con: duckdb.DuckDBPyConnection = Depends(get_db_session),
+):
+    return get_district_shortages(
+        state=state, blood_group=blood_group, component=component, con=con
+    )
+
+
+@router.get("/api/rare", include_in_schema=False)
+def legacy_rare_blood(con: duckdb.DuckDBPyConnection = Depends(get_db_session)):
+    return get_rare_blood_inventory(con=con)

@@ -1909,6 +1909,317 @@ h1, h2, h3, h4 {
 }
 
 /* --------------------------------------------------------------------------
+   15b. ACADEMIC SECTIONS & RADAR COMPONENTS
+   -------------------------------------------------------------------------- */
+.radar-section,
+.shortages-section,
+.about-section {
+    margin-top: 3.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--line);
+}
+
+.section-tag-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    align-items: center;
+}
+
+.radar-table-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-1);
+    overflow: hidden;
+    margin-top: 1.25rem;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.academic-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    text-align: left;
+}
+
+.academic-table th {
+    background: var(--canvas-subtle);
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: var(--ink-900);
+    border-bottom: 1px solid var(--line);
+    font-size: 0.8125rem;
+    letter-spacing: 0.02em;
+}
+
+.academic-table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--line-subtle);
+    color: var(--ink-700);
+    vertical-align: middle;
+}
+
+.academic-table tr:last-child td {
+    border-bottom: none;
+}
+
+.academic-table tr:hover {
+    background: var(--canvas);
+}
+
+.card-footer-note {
+    padding: 0.75rem 1rem;
+    background: var(--canvas-subtle);
+    border-top: 1px solid var(--line);
+    font-size: 0.8125rem;
+    color: var(--ink-500);
+}
+
+.shortage-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.select-sm {
+    padding: 0.35rem 1.75rem 0.35rem 0.75rem;
+    font-size: 0.8125rem;
+}
+
+/* Architecture Methodology Cards */
+.methodology-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+}
+
+.method-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-1);
+    display: flex;
+    flex-direction: column;
+}
+
+.method-card-header {
+    margin-bottom: 0.75rem;
+}
+
+.method-layer-badge {
+    display: inline-block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.badge-bronze {
+    background: #FEF3C7;
+    color: #92400E;
+    border: 1px solid #FDE68A;
+}
+
+.badge-silver {
+    background: #F1F5F9;
+    color: #334155;
+    border: 1px solid #CBD5E1;
+}
+
+.badge-gold {
+    background: #FEF08A;
+    color: #854D0E;
+    border: 1px solid #FDE047;
+}
+
+.method-card-title {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    color: var(--ink-900);
+    font-weight: 600;
+}
+
+.method-card-desc {
+    font-size: 0.875rem;
+    color: var(--ink-700);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    flex-grow: 1;
+}
+
+.method-card-list {
+    list-style: none;
+    padding-left: 0;
+    font-size: 0.8125rem;
+    color: var(--ink-500);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.method-card-list li {
+    position: relative;
+    padding-left: 1.25rem;
+}
+
+.method-card-list li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--stock-instock);
+    font-weight: 700;
+}
+
+/* Formula & Ethics Cards */
+.formula-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    box-shadow: var(--shadow-1);
+    margin-top: 1.5rem;
+}
+
+.formula-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+@media (max-width: 768px) {
+    .formula-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+}
+
+.formula-title {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    color: var(--ink-900);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.formula-desc {
+    font-size: 0.875rem;
+    color: var(--ink-700);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.formula-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.formula-row {
+    background: var(--canvas);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+}
+
+.formula-metric {
+    display: block;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--ink-900);
+    margin-bottom: 0.25rem;
+}
+
+.formula-points {
+    font-size: 0.8125rem;
+    color: var(--ink-500);
+}
+
+.ethics-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.ethics-item {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    font-size: 0.875rem;
+    color: var(--ink-700);
+    background: var(--canvas);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+}
+
+.ethics-item .icon {
+    width: 18px;
+    height: 18px;
+    color: var(--stock-instock);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.code-inline {
+    background: var(--canvas-subtle);
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+    font-family: monospace;
+    font-size: 0.8125rem;
+    color: var(--red-600);
+}
+
+.badge-reliability {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid;
+}
+
+.badge-reliability.tier-high,
+.badge-reliability.tier-gold {
+    background: var(--stock-instock-bg);
+    color: var(--stock-instock);
+    border-color: var(--stock-instock-line);
+}
+
+.badge-reliability.tier-silver,
+.badge-reliability.tier-medium {
+    background: #EFF6FF;
+    color: #1D4ED8;
+    border-color: #BFDBFE;
+}
+
+.badge-reliability.tier-bronze,
+.badge-reliability.tier-low {
+    background: var(--stock-critical-bg);
+    color: var(--stock-critical);
+    border-color: var(--stock-critical-line);
+}
+
+.loc-approx-badge {
+    font-size: 0.6875rem;
+    color: var(--ink-500);
+    font-style: italic;
+    font-weight: normal;
+    margin-left: 4px;
+}
+
+/* --------------------------------------------------------------------------
    16. ACCESSIBILITY & PREFERS-REDUCED-MOTION
    -------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {

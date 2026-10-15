@@ -105,45 +105,106 @@ def legacy_search(
     district: str = None,
     component: str = "Packed Red Blood Cells",
     blood_group: str = None,
-    limit: int = 60,
+    search_query: str = None,
+    limit: int = 300,
 ):
-    from bloodlake.api.routes import get_blood_availability
     from bloodlake.db import get_serving_connection
+    from bloodlake.geo import resolve_facility_lat_lng
 
     con = get_serving_connection(read_only=True)
     try:
-        res = get_blood_availability(
-            state=state,
-            district=district,
-            blood_group=blood_group,
-            component=component,
-            min_units=0,
-            page=1,
-            page_size=limit,
-            con=con,
-        )
-        return [
-            {
-                "code": item.hospital_code,
-                "name": item.hospital_name,
-                "type": item.hospital_type,
-                "facility": item.facility_type,
-                "state": item.state_name,
-                "district": item.district_name,
-                "contact": item.hospital_contact,
-                "address": item.hospital_address,
-                "component": item.component_name,
-                "blood_group": item.blood_group,
-                "units": item.units,
-                "last_updated": str(item.last_updated_at)[:19] if item.last_updated_at else "",
-                "days_since_update": item.days_since_last_update,
-                "reliability_score": item.reliability_score,
-                "reliability_tier": item.reliability_tier,
-                "lat": item.latitude,
-                "lng": item.longitude,
-                "is_approximate": item.is_approximate_location,
-            }
-            for item in res.items
-        ]
+        where_clauses = ["1=1"]
+        params = []
+        if state and state != "ALL":
+            where_clauses.append("b.state_name = ?")
+            params.append(state)
+        if district and district != "ALL":
+            where_clauses.append("b.district_name = ?")
+            params.append(district)
+        if component and component != "ALL":
+            where_clauses.append("s.component_name = ?")
+            params.append(component)
+        if blood_group and blood_group != "ALL":
+            where_clauses.append("s.blood_group = ?")
+            params.append(blood_group)
+        if search_query and search_query.strip():
+            where_clauses.append(
+                "(LOWER(b.hospital_name) LIKE ? OR LOWER(b.hospital_address) LIKE ?)"
+            )
+            q = f"%{search_query.strip().lower()}%"
+            params.extend([q, q])
+
+        where_sql = " AND ".join(where_clauses)
+        sql = f"""
+            SELECT
+                b.hospital_code,
+                b.hospital_name,
+                b.hospital_type,
+                b.facility_type,
+                b.state_name,
+                b.district_name,
+                b.hospital_contact,
+                b.hospital_address,
+                MAX(s.source_updated_at) AS last_updated_at,
+                DATE_DIFF('day', MAX(s.source_updated_at), CURRENT_TIMESTAMP) AS days_since_update,
+                COALESCE(r.reliability_score, 50) AS reliability_score,
+                COALESCE(r.reliability_tier, 'SILVER') AS reliability_tier,
+                string_agg(s.blood_group || ': ' || CAST(s.units AS VARCHAR), ', ') AS stock_summary
+            FROM main_gold.dim_blood_banks b
+            JOIN main_gold.fct_stock_current s ON b.hospital_code = s.hospital_code
+            LEFT JOIN main_gold.mart_reliability_score r ON b.hospital_code = r.hospital_code
+            WHERE {where_sql}
+            GROUP BY
+                b.hospital_code, b.hospital_name, b.hospital_type, b.facility_type,
+                b.state_name, b.district_name, b.hospital_contact, b.hospital_address,
+                r.reliability_score, r.reliability_tier
+            ORDER BY days_since_update ASC NULLS LAST, reliability_score DESC
+            LIMIT ?;
+        """
+        params.append(limit)
+        rows = con.execute(sql, params).fetchall()
+
+        hospitals = []
+        for r in rows:
+            (
+                h_code,
+                h_name,
+                h_type,
+                f_type,
+                s_name,
+                d_name,
+                contact,
+                address,
+                updated_at,
+                days_ago,
+                score,
+                tier,
+                stock_str,
+            ) = r
+            lat, lng, is_approx = resolve_facility_lat_lng(h_code, s_name, d_name)
+            hospitals.append(
+                {
+                    "code": h_code,
+                    "name": h_name,
+                    "type": h_type,
+                    "facility": f_type,
+                    "state": s_name,
+                    "district": d_name,
+                    "contact": contact or "",
+                    "address": address or "",
+                    "component": component
+                    if component and component != "ALL"
+                    else "Packed Red Blood Cells",
+                    "stock": stock_str or "",
+                    "last_updated": str(updated_at)[:19] if updated_at else "",
+                    "days_stale": days_ago if days_ago is not None else 0,
+                    "reliability_score": score,
+                    "reliability_tier": tier,
+                    "lat": lat,
+                    "lng": lng,
+                    "is_approximate": is_approx,
+                }
+            )
+        return {"hospitals": hospitals, "total": len(hospitals)}
     finally:
         con.close()

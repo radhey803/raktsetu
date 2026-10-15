@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bloodgrid.ingestion.scraper import (
+from bloodlake.scraper import (
     CircuitBreakerError,
     fetch_district_data,
     scrape_nationwide,
@@ -128,11 +128,11 @@ async def test_fetch_district_data_retry_on_429_then_success():
 @pytest.mark.asyncio
 async def test_scrape_nationwide_with_targets():
     target_districts = [
-        {"state_name": "Gujarat", "state_id": "12", "district_name": "Anand", "district_id": "101"}
+        {"state_name": "Gujarat", "state_code": "12", "district_name": "Anand", "district_id": "101"}
     ]
 
     with patch(
-        "bloodgrid.ingestion.scraper.fetch_district_data", new_callable=AsyncMock
+        "bloodlake.scraper.fetch_district_data", new_callable=AsyncMock
     ) as mock_fetch:
         mock_fetch.return_value = (True, [{"hospital_name": "Anand Red Cross"}], None)
 
@@ -142,25 +142,22 @@ async def test_scrape_nationwide_with_targets():
 
         assert len(records) == 1
         assert meta["total_districts"] == 1
-        assert meta["successful_districts"] == 1
-        assert meta["failed_districts"] == 0
-        assert meta["error_rate_pct"] == 0.0
+        assert meta["success_count"] == 1
+        assert meta["failure_count"] == 0
+        assert meta["error_rate"] == 0.0
 
 
 @pytest.mark.asyncio
 async def test_scrape_nationwide_circuit_breaker():
     target_districts = [
-        {"state_name": "State A", "state_id": "1", "district_name": "Dist 1", "district_id": "1"},
-        {"state_name": "State A", "state_id": "1", "district_name": "Dist 2", "district_id": "2"},
-        {"state_name": "State A", "state_id": "1", "district_name": "Dist 3", "district_id": "3"},
-        {"state_name": "State A", "state_id": "1", "district_name": "Dist 4", "district_id": "4"},
-        {"state_name": "State A", "state_id": "1", "district_name": "Dist 5", "district_id": "5"},
+        {"state_name": "State A", "state_code": "1", "district_name": f"Dist {i}", "district_id": str(i)}
+        for i in range(1, 35)
     ]
 
     with patch(
-        "bloodgrid.ingestion.scraper.fetch_district_data", new_callable=AsyncMock
+        "bloodlake.scraper.fetch_district_data", new_callable=AsyncMock
     ) as mock_fetch:
-        # All 5 fail -> error rate = 100% > 20% threshold
+        # All fail -> error rate = 100% > 20% threshold after 30
         mock_fetch.return_value = (False, [], "Connection timed out")
 
         with pytest.raises(CircuitBreakerError):

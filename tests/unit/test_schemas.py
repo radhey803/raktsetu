@@ -1,14 +1,18 @@
 from datetime import datetime
 
-from bloodgrid.api.schemas.availability import (
-    BloodBankSummary,
-    ComponentStockItem,
-    FacilityAvailabilityResponse,
+from bloodlake.api.schemas import (
+    BloodAvailabilityItem,
+    BloodBankItem,
+    MetaResponse,
+    NationalSummary,
+    RareBloodItem,
+    StateSummaryItem,
+    TrendResponse,
 )
 
 
-def test_blood_bank_summary_schema():
-    summary = BloodBankSummary(
+def test_blood_bank_item_schema():
+    item = BloodBankItem(
         hospital_code=1001,
         hospital_name="Apex Blood Center",
         hospital_type="Government",
@@ -17,41 +21,49 @@ def test_blood_bank_summary_schema():
         district_name="Anand",
         hospital_contact="02692-223344",
         hospital_address="Station Road, Anand",
-        source_updated_at=datetime(2026, 10, 14, 12, 0, 0),
+        last_updated_at=datetime(2026, 10, 14, 12, 0, 0),
         reliability_score=92,
         reliability_tier="HIGH",
         latitude=22.5645,
         longitude=72.9289,
-        precision="exact",
+        is_approximate_location=True,
     )
-    assert summary.hospital_code == 1001
-    assert summary.reliability_tier == "HIGH"
-    assert summary.precision == "exact"
+    assert item.hospital_code == 1001
+    assert item.reliability_tier == "HIGH"
+    assert item.is_approximate_location is True
 
 
-def test_component_stock_item_schema():
-    item = ComponentStockItem(component_name="Packed Red Blood Cells", blood_group="O+", units=25)
-    assert item.units == 25
-    assert item.blood_group == "O+"
-
-
-def test_facility_availability_response_schema():
-    summary = BloodBankSummary(
+def test_blood_availability_item_schema():
+    item = BloodAvailabilityItem(
         hospital_code=1001,
         hospital_name="Apex Blood Center",
-        hospital_type="Government",
-        facility_type="Blood Bank",
         state_name="Gujarat",
         district_name="Anand",
-        hospital_contact="02692-223344",
-        hospital_address="Station Road, Anand",
+        component_name="Packed Red Blood Cells",
+        blood_group="O+",
+        units=25,
+        reliability_score=85,
+        reliability_tier="HIGH",
     )
-    resp = FacilityAvailabilityResponse(
-        facility=summary,
-        matched_component="Packed Red Blood Cells",
-        matched_blood_group="O+",
-        available_units=15,
-        all_components_stock={"Packed Red Blood Cells": {"O+": 15, "A+": 10}},
+    assert item.units == 25
+    assert item.blood_group == "O+"
+    assert item.component_name == "Packed Red Blood Cells"
+
+
+def test_meta_response_schema():
+    meta = MetaResponse(
+        project_name="eRaktKosh Blood Lakehouse",
+        project_subtitle="National Blood Inventory Intelligence & Emergency Finder",
+        version="1.0.0",
+        institution="CHARUSAT",
+        department="FCA - MCA",
+        academic_guide="Academic Mentor",
+        author="Radhey Gajera",
+        last_synced_at="2026-10-15 14:00:00",
+        total_facilities=4692,
+        data_source="eRaktKosh",
+        attribution="Academic project",
+        disclaimer="Call to confirm",
     )
-    assert resp.available_units == 15
-    assert "Not an official service" in resp.call_to_confirm_notice
+    assert meta.total_facilities == 4692
+    assert "CHARUSAT" in meta.institution

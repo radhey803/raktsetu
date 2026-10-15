@@ -1,48 +1,35 @@
 """
-Unit Tests: Warehouse Loader & Connection Utilities
-===================================================
-Tests bronze parquet ingestion, clean JSON serialization,
-pipeline run tracking, and zero-downtime atomic swap.
+Unit Tests: Warehouse Loader & Pipeline Tracking
+================================================
+Tests bronze parquet ingestion and pipeline run tracking.
 """
 
 import duckdb
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from bloodgrid.warehouse.connection import (
-    atomic_swap_serving_database,
+from bloodlake.pipeline import (
     get_last_successful_run,
-    init_warehouse_metadata_tables,
-    record_pipeline_run_finish,
-    record_pipeline_run_start,
+    init_metadata_tables,
+    ingest_landing_to_bronze,
+    record_run_finish,
+    record_run_start,
 )
-from bloodgrid.warehouse.loader import clean_to_json_str, ingest_landing_to_bronze
-
-
-def test_clean_to_json_str():
-    assert clean_to_json_str(None) == "{}"
-    assert clean_to_json_str("") == "{}"
-    assert clean_to_json_str({"A+": 10}) == '{"A+": 10}'
-    assert clean_to_json_str('{"B+": 5}') == '{"B+": 5}'
-    # Single-quoted string dict
-    assert clean_to_json_str("{'O-': 2}") == '{"O-": 2}'
 
 
 def test_warehouse_pipeline_run_tracking():
     con = duckdb.connect(":memory:")
-    init_warehouse_metadata_tables(con)
+    init_metadata_tables(con)
 
     run_id = "run_test_track_001"
-    record_pipeline_run_start(con, run_id)
+    record_run_start(con, run_id)
 
-    # Check status is running
     status = con.execute(
         "SELECT status FROM gold.pipeline_runs WHERE run_id = ?;", [run_id]
     ).fetchone()[0]
     assert status == "RUNNING"
 
-    # Finish run
-    record_pipeline_run_finish(
+    record_run_finish(
         con, run_id=run_id, status="SUCCESS", facilities_count=4681, tests_passed=True
     )
 
@@ -56,7 +43,6 @@ def test_warehouse_pipeline_run_tracking():
 def test_ingest_landing_to_bronze(tmp_path):
     parquet_path = tmp_path / "test_inventory.parquet"
 
-    # Create dummy parquet
     tbl = pa.Table.from_arrays(
         [
             pa.array(["run_001"]),
@@ -86,7 +72,7 @@ def test_ingest_landing_to_bronze(tmp_path):
             "hospital_address",
             "entry_date_raw",
             "components_raw",
-            "raw_payload",
+            "raw_payload_json",
         ],
     )
     pq.write_table(tbl, parquet_path)
@@ -101,22 +87,3 @@ def test_ingest_landing_to_bronze(tmp_path):
     assert len(bronze_rows) == 1
     assert bronze_rows[0][0] == "Hospital XYZ"
     assert bronze_rows[0][1] == "Anand"
-
-
-def test_atomic_swap_serving_database(tmp_path):
-    staging_file = tmp_path / "serving.duckdb.tmp"
-    staging_file.write_text("STAGING_DATABASE_CONTENT")
-
-    target_file = tmp_path / "serving.duckdb"
-    target_file.write_text("OLD_SERVING_CONTENT")
-
-    atomic_swap_serving_database(staging_file, target_file)
-
-    assert not staging_file.exists()
-    assert target_file.exists()
-    assert target_file.read_text() == "STAGING_DATABASE_CONTENT"
-
-    # Backup file created
-    backup_file = target_file.with_suffix(".duckdb.bak")
-    assert backup_file.exists()
-    assert backup_file.read_text() == "OLD_SERVING_CONTENT"

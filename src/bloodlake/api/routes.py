@@ -104,19 +104,14 @@ def get_national_summary(
         "SELECT COUNT(DISTINCT state_name) FROM main_gold.dim_blood_banks;"
     ).fetchone()[0]
 
-    fresh_row = con.execute("""
-        SELECT COUNT(*)
-        FROM main_gold.fct_blood_shortage_alerts
-        WHERE days_since_last_update <= 1;
+    freshness_row = con.execute("""
+        SELECT
+            COUNT(CASE WHEN DATE_DIFF('day', source_updated_at, CURRENT_TIMESTAMP) <= 1 THEN 1 END) as fresh_banks,
+            COUNT(CASE WHEN DATE_DIFF('day', source_updated_at, CURRENT_TIMESTAMP) > 30 THEN 1 END) as stale_banks
+        FROM main_gold.dim_blood_banks;
     """).fetchone()
-    fresh_banks_24h = fresh_row[0] if fresh_row else 0
-
-    stale_row = con.execute("""
-        SELECT COUNT(*)
-        FROM main_gold.fct_blood_shortage_alerts
-        WHERE days_since_last_update > 30;
-    """).fetchone()
-    stale_banks_30d = stale_row[0] if stale_row else 0
+    fresh_banks_24h = freshness_row[0] if freshness_row else 0
+    stale_banks_30d = freshness_row[1] if freshness_row else 0
 
     top_states_raw = con.execute("""
         SELECT state_name, COUNT(*) as count

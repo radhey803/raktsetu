@@ -38,6 +38,7 @@ packages = ["src/bloodlake"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = [".", "src"]
 python_files = ["test_*.py"]
 asyncio_mode = "auto"
 

@@ -299,3 +299,32 @@ def serve_index():
     if os.path.exists(index_file):
         return FileResponse(index_file)
     return {"message": "eRaktKosh API running. Create static/index.html to view dashboard."}
+
+@app.get("/dashboard")
+def serve_dashboard():
+    dash_file = os.path.join(WORKSPACE_DIR, "static", "dashboard.html")
+    if os.path.exists(dash_file):
+        return FileResponse(dash_file)
+    return {"message": "Dashboard available at /static/dashboard.html"}
+
+@app.get("/terms")
+def serve_terms():
+    terms_file = os.path.join(WORKSPACE_DIR, "static", "terms.html")
+    if os.path.exists(terms_file):
+        return FileResponse(terms_file)
+    return {"message": "Terms available at /static/terms.html"}
+
+@app.get("/privacy")
+def serve_privacy():
+    priv_file = os.path.join(WORKSPACE_DIR, "static", "privacy.html")
+    if os.path.exists(priv_file):
+        return FileResponse(priv_file)
+    return {"message": "Privacy available at /static/privacy.html"}
+
+@app.get("/disclaimer")
+def serve_disclaimer():
+    disc_file = os.path.join(WORKSPACE_DIR, "static", "disclaimer.html")
+    if os.path.exists(disc_file):
+        return FileResponse(disc_file)
+    return {"message": "Disclaimer available at /static/disclaimer.html"}
+

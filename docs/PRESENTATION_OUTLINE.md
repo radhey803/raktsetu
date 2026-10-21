@@ -1,8 +1,8 @@
 # eRaktKosh Blood Lakehouse: Viva Presentation & Live Demo Script
 
-**Institution**: Charotar University of Science and Technology (CHARUSAT)  
-**Department**: Department of Computer Applications (MCA Program)  
-**Course Code / Project**: MCA Mini Project (800 Marks)  
+**Context**: Academic Research Project  
+**Department**: Academic Research Team  
+**Course Code / Project**: Academic Project (800 Marks)  
 **Title**: eRaktKosh Blood Lakehouse: Modern Lakehouse Architecture for National Blood Inventory Intelligence & Emergency Triage  
 **Time Limit**: 15 Minutes (8 Minutes Slides + 7 Minutes Live System Demo)  
 
@@ -15,7 +15,7 @@
 - **Sub-header**: National Blood Inventory Analytics & Emergency Finder via In-Process OLAP Lakehouse Architecture
 - **Credentials**:
   - Student Name: MCA Final Year Student Team
-  - Institution: Charotar University of Science and Technology (CHARUSAT)
+  - Institution: Academic Research Project
   - Department: Department of Computer Applications
   - Academic Guide: MCA Faculty Mentor
   - Evaluation: Academic Mini Project (800 Marks)
@@ -216,7 +216,7 @@
 
 | Time | Phase | Target Screen / Tool | Action & Speaker Script |
 | :---: | :--- | :--- | :--- |
-| **0:00 - 1:00** | **System Startup & Health Verification** | Terminal / Browser | 1. Show the terminal running `make run`.<br>2. Open browser at `http://localhost:8000`.<br>3. Point to the **Status: Live** badge and the **Academic Attribution** in the header.<br>*"As you can see, our system is running locally at localhost:8000. The header displays our project attribution to CHARUSAT and MoHFW."* |
+| **0:00 - 1:00** | **System Startup & Health Verification** | Terminal / Browser | 1. Show the terminal running `make run`.<br>2. Open browser at `http://localhost:8000`.<br>3. Point to the **Status: Live** badge and the **Academic Attribution** in the header.<br>*"As you can see, our system is running locally at localhost:8000. The header displays our project attribution to Academic Project and MoHFW."* |
 | **1:00 - 2:30** | **Emergency Availability Search** | Dashboard Hero & Filter Bar | 1. Select State: **Gujarat**, District: **Anand**.<br>2. Select Component: **Packed Red Blood Cells**, Blood Group: **O-**.<br>3. Click **Search Inventory**.<br>4. Inspect the returned facility card: point to **Reliability Score: 90/100 (HIGH)**, the **Freshness status**, and the **approximate location disclaimer**.<br>*"In under 15 milliseconds, the DuckDB query returns verified facilities in Anand. Notice the 90/100 Reliability Score badge, confirming this facility regularly reports complete, fresh data."* |
 | **2:30 - 3:30** | **Interactive Map & Geographic Honesty** | Results Grid -> Map Toggle | 1. Click **Map View** toggle.<br>2. Show the Leaflet map rendered with Carto Positron tiles.<br>3. Click a pin marker: show popup displaying available blood groups, phone number, and 'call to confirm' notice.<br>*"Our map runs without paid Google Maps APIs using Carto Positron. In accordance with our honesty contract, pins explicitly indicate district-level centroid precision."* |
 | **3:30 - 4:30** | **Historical Trend Modal & Zero-Fake-Data Proof** | Facility Card -> 7-Day History Modal | 1. Click **7-Day History** on a card.<br>2. Modal opens with Chart.js line charts.<br>3. Point out the honest informational message when fewer than 2 scrape dates exist: *"Trend builds up with each data refresh."*<br>*"This modal proves our Zero Fake Data commitment. Rather than faking 30 days of data, our system honestly informs the evaluator that history builds with subsequent scrapes."* |

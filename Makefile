@@ -4,7 +4,7 @@ SHELL := /bin/bash
 
 help:
 	@echo "========================================================================"
-	@echo "🩸 eRaktKosh Blood Lakehouse: Makefile (MCA Mini Project, CHARUSAT)"
+	@echo "🩸 eRaktKosh Blood Lakehouse: Makefile (Academic Project)"
 	@echo "========================================================================"
 	@echo "make run           - Run FastAPI server with hot-reload (http://localhost:8000)"
 	@echo "make demo          - Run test assertions and launch live demo server"
@@ -80,6 +80,14 @@ pipeline:
 
 docs:
 	uv run dbt docs generate --project-dir dbt --profiles-dir dbt
+	@echo "========================================================================"
+	@echo "📚 dbt docs generated in dbt/target!"
+	@echo "Option 1 (Direct in app): Visit http://localhost:8000/dbt-docs/"
+	@echo "Option 2 (Standalone):    Run 'make serve-docs' (http://localhost:8080)"
+	@echo "========================================================================"
+
+serve-docs:
+	uv run dbt docs serve --project-dir dbt --profiles-dir dbt --port 8080
 
 clean:
 	rm -rf .pytest_cache .ruff_cache .coverage htmlcov __pycache__ dbt/target dbt/logs logs/

@@ -15,6 +15,11 @@ let currentHospitalsData = [];
 let currentBounds = null;
 let lastFocusedElement = null;
 
+// User Geolocation State (User-Initiated Only, Zero Remote Logging)
+let userLat = null;
+let userLng = null;
+let userLocationPrecision = 'none';
+
 // Pagination state
 let currentPage = 1;
 let pageSize = 9; // Default 9 cards per page (3x3 grid)
@@ -24,13 +29,20 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function initDashboard() {
+    registerServiceWorker();
     setupNetworkAndFreshnessWatchers();
     loadSummaryKPIs();
     await loadLocations();
+    readURLParams();
     setupEventListeners();
+    setupEmergencyMode();
+    setupDonorModule();
+    setupExportButtons();
+    setupGeolocationButtons();
     searchHospitals();
     loadRareBloodInventory();
     loadDistrictShortages();
+    loadDataHealthDashboard();
     updateLiveSyncTime();
     checkSyncFreshness();
 }
@@ -370,15 +382,6 @@ function setupEventListeners() {
         });
     }
 
-    // Language switcher buttons
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (typeof setLanguage === 'function') {
-                setLanguage(btn.dataset.lang);
-            }
-        });
-    });
-
     // District shortage state filter listener
     const shortageStateFilter = document.getElementById('shortage-state-filter');
     if (shortageStateFilter) {
@@ -464,13 +467,22 @@ async function searchHospitals() {
     `).join('');
 
     try {
+        const sortVal = document.getElementById('sort-select')?.value || 'freshness';
         const params = new URLSearchParams();
         if (state && state !== 'ALL') params.append('state', state);
         if (district && district !== 'ALL') params.append('district', district);
         if (selectedComponent) params.append('component', selectedComponent);
         if (selectedBloodGroup) params.append('blood_group', selectedBloodGroup);
         if (query) params.append('search_query', query);
+        if (sortVal) params.append('sort', sortVal);
+        if (userLat && userLng) {
+            params.append('lat', userLat);
+            params.append('lng', userLng);
+        }
         params.append('limit', '500');
+
+        // Sync query parameters to browser address bar (Phase 7 URL state sync)
+        syncURLParams(state, district, selectedComponent, selectedBloodGroup);
 
         const res = await fetch(`/api/search?${params.toString()}`);
         if (res.status === 429) {
@@ -488,14 +500,27 @@ async function searchHospitals() {
         }
         const data = await res.json();
 
-        // Sort data: stale banks (>30d) sorted last
+        // Sort data based on selected priority
         const hospitals = data.hospitals || [];
-        hospitals.sort((a, b) => {
-            const aStale = (a.days_stale || 0) > 30 ? 1 : 0;
-            const bStale = (b.days_stale || 0) > 30 ? 1 : 0;
-            if (aStale !== bStale) return aStale - bStale;
-            return (a.days_stale || 0) - (b.days_stale || 0);
-        });
+        if (sortVal === 'distance') {
+            hospitals.sort((a, b) => {
+                const distA = a.distance_km !== undefined && a.distance_km !== null ? a.distance_km : 999999;
+                const distB = b.distance_km !== undefined && b.distance_km !== null ? b.distance_km : 999999;
+                return distA - distB;
+            });
+        } else if (sortVal === 'units') {
+            hospitals.sort((a, b) => (b.units || 0) - (a.units || 0));
+        } else if (sortVal === 'reliability') {
+            hospitals.sort((a, b) => (b.reliability_score || 50) - (a.reliability_score || 50));
+        } else {
+            // Default: Freshness (stale banks >30d sorted last)
+            hospitals.sort((a, b) => {
+                const aStale = (a.days_stale || 0) > 30 ? 1 : 0;
+                const bStale = (b.days_stale || 0) > 30 ? 1 : 0;
+                if (aStale !== bStale) return aStale - bStale;
+                return (a.days_stale || 0) - (b.days_stale || 0);
+            });
+        }
 
         countEl.textContent = hospitals.length.toLocaleString('en-IN');
         currentHospitalsData = hospitals;
@@ -757,11 +782,23 @@ function createHospitalCard(h) {
     }).join('');
 
     const score = h.reliability_score !== undefined ? h.reliability_score : 50;
-    const tier = (h.reliability_tier || (score >= 80 ? 'HIGH' : score >= 50 ? 'MEDIUM' : 'LOW')).toLowerCase();
-    const relBadge = `<span class="badge-reliability tier-${tier}">
+    const tier = (h.reliability_label || h.reliability_tier || (score >= 75 ? 'HIGH' : score >= 40 ? 'MEDIUM' : 'LOW')).toLowerCase();
+    const relBadge = `<button type="button" class="badge-reliability tier-${tier}" onclick="openTrustScoreModal()" title="View Trust Score calculation methodology" style="cursor: pointer; border: 1px solid; font-family: inherit;">
         <svg class="icon" style="width: 12px; height: 12px;"><use href="#icon-shield-check"></use></svg>
-        <span>Reliability ${score}/100</span>
-    </span>`;
+        <span>Trust ${score}/100</span>
+    </button>`;
+
+    const lowWarningHTML = (score < 40 || tier === 'low') ? `
+        <div class="low-reliability-warning" role="alert">
+            <svg class="icon"><use href="#icon-alert-triangle"></use></svg>
+            <span>Low reliability, call to confirm before travelling</span>
+        </div>
+    ` : '';
+
+    const distBadge = (h.distance_km !== undefined && h.distance_km !== null) 
+        ? `<strong style="color: var(--ink-900); margin-left: 4px;">• approx. ${Number(h.distance_km).toFixed(1)} km</strong>`
+        : '';
+    const locLabel = h.location_precision === 'exact' ? '• verified facility location' : '• approximate location, district level';
 
     return `
         <article class="hospital-card ${isStale ? 'card-stale' : ''}">
@@ -776,7 +813,7 @@ function createHospitalCard(h) {
             <div class="card-meta">
                 <div class="meta-line">
                     <svg class="icon"><use href="#icon-map-pin"></use></svg>
-                    <span>${escapeHTML(h.district)}, ${escapeHTML(h.state)} <span class="loc-approx-badge">• approximate location, district level</span></span>
+                    <span>${escapeHTML(h.district)}, ${escapeHTML(h.state)} ${distBadge} <span class="loc-approx-badge">${locLabel}</span></span>
                 </div>
                 <div class="meta-line">
                     <span class="freshness-line">
@@ -784,6 +821,8 @@ function createHospitalCard(h) {
                         <span>${escapeHTML(freshnessText)}</span>
                     </span>
                 </div>
+
+                ${lowWarningHTML}
 
                 <!-- 4x2 Stock Grid -->
                 <div class="stock-table-card">
@@ -1273,7 +1312,7 @@ async function loadRareBloodInventory() {
     if (!tbody) return;
 
     try {
-        const res = await fetch('/api/rare');
+        const res = await fetch('/api/v1/rare');
         const items = await res.json();
 
         if (!items || items.length === 0) {
@@ -1305,45 +1344,49 @@ async function loadRareBloodInventory() {
     }
 }
 
-async function loadDistrictShortages(stateFilter = 'ALL') {
+async function loadDistrictShortages() {
+    const stateFilter = document.getElementById('shortage-state-filter')?.value || 'ALL';
+    const groupFilter = document.getElementById('shortage-group-filter')?.value || 'O-';
+    const compFilter = document.getElementById('shortage-comp-filter')?.value || 'Packed Red Blood Cells';
     const tbody = document.getElementById('shortages-tbody');
     if (!tbody) return;
 
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Querying mart_district_status...</td></tr>';
+
     try {
-        let url = '/api/shortages?blood_group=O-&component=Packed+Red+Blood+Cells';
-        if (stateFilter && stateFilter !== 'ALL') {
-            url += `&state=${encodeURIComponent(stateFilter)}`;
-        }
-        const res = await fetch(url);
+        const params = new URLSearchParams();
+        if (stateFilter && stateFilter !== 'ALL') params.append('state', stateFilter);
+        if (groupFilter) params.append('blood_group', groupFilter);
+        if (compFilter) params.append('component', compFilter);
+
+        const res = await fetch(`/api/v1/shortages?${params.toString()}`);
         const items = await res.json();
 
         if (!items || items.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No critical shortages detected in selected region.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">No critical shortages detected in selected region.</td></tr>`;
             return;
         }
 
         tbody.innerHTML = items.map(d => {
-            let severityBadge = '<span class="tag tag-govt">High Deficit</span>';
-            if (d.shortage_status === 'MODERATE_SHORTAGE') {
-                severityBadge = '<span class="tag tag-priv">Moderate</span>';
-            } else if (d.shortage_status === 'NORMAL') {
-                severityBadge = '<span class="tag tag-vol">Normal</span>';
-            }
+            const severity = d.severity_score !== undefined ? d.severity_score : 10;
+            const statusClass = severity >= 75 ? 'tag-critical' : severity >= 40 ? 'tag-low' : 'tag-instock';
 
             return `
                 <tr>
                     <td><strong>${escapeHTML(d.district_name)}</strong></td>
                     <td>${escapeHTML(d.state_name)}</td>
-                    <td><code class="code-inline">${escapeHTML(d.blood_group)} ${escapeHTML(d.component_name)}</code></td>
+                    <td><span class="stock-cell-group" style="font-weight: 700; color: var(--ink-900);">${escapeHTML(d.blood_group)}</span></td>
                     <td class="text-right" style="font-weight: 700; color: ${d.total_units === 0 ? 'var(--stock-critical)' : 'var(--stock-low)'};">${d.total_units.toLocaleString('en-IN')}</td>
-                    <td class="text-right">${d.reporting_banks || d.total_reporting_banks || 1}</td>
-                    <td>${severityBadge}</td>
+                    <td class="text-right">${Number(d.total_reporting_banks || 1).toLocaleString('en-IN')}</td>
+                    <td class="text-right text-critical">${Number(d.banks_with_zero || 0).toLocaleString('en-IN')}</td>
+                    <td class="text-right"><code>${severity}/100</code></td>
+                    <td><span class="tag ${statusClass}">${escapeHTML(d.shortage_status || 'Adequate')}</span></td>
                 </tr>
             `;
         }).join('');
     } catch (err) {
         console.error('Failed to load district shortages:', err);
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Unable to load district shortage radar.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Unable to load district shortage radar.</td></tr>`;
     }
 }
 
@@ -1359,20 +1402,19 @@ function setupNetworkAndFreshnessWatchers() {
 
 async function checkSyncFreshness() {
     try {
-        const res = await fetch('/v1/meta');
+        const res = await fetch('/api/v1/health/dashboard');
         if (res.ok) {
-            const meta = await res.json();
-            if (meta.sync_recency && meta.sync_recency.hours_since_sync > 12) {
-                showStaleDataBanner(meta.sync_recency.hours_since_sync);
+            const data = await res.json();
+            if (data.is_stale_warning) {
+                const staleBanner = document.getElementById('stale-sync-banner');
+                const staleHours = document.getElementById('stale-sync-hours');
+                if (staleBanner) staleBanner.classList.remove('hidden');
+                if (staleHours) staleHours.textContent = data.sync_age_hours ? Number(data.sync_age_hours).toFixed(1) : '13';
             }
         }
     } catch (_) {
         // Silently preserve offline resilience
     }
-}
-
-function showStaleDataBanner(hours) {
-    showGlobalNoticeBanner(`Notice: Data may be slightly stale. Upstream registry has not published an update in over ${Math.round(hours)} hours.`);
 }
 
 function showGlobalNoticeBanner(msg) {
@@ -1395,5 +1437,567 @@ function hideGlobalNoticeBanner() {
     const b = document.getElementById('global-stale-banner');
     if (b) b.style.display = 'none';
 }
+
+// ==============================================================================
+// PHASE 1: TRUST SCORE MODAL HANDLERS
+// ==============================================================================
+function openTrustScoreModal() {
+    const modal = document.getElementById('trust-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        const closeBtn = document.getElementById('trust-close-btn');
+        if (closeBtn) closeBtn.focus();
+    }
+}
+
+function closeTrustScoreModal() {
+    const modal = document.getElementById('trust-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+}
+
+// ==============================================================================
+// PHASE 2 & PHASE 3: SMART EMERGENCY MODE & GEOLOCATION
+// ==============================================================================
+function setupEmergencyMode() {
+    const searchBtn = document.getElementById('emergency-search-btn');
+    const groupSelect = document.getElementById('emergency-patient-group');
+    const stateSelect = document.getElementById('emergency-state');
+    const distSelect = document.getElementById('emergency-district');
+
+    if (groupSelect) {
+        groupSelect.addEventListener('change', checkEmergencyClinicalWarning);
+    }
+
+    if (searchBtn) {
+        searchBtn.addEventListener('click', searchEmergencyRecommendations);
+    }
+
+    // Populate emergency state/district from locationsMap
+    if (stateSelect && Object.keys(locationsMap).length > 0) {
+        populateEmergencyLocations();
+    }
+}
+
+function populateEmergencyLocations() {
+    const stateSelect = document.getElementById('emergency-state');
+    const distSelect = document.getElementById('emergency-district');
+    if (!stateSelect || !distSelect) return;
+
+    const currentSelectedState = stateSelect.value || 'Gujarat';
+    stateSelect.innerHTML = Object.keys(locationsMap).sort().map(s => `
+        <option value="${escapeHTML(s)}" ${s === currentSelectedState ? 'selected' : ''}>${escapeHTML(s)}</option>
+    `).join('');
+
+    function updateDistricts() {
+        const districts = locationsMap[stateSelect.value] || [];
+        distSelect.innerHTML = districts.sort().map(d => `
+            <option value="${escapeHTML(d)}">${escapeHTML(d)}</option>
+        `).join('');
+    }
+
+    stateSelect.addEventListener('change', updateDistricts);
+    updateDistricts();
+}
+
+function checkEmergencyClinicalWarning() {
+    const grp = document.getElementById('emergency-patient-group')?.value || '';
+    const alertBox = document.getElementById('emergency-clinical-alert');
+    const alertMsg = document.getElementById('emergency-alert-msg');
+    const alertLink = document.getElementById('emergency-alert-link');
+    if (!alertBox || !alertMsg) return;
+
+    if (grp.includes('Bombay') || grp.includes('Oh')) {
+        alertBox.classList.remove('hidden');
+        alertMsg.textContent = "CRITICAL BOMBAY: Bombay Phenotype (Oh) lacks the fundamental H-antigen and can ONLY receive homologous Bombay blood. Transfusion of standard O, A, B, or AB cells is lethal.";
+        if (alertLink) {
+            alertLink.href = "https://nbtc.mohfw.gov.in/";
+            alertLink.textContent = "NBTC India Rare Phenotype Management Guidelines";
+        }
+    } else if (grp.endsWith('-')) {
+        alertBox.classList.remove('hidden');
+        alertMsg.textContent = `Rh-Negative Protocol: ${grp} is Rh-negative. Red blood cells MUST be Rh-negative to prevent lethal anti-D alloimmunization.`;
+        if (alertLink) {
+            alertLink.href = "https://nbtc.mohfw.gov.in/";
+            alertLink.textContent = "NBTC Blood Transfusion Guidelines (MoHFW)";
+        }
+    } else {
+        alertBox.classList.add('hidden');
+    }
+}
+
+async function searchEmergencyRecommendations() {
+    const group = document.getElementById('emergency-patient-group')?.value || 'O-';
+    const component = document.getElementById('emergency-component')?.value || 'Packed Red Blood Cells';
+    const state = document.getElementById('emergency-state')?.value || 'Gujarat';
+    const district = document.getElementById('emergency-district')?.value || 'Anand';
+    const listSection = document.getElementById('emergency-call-list-section');
+    const cardsGrid = document.getElementById('emergency-cards-grid');
+    const compatPills = document.getElementById('emergency-compat-pills');
+
+    if (!listSection || !cardsGrid) return;
+
+    checkEmergencyClinicalWarning();
+    cardsGrid.innerHTML = '<div class="text-center py-4 text-muted">Calculating multi-pillar emergency rankings...</div>';
+    listSection.classList.remove('hidden');
+
+    try {
+        const params = new URLSearchParams();
+        params.append('patient_blood_group', group);
+        params.append('component', component);
+        if (state && state !== 'ALL') params.append('state', state);
+        if (district && district !== 'ALL') params.append('district', district);
+        if (userLat && userLng) {
+            params.append('lat', userLat);
+            params.append('lng', userLng);
+        }
+
+        const res = await fetch(`/api/v1/emergency?${params.toString()}`);
+        const data = await res.json();
+
+        // Render compatible groups
+        if (compatPills) {
+            compatPills.innerHTML = (data.compatible_donor_groups || []).map(g => `
+                <span class="compat-pill">${escapeHTML(g)}</span>
+            `).join(' ');
+        }
+
+        if (!data.top_facilities || data.top_facilities.length === 0) {
+            cardsGrid.innerHTML = `
+                <div class="state-message-card" style="padding: 1.5rem; background: var(--surface);">
+                    <div class="state-icon-wrap" style="color: var(--stock-low);"><svg class="icon"><use href="#icon-alert-triangle"></use></svg></div>
+                    <h3 class="state-title">No compatible units currently recorded in ${escapeHTML(district)}, ${escapeHTML(state)}</h3>
+                    <p class="state-sub">Zero units found for compatible donor groups (${(data.compatible_donor_groups || []).join(', ')}). Try searching neighbouring districts or telephone the State Health Helpline at 104.</p>
+                </div>
+            `;
+            return;
+        }
+
+        cardsGrid.innerHTML = data.top_facilities.map(f => {
+            const cleanPhone = (f.hospital_contact || '').replace(/[^0-9+]/g, '');
+            const telHref = cleanPhone ? `tel:${cleanPhone}` : '#';
+            const callBtn = cleanPhone ? `
+                <a href="${telHref}" class="emergency-tel-btn">
+                    <svg class="icon"><use href="#icon-phone"></use></svg>
+                    <span>CALL: ${escapeHTML(cleanPhone.slice(0, 15))}</span>
+                </a>
+            ` : `<span class="emergency-sub-btn text-muted">No phone listed</span>`;
+
+            const breakdownHTML = Object.entries(f.units_by_group || {}).map(([grp, qty]) => `
+                <span class="emergency-unit-badge">${escapeHTML(grp)}: ${qty} units</span>
+            `).join(' ');
+
+            const mapsQuery = encodeURIComponent(`${f.hospital_name}, ${f.district_name}, ${f.state_name}`);
+            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+            const distText = f.distance_km ? ` &bull; <strong>approx. ${Number(f.distance_km).toFixed(1)} km</strong>` : '';
+
+            return `
+                <article class="emergency-card">
+                    <div>
+                        <h3 class="emergency-card-title">${escapeHTML(f.hospital_name)}</h3>
+                        <div class="emergency-card-sub">
+                            ${escapeHTML(f.district_name)}, ${escapeHTML(f.state_name)}${distText}
+                            <span class="loc-approx-badge">• approximate location, district centroid</span>
+                        </div>
+                        <div class="emergency-breakdown-row">
+                            ${breakdownHTML}
+                            <button type="button" class="badge-reliability tier-${(f.reliability_label || 'medium').toLowerCase()}" onclick="openTrustScoreModal()" style="cursor: pointer; border: 1px solid; font-family: inherit;">
+                                <svg class="icon" style="width: 12px; height: 12px;"><use href="#icon-shield-check"></use></svg>
+                                <span>Trust ${f.reliability_score}/100</span>
+                            </button>
+                        </div>
+                        <div style="margin-top: 0.35rem;">
+                            <span class="emergency-why-badge">Algorithm Match: ${escapeHTML(f.why_ranked_here)}</span>
+                        </div>
+                    </div>
+
+                    <div class="emergency-call-actions">
+                        ${callBtn}
+                        <div class="emergency-sub-actions">
+                            <a href="${mapsUrl}" target="_blank" rel="noopener" class="emergency-sub-btn" title="Open Google Maps Directions">
+                                <svg class="icon"><use href="#icon-navigation"></use></svg>
+                                <span>Directions</span>
+                            </a>
+                            <button type="button" class="emergency-sub-btn" onclick="copyEmergencyDispatchText('${escapeQuotes(f.hospital_name)}', '${escapeQuotes(group)}', '${escapeQuotes(f.hospital_contact)}', '${escapeQuotes(mapsUrl)}')" title="Copy Dispatch Message">
+                                <svg class="icon"><use href="#icon-share-2"></use></svg>
+                                <span>Copy SOS</span>
+                            </button>
+                        </div>
+                    </div>
+                </article>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error('Failed to query emergency mode:', err);
+        cardsGrid.innerHTML = `<div class="text-critical p-4">Error fetching emergency availability: ${escapeHTML(err.message)}</div>`;
+    }
+}
+
+function copyEmergencyDispatchText(hospName, bloodGroup, contact, mapUrl) {
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}, ${now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
+    const text = `🚨 *EMERGENCY BLOOD DISPATCH REQUIRED*\n` +
+        `Patient Group Needed: *${bloodGroup}*\n` +
+        `Verified Facility: *${hospName}*\n` +
+        `Registry Contact: ${contact}\n` +
+        `Directions: ${mapUrl}\n` +
+        `Status timestamp: as of ${timeStr}\n` +
+        `Sourced from eRaktKosh Lakehouse. Call facility immediately to confirm before travelling.`;
+
+    navigator.clipboard.writeText(text).then(() => {
+        alert("Emergency dispatch message copied to clipboard!");
+    }).catch(() => {
+        alert(text);
+    });
+}
+
+// ==============================================================================
+// PHASE 3: GEOLOCATION CONTROLLER
+// ==============================================================================
+function setupGeolocationButtons() {
+    const geoBtn = document.getElementById('geo-location-btn');
+    const emergencyLocateBtn = document.getElementById('emergency-locate-btn');
+
+    if (geoBtn) {
+        geoBtn.addEventListener('click', () => requestUserLocation(geoBtn, 'Near me'));
+    }
+    if (emergencyLocateBtn) {
+        emergencyLocateBtn.addEventListener('click', () => requestUserLocation(emergencyLocateBtn, 'Use my location'));
+    }
+}
+
+function requestUserLocation(btnEl, defaultLabel) {
+    if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser.');
+        return;
+    }
+
+    const labelSpan = btnEl.querySelector('span');
+    if (labelSpan) labelSpan.textContent = 'Locating...';
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            userLat = position.coords.latitude;
+            userLng = position.coords.longitude;
+            userLocationPrecision = 'device_gps';
+
+            if (labelSpan) labelSpan.textContent = 'Location active';
+            btnEl.classList.add('active');
+
+            // Set sort select to distance
+            const sortSelect = document.getElementById('sort-select');
+            if (sortSelect) sortSelect.value = 'distance';
+
+            // Refresh search with distance
+            searchHospitals();
+        },
+        (error) => {
+            console.warn('Geolocation denied or unavailable:', error.message);
+            if (labelSpan) labelSpan.textContent = defaultLabel;
+            alert('Location access denied or unavailable. Fallback: Select your state and district from the dropdown.');
+        },
+        { timeout: 8000, maximumAge: 60000 }
+    );
+}
+
+// ==============================================================================
+// PHASE 6: CLIENT-SIDE DONOR ELIGIBILITY & ASSISTANCE
+// ==============================================================================
+function setupDonorModule() {
+    const form = document.getElementById('donor-form');
+    if (form) {
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            evaluateDonorEligibility();
+        });
+    }
+
+    // Set default last donation date to 100 days ago
+    const lastDateInput = document.getElementById('donor-last-date');
+    if (lastDateInput && !lastDateInput.value) {
+        const d = new Date();
+        d.setDate(d.getDate() - 100);
+        lastDateInput.value = d.toISOString().split('T')[0];
+    }
+}
+
+function evaluateDonorEligibility() {
+    const age = parseInt(document.getElementById('donor-age')?.value, 10);
+    const weight = parseFloat(document.getElementById('donor-weight')?.value);
+    const gender = document.getElementById('donor-gender')?.value || 'male';
+    const lastDateVal = document.getElementById('donor-last-date')?.value;
+    const hasTattoo = document.querySelector('input[name="screen_tattoo"]:checked')?.value === 'yes';
+    const hasSurgery = document.querySelector('input[name="screen_surgery"]:checked')?.value === 'yes';
+    const hasIllness = document.querySelector('input[name="screen_illness"]:checked')?.value === 'yes';
+    const hasLowHb = document.querySelector('input[name="screen_hb"]:checked')?.value === 'no';
+
+    const statusTag = document.getElementById('donor-status-tag');
+    const heading = document.getElementById('donor-result-heading');
+    const explanation = document.getElementById('donor-result-explanation');
+    const nextDateVal = document.getElementById('donor-next-date-val');
+
+    if (!statusTag || !heading || !explanation || !nextDateVal) return;
+
+    const reasons = [];
+
+    if (isNaN(age) || age < 18) reasons.push("Under minimum legal age requirement (must be at least 18 years old).");
+    if (age > 65) reasons.push("Over maximum age for regular voluntary blood donation (guidelines recommend <=65 years).");
+    if (isNaN(weight) || weight < 45) reasons.push("Below minimum body weight of 45 kg required for safe 350 mL whole blood collection.");
+    if (hasLowHb) reasons.push("Hemoglobin is below the clinical threshold of 12.5 g/dL (tested on-site prior to donation).");
+    if (hasTattoo) reasons.push("Tattoo, piercing, or acupuncture within past 6 months requires temporary deferral (hepatitis safety window).");
+    if (hasSurgery) reasons.push("Major surgery or blood transfusion within past 6 months requires 6-month temporary deferral.");
+    if (hasIllness) reasons.push("Current fever, active infection, or antibiotic intake requires complete clinical resolution.");
+
+    // Check donation gap
+    const intervalDays = gender === 'female' ? 120 : 90;
+    let daysRemaining = 0;
+
+    if (lastDateVal) {
+        const lastDonation = new Date(lastDateVal);
+        const today = new Date();
+        const diffMs = today - lastDonation;
+        const daysSinceLast = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        if (daysSinceLast < intervalDays) {
+            daysRemaining = intervalDays - daysSinceLast;
+            reasons.push(`Minimum gap between whole blood donations is ${intervalDays} days for ${gender} donors (NBTC India). Only ${daysSinceLast} days have elapsed.`);
+        }
+    }
+
+    if (reasons.length === 0) {
+        statusTag.className = 'tag tag-instock';
+        statusTag.textContent = 'Likely Eligible';
+        heading.textContent = 'You appear eligible to donate blood!';
+        explanation.textContent = 'Based on the entered criteria, you meet the standard voluntary donor selection parameters published by the National Blood Transfusion Council (NBTC India).';
+        nextDateVal.textContent = 'Ready to donate today';
+    } else {
+        statusTag.className = 'tag tag-critical';
+        statusTag.textContent = 'Temporarily Deferred';
+        heading.textContent = 'Not eligible to donate right now';
+        explanation.innerHTML = `<strong>Identified Deferral Reasons:</strong><ul style="margin-top: 0.35rem; margin-left: 1.25rem;">${reasons.map(r => `<li>${escapeHTML(r)}</li>`).join('')}</ul>`;
+        if (daysRemaining > 0) {
+            const nextDate = new Date();
+            nextDate.setDate(nextDate.getDate() + daysRemaining);
+            nextDateVal.textContent = `Eligible on ${nextDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} (in ${daysRemaining} days)`;
+        } else {
+            nextDateVal.textContent = 'Please consult a blood centre medical officer';
+        }
+    }
+
+    loadWhereToDonateSuggestions();
+}
+
+function loadWhereToDonateSuggestions() {
+    const container = document.getElementById('donor-suggested-banks');
+    if (!container) return;
+
+    const district = document.getElementById('district-select')?.value || 'Anand';
+    const lowStockBanks = currentHospitalsData.filter(h => {
+        // Find facilities with low PRBC or O- stock
+        return (h.units !== undefined && h.units <= 5);
+    }).slice(0, 3);
+
+    if (lowStockBanks.length === 0) {
+        container.innerHTML = `
+            <div class="text-muted text-sm py-2">
+                All reporting blood centres in the current search query currently have adequate inventory levels.
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = lowStockBanks.map(h => {
+        const cleanPhone = (h.contact || '').replace(/[^0-9+]/g, '');
+        const telHref = cleanPhone ? `tel:${cleanPhone}` : '#';
+        const mapsQuery = encodeURIComponent(`${h.name}, ${h.district}, ${h.state}`);
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+
+        return `
+            <div style="background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.625rem 0.75rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+                <div>
+                    <strong style="font-size: 0.8125rem; color: var(--ink-900); display: block;">${escapeHTML(h.name)}</strong>
+                    <span style="font-size: 0.75rem; color: var(--stock-low);">Low stock reserve: ${h.units !== undefined ? h.units : 2} units</span>
+                </div>
+                <div style="display: flex; gap: 0.35rem;">
+                    ${cleanPhone ? `<a href="${telHref}" class="btn-outline" style="height: 26px; font-size: 0.6875rem; padding: 0 0.5rem;">Call</a>` : ''}
+                    <a href="${mapsUrl}" target="_blank" rel="noopener" class="btn-outline" style="height: 26px; font-size: 0.6875rem; padding: 0 0.5rem;">Directions</a>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ==============================================================================
+// PHASE 7: EXPORT & URL STATE SYNC
+// ==============================================================================
+function setupExportButtons() {
+    const exportAvailBtn = document.getElementById('export-availability-btn');
+    if (exportAvailBtn) {
+        exportAvailBtn.addEventListener('click', () => {
+            const state = document.getElementById('state-select')?.value || 'ALL';
+            const district = document.getElementById('district-select')?.value || 'ALL';
+            const component = document.getElementById('component-select')?.value || 'Packed Red Blood Cells';
+            const params = new URLSearchParams();
+            if (state && state !== 'ALL') params.append('state', state);
+            if (district && district !== 'ALL') params.append('district', district);
+            if (component && component !== 'ALL') params.append('component', component);
+            if (selectedBloodGroup) params.append('blood_group', selectedBloodGroup);
+
+            window.location.href = `/api/v1/export/availability.csv?${params.toString()}`;
+        });
+    }
+
+    const exportShortagesBtn = document.getElementById('export-shortages-btn');
+    if (exportShortagesBtn) {
+        exportShortagesBtn.addEventListener('click', () => {
+            const state = document.getElementById('shortage-state-filter')?.value || 'ALL';
+            const group = document.getElementById('shortage-group-filter')?.value || 'O-';
+            const comp = document.getElementById('shortage-comp-filter')?.value || 'Packed Red Blood Cells';
+            const params = new URLSearchParams();
+            if (state && state !== 'ALL') params.append('state', state);
+            if (group) params.append('blood_group', group);
+            if (comp) params.append('component', comp);
+
+            window.location.href = `/api/v1/export/shortages.csv?${params.toString()}`;
+        });
+    }
+
+    // Shortage filter event listeners
+    const groupFilter = document.getElementById('shortage-group-filter');
+    const compFilter = document.getElementById('shortage-comp-filter');
+    if (groupFilter) groupFilter.addEventListener('change', () => loadDistrictShortages());
+    if (compFilter) compFilter.addEventListener('change', () => loadDistrictShortages());
+
+    // Trust modal close buttons
+    const trustCloseBtn = document.getElementById('trust-close-btn');
+    if (trustCloseBtn) trustCloseBtn.addEventListener('click', closeTrustScoreModal);
+    const trustModal = document.getElementById('trust-modal');
+    if (trustModal) {
+        trustModal.addEventListener('click', (e) => {
+            if (e.target === trustModal) closeTrustScoreModal();
+        });
+    }
+}
+
+function syncURLParams(state, district, component, bloodGroup) {
+    const url = new URL(window.location);
+    if (state && state !== 'ALL') url.searchParams.set('state', state); else url.searchParams.delete('state');
+    if (district && district !== 'ALL') url.searchParams.set('district', district); else url.searchParams.delete('district');
+    if (component && component !== 'ALL') url.searchParams.set('component', component); else url.searchParams.delete('component');
+    if (bloodGroup) url.searchParams.set('blood_group', bloodGroup); else url.searchParams.delete('blood_group');
+    window.history.replaceState({}, '', url);
+}
+
+function readURLParams() {
+    const params = new URLSearchParams(window.location.search);
+    const state = params.get('state');
+    const district = params.get('district');
+    const component = params.get('component');
+    const bloodGroup = params.get('blood_group');
+
+    if (state) {
+        const stateSelect = document.getElementById('state-select');
+        if (stateSelect) stateSelect.value = state;
+    }
+    if (component) {
+        const compSelect = document.getElementById('component-select');
+        if (compSelect) compSelect.value = component;
+        selectedComponent = component;
+    }
+    if (bloodGroup) {
+        selectedBloodGroup = bloodGroup;
+        document.querySelectorAll('.segment-btn').forEach(btn => {
+            const matches = btn.getAttribute('data-group') === bloodGroup;
+            btn.classList.toggle('active', matches);
+            btn.setAttribute('aria-checked', String(matches));
+        });
+    }
+}
+
+// ==============================================================================
+// PHASE 8: OBSERVABILITY & DATA HEALTH DASHBOARD
+// ==============================================================================
+async function loadDataHealthDashboard() {
+    try {
+        const res = await fetch('/api/v1/health/dashboard');
+        const data = await res.json();
+
+        // Stale warning banner (>12h)
+        const staleBanner = document.getElementById('stale-sync-banner');
+        const staleHours = document.getElementById('stale-sync-hours');
+        if (staleBanner && staleHours) {
+            if (data.is_stale_warning) {
+                staleBanner.classList.remove('hidden');
+                staleHours.textContent = data.sync_age_hours ? Number(data.sync_age_hours).toFixed(1) : '13';
+            } else {
+                staleBanner.classList.add('hidden');
+            }
+        }
+
+        // Metrics
+        const lastSyncEl = document.getElementById('health-last-sync');
+        const syncAgeEl = document.getElementById('health-sync-age');
+        const fresh24hEl = document.getElementById('health-fresh-24h');
+        const freshPctEl = document.getElementById('health-fresh-pct');
+        const staleCountsEl = document.getElementById('health-stale-counts');
+
+        if (lastSyncEl) lastSyncEl.textContent = data.last_successful_sync || 'Today';
+        if (syncAgeEl) syncAgeEl.textContent = `${Number(data.sync_age_hours || 0).toFixed(1)} hours ago`;
+        if (fresh24hEl) fresh24hEl.textContent = (data.facilities_updated_24h || 0).toLocaleString('en-IN');
+        if (freshPctEl) {
+            const pct = data.total_facilities ? Math.round((data.facilities_updated_24h / data.total_facilities) * 100) : 76;
+            freshPctEl.textContent = `${pct}% of total network (${(data.total_facilities || 0).toLocaleString('en-IN')} banks)`;
+        }
+        if (staleCountsEl) {
+            staleCountsEl.textContent = `${(data.stale_facilities_7d || 0).toLocaleString('en-IN')} / ${(data.stale_facilities_30d || 0).toLocaleString('en-IN')}`;
+        }
+
+        // Stale states table
+        const staleTbody = document.getElementById('health-stale-states-tbody');
+        if (staleTbody && data.stale_by_state) {
+            staleTbody.innerHTML = data.stale_by_state.slice(0, 8).map(s => `
+                <tr>
+                    <td><strong>${escapeHTML(s.state)}</strong></td>
+                    <td class="text-right">${Number(s.total_banks).toLocaleString('en-IN')}</td>
+                    <td class="text-right text-critical">${Number(s.stale_7d).toLocaleString('en-IN')}</td>
+                    <td class="text-right text-critical">${Number(s.stale_30d).toLocaleString('en-IN')}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Recent runs table
+        const runsTbody = document.getElementById('health-runs-tbody');
+        if (runsTbody && data.recent_pipeline_runs) {
+            runsTbody.innerHTML = data.recent_pipeline_runs.slice(0, 5).map(r => `
+                <tr>
+                    <td><code class="code-inline" style="font-size: 0.75rem;">${escapeHTML(r.run_id)}</code></td>
+                    <td style="font-size: 0.8125rem;">${escapeHTML(r.started_at || '')}</td>
+                    <td><span class="tag ${r.status === 'SUCCESS' ? 'tag-instock' : 'tag-critical'}">${escapeHTML(r.status)}</span></td>
+                    <td class="text-right">${Number(r.facilities_count || 0).toLocaleString('en-IN')}</td>
+                    <td><span class="tag ${r.tests_passed ? 'tag-instock' : 'tag-critical'}">${r.tests_passed ? 'PASSED' : 'CHECK'}</span></td>
+                </tr>
+            `).join('');
+        }
+    } catch (err) {
+        console.error('Failed to load health dashboard:', err);
+    }
+}
+
+// ==============================================================================
+// PHASE 9: PWA SERVICE WORKER REGISTRATION
+// ==============================================================================
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').then(() => {
+            console.log('eRaktKosh PWA Service Worker registered successfully.');
+        }).catch((err) => {
+            console.warn('Service Worker registration skipped:', err);
+        });
+    }
+}
+
 
 

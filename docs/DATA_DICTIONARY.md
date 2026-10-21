@@ -1,7 +1,7 @@
 # eRaktKosh Blood Lakehouse: Data Dictionary
 
-**Institution**: Charotar University of Science and Technology (CHARUSAT)  
-**Department**: Department of Computer Applications (MCA Program)  
+**Context**: Academic Research Project  
+**Department**: Academic Research Team  
 **Project**: eRaktKosh Blood Lakehouse (Academic Mini Project — 800 Marks)  
 **Storage Engine**: DuckDB (Columnar In-Process OLAP)  
 **Transformation Framework**: dbt Core (`dbt-duckdb`)  

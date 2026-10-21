@@ -51,8 +51,8 @@ def test_meta_response_schema():
         project_name="eRaktKosh Blood Lakehouse",
         project_subtitle="National Blood Inventory Intelligence & Emergency Finder",
         version="1.0.0",
-        institution="CHARUSAT",
-        department="FCA - MCA",
+        institution="Academic Research Initiative",
+        department="Faculty of Computer Science and Applications",
         academic_guide="Academic Mentor",
         author="Radhey Gajera",
         last_synced_at="2026-10-15 14:00:00",
@@ -62,4 +62,4 @@ def test_meta_response_schema():
         disclaimer="Call to confirm",
     )
     assert meta.total_facilities == 4692
-    assert "CHARUSAT" in meta.institution
+    assert "Academic" in meta.institution

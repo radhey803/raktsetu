@@ -1,7 +1,7 @@
 # eRaktKosh Blood Lakehouse: Evaluator Live Demo & Offline Contingency
 
-**Institution**: Charotar University of Science and Technology (CHARUSAT)  
-**Department**: Department of Computer Applications (MCA Program)  
+**Context**: Academic Research Project  
+**Department**: Academic Research Team  
 **Project**: eRaktKosh Blood Lakehouse (Academic Mini Project — 800 Marks)  
 **Purpose**: Offline presentation survival kit, viva cheat sheet, and database contingency.
 
@@ -73,7 +73,7 @@ uv run duckdb -readonly serving.duckdb "
 
 ## 4. 7-Minute Timed Demonstration Sequence
 
-1. **Step 1 (0:00 - 1:00)**: Open `http://localhost:8000` and demonstrate the **Status: Live** badge, **CHARUSAT attribution**, and national KPI cards (4,692 facilities, 35 states).
+1. **Step 1 (0:00 - 1:00)**: Open `http://localhost:8000` and demonstrate the **Status: Live** badge, **Academic Attribution**, and national KPI cards (4,692 facilities, 35 states).
 2. **Step 2 (1:00 - 2:30)**: Search for **Packed Red Blood Cells**, blood group **O-** in **Gujarat -> Anand**.
    - Point out **Indian Red Cross Society Anand Blood Bank** with **Score 90/100 (HIGH)**.
    - Point out the geographic disclaimer: *"approximate location, district level"*.

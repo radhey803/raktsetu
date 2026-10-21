@@ -1,7 +1,7 @@
 # eRaktKosh Blood Lakehouse: REST API Reference (`/api/v1`)
 
-**Institution**: Charotar University of Science and Technology (CHARUSAT)  
-**Department**: Department of Computer Applications (MCA Program)  
+**Context**: Academic Research Project  
+**Department**: Academic Research Team  
 **Project**: eRaktKosh Blood Lakehouse (Academic Mini Project — 800 Marks)  
 **Framework**: FastAPI (Asynchronous Python 3.12)  
 **Database**: DuckDB In-Process OLAP (`serving.duckdb`)  
@@ -63,7 +63,7 @@ curl -X GET "http://localhost:8000/api/v1/meta"
   "project_name": "eRaktKosh Blood Lakehouse",
   "project_subtitle": "National Blood Inventory & Emergency Finder",
   "version": "1.0.0",
-  "institution": "Charotar University of Science and Technology (CHARUSAT)",
+  "institution": "Academic Research Project",
   "department": "Department of Computer Applications (MCA)",
   "academic_guide": "MCA Faculty Guide",
   "author": "MCA Student Team",

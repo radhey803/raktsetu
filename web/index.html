@@ -4,13 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>eRaktKosh Blood Lakehouse | College Mini Project (MCA, CHARUSAT)</title>
+    <title>eRaktKosh Blood Lakehouse | Academic Project</title>
     <meta name="description"
         content="Real-time national blood inventory intelligence and verified emergency facility finder across 36 Indian states and union territories powered by DuckDB and dbt Medallion Lakehouse.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Geist:wght@300;400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
         rel="stylesheet">
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -20,113 +20,178 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#D21F3C">
 </head>
 
 <body>
     <!-- SVG Icon Sprite (Lucide Style, 1.5px stroke, no emojis) -->
     <svg style="display: none;" aria-hidden="true">
-        <symbol id="icon-droplet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-droplet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
         </symbol>
-        <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </symbol>
-        <symbol id="icon-reset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-reset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
             <path d="M3 3v5h5"></path>
         </symbol>
-        <symbol id="icon-map-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-map-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
             <circle cx="12" cy="10" r="3"></circle>
         </symbol>
-        <symbol id="icon-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+        <symbol id="icon-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path
+                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
+            </path>
         </symbol>
-        <symbol id="icon-navigation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-navigation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
         </symbol>
-        <symbol id="icon-trending-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-trending-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
             <polyline points="17 6 23 6 23 12"></polyline>
         </symbol>
-        <symbol id="icon-share-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-share-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <circle cx="18" cy="5" r="3"></circle>
             <circle cx="6" cy="12" r="3"></circle>
             <circle cx="18" cy="19" r="3"></circle>
             <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
             <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
         </symbol>
-        <symbol id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="7" height="7"></rect>
             <rect x="14" y="3" width="7" height="7"></rect>
             <rect x="14" y="14" width="7" height="7"></rect>
             <rect x="3" y="14" width="7" height="7"></rect>
         </symbol>
-        <symbol id="icon-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
             <line x1="8" y1="2" x2="8" y2="18"></line>
             <line x1="16" y1="6" x2="16" y2="22"></line>
         </symbol>
-        <symbol id="icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
         </symbol>
-        <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 12 15 18 9"></polyline>
         </symbol>
-        <symbol id="icon-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="19" x2="12" y2="5"></line>
             <polyline points="5 12 12 5 19 12"></polyline>
         </symbol>
-        <symbol id="icon-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <polyline points="19 12 12 19 5 12"></polyline>
         </symbol>
-        <symbol id="icon-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <line x1="5" y1="12" x2="19" y2="12"></line>
         </symbol>
-        <symbol id="icon-external-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-external-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
             <polyline points="15 3 21 3 21 9"></polyline>
             <line x1="10" y1="14" x2="21" y2="3"></line>
         </symbol>
-        <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
         </symbol>
-        <symbol id="icon-alert-triangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-alert-triangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
             <line x1="12" y1="9" x2="12" y2="13"></line>
             <line x1="12" y1="17" x2="12.01" y2="17"></line>
         </symbol>
-        <symbol id="icon-refresh-cw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-refresh-cw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <polyline points="23 4 23 10 17 10"></polyline>
             <polyline points="1 20 1 14 7 14"></polyline>
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
         </symbol>
-        <symbol id="icon-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 18 9 12 15 6"></polyline>
         </symbol>
-        <symbol id="icon-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <polyline points="9 18 15 12 9 6"></polyline>
         </symbol>
-        <symbol id="icon-chevrons-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-chevrons-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <polyline points="11 17 6 12 11 7"></polyline>
             <polyline points="18 17 13 12 18 7"></polyline>
         </symbol>
-        <symbol id="icon-chevrons-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-chevrons-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <polyline points="13 17 18 12 13 7"></polyline>
             <polyline points="6 17 11 12 6 7"></polyline>
         </symbol>
-        <symbol id="icon-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
             <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
             <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
         </symbol>
-        <symbol id="icon-shield-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-shield-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
             <polyline points="9 12 11 14 15 10"></polyline>
+        </symbol>
+        <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+        </symbol>
+        <symbol id="icon-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+            </path>
+        </symbol>
+        <symbol id="icon-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </symbol>
+        <symbol id="icon-user-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="8.5" cy="7" r="4"></circle>
+            <polyline points="17 11 19 13 23 9"></polyline>
+        </symbol>
+        <symbol id="icon-crosshair" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="22" y1="12" x2="18" y2="12"></line>
+            <line x1="6" y1="12" x2="2" y2="12"></line>
+            <line x1="12" y1="6" x2="12" y2="2"></line>
+            <line x1="12" y1="22" x2="12" y2="18"></line>
+        </symbol>
+        <symbol id="icon-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
         </symbol>
     </svg>
 
@@ -137,34 +202,35 @@
         <div class="header-container">
             <a href="/" class="brand" aria-label="eRaktKosh Blood Lakehouse Home">
                 <span class="brand-mark" aria-hidden="true">
-                    <svg class="icon"><use href="#icon-droplet"></use></svg>
+                    <svg class="icon">
+                        <use href="#icon-droplet"></use>
+                    </svg>
                 </span>
                 <span class="brand-name">
                     <span class="brand-primary">eRaktKosh</span>
-                    <span class="brand-sub">Blood Lakehouse</span>
+                    <span class="brand-pill">Lakehouse</span>
                 </span>
             </a>
 
             <div class="header-right">
                 <nav class="header-nav" aria-label="Main Navigation">
-                    <a href="#finder-section" class="nav-link" data-i18n="navFind">Find blood</a>
-                    <a href="#chart-section" class="nav-link" data-i18n="navNetwork">Network</a>
-                    <a href="#radar-section" class="nav-link" data-i18n="navRadar">Rare blood</a>
-                    <a href="#shortages-section" class="nav-link" data-i18n="navShortages">Shortages</a>
-                    <a href="#about-section" class="nav-link" data-i18n="navAbout">Architecture</a>
+                    <a href="#emergency-section" class="nav-link nav-emergency">
+                        <span class="emergency-nav-dot" aria-hidden="true"></span>
+                        <span>Emergency Triage</span>
+                    </a>
+                    <a href="#finder-section" class="nav-link">Find Blood</a>
+                    <a href="#chart-section" class="nav-link">Network</a>
+                    <a href="#radar-section" class="nav-link">Rare Blood</a>
+                    <a href="#shortages-section" class="nav-link">Shortages</a>
+                    <a href="#donor-section" class="nav-link">Donor Help</a>
+                    <a href="#health-section" class="nav-link">Data Health</a>
+                    <a href="/dbt-docs/" target="_blank" rel="noopener" class="nav-link">dbt Models</a>
                     <a href="/docs" target="_blank" rel="noopener" class="nav-link">API Docs</a>
                 </nav>
 
-                <!-- Language Switcher -->
-                <div class="lang-switcher" role="radiogroup" aria-label="Select Language">
-                    <button type="button" class="lang-btn active" data-lang="en" aria-label="English">EN</button>
-                    <button type="button" class="lang-btn" data-lang="hi" aria-label="Hindi">HI</button>
-                    <button type="button" class="lang-btn" data-lang="gu" aria-label="Gujarati">GU</button>
-                </div>
-
                 <div class="live-status" role="status" aria-label="Inventory system active">
                     <span class="live-dot" aria-hidden="true"></span>
-                    <span class="live-label"><span data-i18n="liveSync">Live sync</span> <span id="live-sync-time">19:30</span></span>
+                    <span class="live-label">Live Sync <span id="live-sync-time">19:30</span></span>
                 </div>
             </div>
         </div>
@@ -172,21 +238,170 @@
 
     <main id="main-content" class="app-main">
         <div class="main-container">
-            <!-- Mandatory Legal Source Attribution Banner (Absolute Rule 3) -->
-            <div class="mandatory-disclaimer-banner" role="note" aria-label="Mandatory medical and source attribution notice">
-                <svg class="icon" aria-hidden="true"><use href="#icon-alert-triangle"></use></svg>
-                <div data-i18n="mandatoryNotice">
-                    Data sourced from eRaktKosh (Ministry of Health &amp; Family Welfare, Govt. of India). Academic project, not an official service. Always call the blood bank to confirm before travelling.
+            <!-- Mandatory Legal Source Attribution Banner -->
+            <div class="mandatory-disclaimer-banner" role="note"
+                aria-label="Mandatory medical and source attribution notice">
+                <div class="disclaimer-content">
+                    <svg class="icon" aria-hidden="true">
+                        <use href="#icon-shield-check"></use>
+                    </svg>
+                    <span>
+                        <strong>National Blood Inventory Intelligence:</strong> Official data ingested from eRaktKosh (MoHFW, Govt. of India). Academic decision support system. Always contact blood centers directly to confirm physical cross-matching.
+                    </span>
                 </div>
+                <button type="button" class="disclaimer-dismiss-btn" aria-label="Dismiss notice" onclick="this.closest('.mandatory-disclaimer-banner').style.display='none'">
+                    <svg class="icon"><use href="#icon-x"></use></svg>
+                </button>
+            </div>
+
+            <!-- Stale Data Sync Warning Banner (Phase 8: >12 Hours) -->
+            <div id="stale-sync-banner" class="stale-sync-banner hidden" role="alert" aria-live="polite">
+                <svg class="icon">
+                    <use href="#icon-alert-triangle"></use>
+                </svg>
+                <span><strong>Data Freshness Notice:</strong> Central lakehouse sync is <span
+                        id="stale-sync-hours">--</span> hours old (&gt;12h threshold). Always call the blood bank
+                    directly to confirm stock before travelling.</span>
             </div>
 
             <!-- Hero Section -->
             <section class="hero-section" aria-labelledby="hero-title">
                 <div class="hero-content">
-                    <span class="hero-kicker" data-i18n="heroKicker">CHARUSAT MCA Academic Project • 800 Marks Mini Project</span>
-                    <h1 id="hero-title" class="hero-title" data-i18n="heroTitle">National Blood Availability &amp; Shortage Intelligence</h1>
-                    <p class="hero-sub" data-i18n="heroSub">Direct ingestion from eRaktKosh (MoHFW, Govt. of India). Engineered with DuckDB, dbt Medallion Lakehouse architecture (Bronze &rarr; Silver &rarr; Gold), and append-only snapshot analytics across 4,680+ verified facilities.</p>
+                    <h1 id="hero-title" class="hero-title">National Blood Availability &amp;
+                        Shortage Intelligence</h1>
+                    <p class="hero-sub">Direct ingestion from eRaktKosh (MoHFW, Govt. of India).
+                        Engineered with DuckDB, dbt Medallion Lakehouse architecture (Bronze &rarr; Silver &rarr; Gold),
+                        and append-only snapshot analytics across 4,680+ verified facilities.</p>
                 </div>
+
+                <!-- PHASE 2: SMART EMERGENCY MODE SECTION -->
+                <section class="emergency-panel" id="emergency-section" aria-labelledby="emergency-panel-title">
+                    <div class="emergency-panel-header">
+                        <div class="emergency-badge-title">
+                            <span class="emergency-live-pulse" aria-hidden="true"></span>
+                            <span class="emergency-kicker">High Priority Dispatch</span>
+                        </div>
+                        <h2 id="emergency-panel-title" class="emergency-title">Smart Emergency Mode (Compatible
+                            Transfusion Finder)</h2>
+                        <p class="emergency-desc">
+                            Find verified, immediately compatible red cell units. Resolves multi-group donor
+                            compatibility via clinical WHO/NBTC rules and ranks blood banks by freshness, reliability,
+                            stocked units, and proximity.
+                        </p>
+                    </div>
+
+                    <div class="emergency-form-grid">
+                        <div class="field-item">
+                            <label for="emergency-patient-group" class="field-label">Patient Blood Group *</label>
+                            <div class="select-wrapper">
+                                <select id="emergency-patient-group" class="custom-select emergency-select" required>
+                                    <option value="O-" selected>O- (Universal Donor, can receive only O-)</option>
+                                    <option value="O+">O+ (Can receive O+, O-)</option>
+                                    <option value="A-">A- (Can receive A-, O-)</option>
+                                    <option value="A+">A+ (Can receive A+, A-, O+, O-)</option>
+                                    <option value="B-">B- (Can receive B-, O-)</option>
+                                    <option value="B+">B+ (Can receive B+, B-, O+, O-)</option>
+                                    <option value="AB-">AB- (Can receive AB-, A-, B-, O-)</option>
+                                    <option value="AB+">AB+ (Universal Recipient, can receive all standard groups)
+                                    </option>
+                                    <option value="Bombay (Oh+)">Bombay Oh+ (Rare: lacks H-antigen, receives only
+                                        Bombay)</option>
+                                    <option value="Bombay (Oh-)">Bombay Oh- (Ultra-rare: receives only Bombay Oh-)
+                                    </option>
+                                </select>
+                                <svg class="select-chevron" aria-hidden="true">
+                                    <use href="#icon-chevron-down"></use>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="field-item">
+                            <label for="emergency-component" class="field-label">Component</label>
+                            <div class="select-wrapper">
+                                <select id="emergency-component" class="custom-select">
+                                    <option value="Packed Red Blood Cells" selected>Packed Red Blood Cells (PRBC)
+                                    </option>
+                                    <option value="Whole Blood">Whole Blood</option>
+                                </select>
+                                <svg class="select-chevron" aria-hidden="true">
+                                    <use href="#icon-chevron-down"></use>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="field-item">
+                            <label for="emergency-state" class="field-label">State / UT *</label>
+                            <div class="select-wrapper">
+                                <select id="emergency-state" class="custom-select" required>
+                                    <option value="Gujarat" selected>Gujarat</option>
+                                </select>
+                                <svg class="select-chevron" aria-hidden="true">
+                                    <use href="#icon-chevron-down"></use>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="field-item">
+                            <label for="emergency-district" class="field-label">District *</label>
+                            <div class="select-wrapper">
+                                <select id="emergency-district" class="custom-select" required>
+                                    <option value="Anand" selected>Anand</option>
+                                </select>
+                                <svg class="select-chevron" aria-hidden="true">
+                                    <use href="#icon-chevron-down"></use>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="emergency-actions">
+                        <button type="button" id="emergency-locate-btn" class="btn btn-outline"
+                            title="Use browser geolocation for distance calculation">
+                            <svg class="icon">
+                                <use href="#icon-crosshair"></use>
+                            </svg>
+                            <span id="emergency-locate-label">Use my location</span>
+                        </button>
+                        <button type="button" id="emergency-search-btn" class="btn btn-emergency">
+                            <svg class="icon">
+                                <use href="#icon-activity"></use>
+                            </svg>
+                            <span>Generate Emergency Call List</span>
+                        </button>
+                    </div>
+
+                    <!-- Clinical Warning Banner (Rh Negative / Bombay Oh) -->
+                    <div id="emergency-clinical-alert" class="emergency-clinical-banner hidden" role="alert">
+                        <svg class="icon">
+                            <use href="#icon-alert-triangle"></use>
+                        </svg>
+                        <div class="alert-content">
+                            <strong id="emergency-alert-title">Clinical Alert:</strong>
+                            <span id="emergency-alert-msg"></span>
+                            <div class="alert-source">Source: <a id="emergency-alert-link" href="#" target="_blank"
+                                    rel="noopener">Official Guidelines</a> &bull; <em>Guidance only, not medical advice.
+                                    Confirm with blood bank.</em></div>
+                        </div>
+                    </div>
+
+                    <!-- Emergency Top 5 Call List Container -->
+                    <div id="emergency-call-list-section" class="emergency-call-list-section hidden" aria-live="polite">
+                        <div class="emergency-list-meta">
+                            <div class="meta-compatibility">
+                                <span class="meta-label">Compatible Donor Groups:</span>
+                                <span id="emergency-compat-pills" class="compat-pills"></span>
+                            </div>
+                            <div class="meta-disclaimer">
+                                <span>Top 5 verified facilities ranked by composite score ($0.35F + 0.30T + 0.25U +
+                                    0.10D$).</span>
+                            </div>
+                        </div>
+
+                        <div id="emergency-cards-grid" class="emergency-cards-grid">
+                            <!-- Populated by app.js -->
+                        </div>
+                    </div>
+                </section>
 
                 <!-- Emergency Finder & Filter Panel -->
                 <section class="finder-panel" id="finder-section" aria-label="Blood inventory search and filters">
@@ -197,20 +412,32 @@
                             <span class="filter-hint">Select a group to verify real-time units</span>
                         </div>
                         <div class="segmented-control" role="radiogroup" aria-label="Select blood group">
-                            <button type="button" class="segment-btn active" data-group="" role="radio" aria-checked="true">All</button>
-                            <button type="button" class="segment-btn" data-group="O+" role="radio" aria-checked="false">O+</button>
-                            <button type="button" class="segment-btn" data-group="O-" role="radio" aria-checked="false">O- <span class="tag-universal">Univ</span></button>
-                            <button type="button" class="segment-btn" data-group="A+" role="radio" aria-checked="false">A+</button>
-                            <button type="button" class="segment-btn" data-group="A-" role="radio" aria-checked="false">A-</button>
-                            <button type="button" class="segment-btn" data-group="B+" role="radio" aria-checked="false">B+</button>
-                            <button type="button" class="segment-btn" data-group="B-" role="radio" aria-checked="false">B-</button>
-                            <button type="button" class="segment-btn" data-group="AB+" role="radio" aria-checked="false">AB+</button>
-                            <button type="button" class="segment-btn" data-group="AB-" role="radio" aria-checked="false">AB-</button>
-                            <button type="button" class="segment-btn segment-rare" data-group="Bombay" role="radio" aria-checked="false">
+                            <button type="button" class="segment-btn active" data-group="" role="radio"
+                                aria-checked="true">All</button>
+                            <button type="button" class="segment-btn" data-group="O+" role="radio"
+                                aria-checked="false">O+</button>
+                            <button type="button" class="segment-btn" data-group="O-" role="radio"
+                                aria-checked="false">O- <span class="tag-universal">Univ</span></button>
+                            <button type="button" class="segment-btn" data-group="A+" role="radio"
+                                aria-checked="false">A+</button>
+                            <button type="button" class="segment-btn" data-group="A-" role="radio"
+                                aria-checked="false">A-</button>
+                            <button type="button" class="segment-btn" data-group="B+" role="radio"
+                                aria-checked="false">B+</button>
+                            <button type="button" class="segment-btn" data-group="B-" role="radio"
+                                aria-checked="false">B-</button>
+                            <button type="button" class="segment-btn" data-group="AB+" role="radio"
+                                aria-checked="false">AB+</button>
+                            <button type="button" class="segment-btn" data-group="AB-" role="radio"
+                                aria-checked="false">AB-</button>
+                            <button type="button" class="segment-btn segment-rare" data-group="Bombay" role="radio"
+                                aria-checked="false">
                                 <span class="rare-dot" aria-hidden="true"></span>Bombay (Oh)
                             </button>
-                            <button type="button" class="segment-btn" data-group="Platelet" role="radio" aria-checked="false">Platelets</button>
-                            <button type="button" class="segment-btn" data-group="Plasma" role="radio" aria-checked="false">Plasma</button>
+                            <button type="button" class="segment-btn" data-group="Platelet" role="radio"
+                                aria-checked="false">Platelets</button>
+                            <button type="button" class="segment-btn" data-group="Plasma" role="radio"
+                                aria-checked="false">Plasma</button>
                         </div>
                     </div>
 
@@ -222,7 +449,9 @@
                                 <select id="state-select" class="custom-select">
                                     <option value="ALL">All India (Nationwide)</option>
                                 </select>
-                                <svg class="select-chevron" aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
+                                <svg class="select-chevron" aria-hidden="true">
+                                    <use href="#icon-chevron-down"></use>
+                                </svg>
                             </div>
                         </div>
 
@@ -232,7 +461,9 @@
                                 <select id="district-select" class="custom-select" disabled>
                                     <option value="ALL">All Districts</option>
                                 </select>
-                                <svg class="select-chevron" aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
+                                <svg class="select-chevron" aria-hidden="true">
+                                    <use href="#icon-chevron-down"></use>
+                                </svg>
                             </div>
                         </div>
 
@@ -240,7 +471,8 @@
                             <label for="component-select" class="field-label">Blood Component</label>
                             <div class="select-wrapper">
                                 <select id="component-select" class="custom-select">
-                                    <option value="Packed Red Blood Cells" selected>Packed Red Blood Cells (PRBC)</option>
+                                    <option value="Packed Red Blood Cells" selected>Packed Red Blood Cells (PRBC)
+                                    </option>
                                     <option value="Whole Blood">Whole Blood</option>
                                     <option value="Fresh Frozen Plasma">Fresh Frozen Plasma (FFP)</option>
                                     <option value="Platelet Concentrate">Platelet Concentrate</option>
@@ -250,26 +482,63 @@
                                     <option value="Plasma">Plasma</option>
                                     <option value="ALL">All Components</option>
                                 </select>
-                                <svg class="select-chevron" aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
+                                <svg class="select-chevron" aria-hidden="true">
+                                    <use href="#icon-chevron-down"></use>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="field-item">
+                            <label for="sort-select" class="field-label">Sort Priority</label>
+                            <div class="select-wrapper">
+                                <select id="sort-select" class="custom-select">
+                                    <option value="freshness" selected>Freshness (Recent Updates First)</option>
+                                    <option value="units">Available Units (Highest First)</option>
+                                    <option value="reliability">Trust Score (High &gt;= 75 First)</option>
+                                    <option value="distance">Nearest Distance (Proximity)</option>
+                                </select>
+                                <svg class="select-chevron" aria-hidden="true">
+                                    <use href="#icon-chevron-down"></use>
+                                </svg>
                             </div>
                         </div>
 
                         <div class="field-item field-search">
                             <label for="search-input" class="field-label">Facility or Address</label>
                             <div class="input-wrapper">
-                                <svg class="input-icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+                                <svg class="input-icon" aria-hidden="true">
+                                    <use href="#icon-search"></use>
+                                </svg>
                                 <input type="text" id="search-input" class="custom-input"
                                     placeholder="e.g. Civil Hospital, Red Cross Society...">
                             </div>
                         </div>
 
                         <div class="form-actions">
+                            <button type="button" id="geo-location-btn" class="btn btn-outline"
+                                title="Use browser geolocation to calculate nearest blood banks">
+                                <svg class="icon">
+                                    <use href="#icon-crosshair"></use>
+                                </svg>
+                                <span id="geo-location-label">Near me</span>
+                            </button>
                             <button type="button" id="search-btn" class="btn btn-primary">
-                                <svg class="icon"><use href="#icon-search"></use></svg>
+                                <svg class="icon">
+                                    <use href="#icon-search"></use>
+                                </svg>
                                 <span>Search facilities</span>
                             </button>
+                            <button type="button" id="export-availability-btn" class="btn btn-outline"
+                                title="Export Current Search Results to CSV with UTF-8 BOM">
+                                <svg class="icon">
+                                    <use href="#icon-download"></use>
+                                </svg>
+                                <span>Export CSV</span>
+                            </button>
                             <button type="button" id="reset-btn" class="btn btn-text">
-                                <svg class="icon"><use href="#icon-reset"></use></svg>
+                                <svg class="icon">
+                                    <use href="#icon-reset"></use>
+                                </svg>
                                 <span>Reset</span>
                             </button>
                         </div>
@@ -321,7 +590,8 @@
                 </div>
                 <div class="chart-surface">
                     <div class="chart-canvas-wrapper">
-                        <canvas id="statesChart" height="260" aria-label="Horizontal bar chart of active blood banks by state" role="img"></canvas>
+                        <canvas id="statesChart" height="260"
+                            aria-label="Horizontal bar chart of active blood banks by state" role="img"></canvas>
                     </div>
                 </div>
             </section>
@@ -338,34 +608,47 @@
 
                     <!-- View Switcher -->
                     <div class="view-switch" role="tablist" aria-label="Choose layout view">
-                        <button type="button" id="toggle-grid-btn" class="switch-btn active" role="tab" aria-selected="true" title="Switch to grid layout">
-                            <svg class="icon"><use href="#icon-grid"></use></svg>
+                        <button type="button" id="toggle-grid-btn" class="switch-btn active" role="tab"
+                            aria-selected="true" title="Switch to grid layout">
+                            <svg class="icon">
+                                <use href="#icon-grid"></use>
+                            </svg>
                             <span>Grid view</span>
                         </button>
-                        <button type="button" id="toggle-map-btn" class="switch-btn" role="tab" aria-selected="false" title="Switch to map layout">
-                            <svg class="icon"><use href="#icon-map"></use></svg>
+                        <button type="button" id="toggle-map-btn" class="switch-btn" role="tab" aria-selected="false"
+                            title="Switch to map layout">
+                            <svg class="icon">
+                                <use href="#icon-map"></use>
+                            </svg>
                             <span>Live blood map</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- Interactive Map Container -->
-                <div id="map-view-container" class="map-view-container hidden" role="region" aria-label="Geographic blood bank map">
+                <div id="map-view-container" class="map-view-container hidden" role="region"
+                    aria-label="Geographic blood bank map">
                     <div class="map-toolbar">
                         <div class="map-legend" aria-label="Map status legend">
-                            <span class="legend-item"><span class="legend-dot dot-green" aria-hidden="true"></span> In stock (&gt;5 units)</span>
-                            <span class="legend-item"><span class="legend-dot dot-amber" aria-hidden="true"></span> Low stock (1–5 units)</span>
-                            <span class="legend-item"><span class="legend-dot dot-red" aria-hidden="true"></span> Critical / Nil stock</span>
+                            <span class="legend-item"><span class="legend-dot dot-green" aria-hidden="true"></span> In
+                                stock (&gt;5 units)</span>
+                            <span class="legend-item"><span class="legend-dot dot-amber" aria-hidden="true"></span> Low
+                                stock (1–5 units)</span>
+                            <span class="legend-item"><span class="legend-dot dot-red" aria-hidden="true"></span>
+                                Critical / Nil stock</span>
                         </div>
                         <div class="map-actions">
                             <button type="button" id="map-reset-btn" class="map-btn" title="Reset view to fit markers">
-                                <svg class="icon"><use href="#icon-navigation"></use></svg>
+                                <svg class="icon">
+                                    <use href="#icon-navigation"></use>
+                                </svg>
                                 <span>Reset view</span>
                             </button>
                             <span class="map-hint">Click any pin for facility details &amp; 7-day trend</span>
                         </div>
                     </div>
-                    <div id="blood-map" class="blood-map-canvas" role="application" aria-label="Blood banks interactive map"></div>
+                    <div id="blood-map" class="blood-map-canvas" role="application"
+                        aria-label="Blood banks interactive map"></div>
                 </div>
 
                 <!-- Hospital Cards Grid -->
@@ -376,16 +659,23 @@
                 <!-- Pagination Bar -->
                 <nav id="pagination-wrapper" class="pagination-wrapper hidden" aria-label="Search results pagination">
                     <div class="pagination-info">
-                        Showing <strong id="pagination-start">0</strong>–<strong id="pagination-end">0</strong> of <strong id="pagination-total">0</strong> facilities
+                        Showing <strong id="pagination-start">0</strong>–<strong id="pagination-end">0</strong> of
+                        <strong id="pagination-total">0</strong> facilities
                     </div>
 
                     <div class="pagination-nav">
-                        <button type="button" id="page-first-btn" class="page-btn page-edge-btn" title="First page" disabled>
-                            <svg class="icon"><use href="#icon-chevrons-left"></use></svg>
+                        <button type="button" id="page-first-btn" class="page-btn page-edge-btn" title="First page"
+                            disabled>
+                            <svg class="icon">
+                                <use href="#icon-chevrons-left"></use>
+                            </svg>
                             <span>First</span>
                         </button>
-                        <button type="button" id="page-prev-btn" class="page-btn page-arrow-btn" title="Previous page" disabled>
-                            <svg class="icon"><use href="#icon-chevron-left"></use></svg>
+                        <button type="button" id="page-prev-btn" class="page-btn page-arrow-btn" title="Previous page"
+                            disabled>
+                            <svg class="icon">
+                                <use href="#icon-chevron-left"></use>
+                            </svg>
                             <span>Prev</span>
                         </button>
 
@@ -393,13 +683,19 @@
                             <!-- Injected by app.js -->
                         </div>
 
-                        <button type="button" id="page-next-btn" class="page-btn page-arrow-btn" title="Next page" disabled>
+                        <button type="button" id="page-next-btn" class="page-btn page-arrow-btn" title="Next page"
+                            disabled>
                             <span>Next</span>
-                            <svg class="icon"><use href="#icon-chevron-right"></use></svg>
+                            <svg class="icon">
+                                <use href="#icon-chevron-right"></use>
+                            </svg>
                         </button>
-                        <button type="button" id="page-last-btn" class="page-btn page-edge-btn" title="Last page" disabled>
+                        <button type="button" id="page-last-btn" class="page-btn page-edge-btn" title="Last page"
+                            disabled>
                             <span>Last</span>
-                            <svg class="icon"><use href="#icon-chevrons-right"></use></svg>
+                            <svg class="icon">
+                                <use href="#icon-chevrons-right"></use>
+                            </svg>
                         </button>
                     </div>
 
@@ -413,7 +709,9 @@
                                 <option value="27">27</option>
                                 <option value="ALL">All</option>
                             </select>
-                            <svg class="select-chevron" aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
+                            <svg class="select-chevron" aria-hidden="true">
+                                <use href="#icon-chevron-down"></use>
+                            </svg>
                         </div>
                     </div>
                 </nav>
@@ -428,14 +726,16 @@
                             <span class="tag tag-neutral">National Gold Mart</span>
                         </div>
                         <h2 id="radar-title" class="section-title">Rare Blood Phenotype Radar</h2>
-                        <p class="section-sub">Live tracking of Bombay Phenotype (Oh+, Oh-) and high-priority universal negative donor reserves across India.</p>
+                        <p class="section-sub">Live tracking of Bombay Phenotype (Oh+, Oh-) and high-priority universal
+                            negative donor reserves across India.</p>
                     </div>
                     <span class="chart-source-note">Sourced from mart_rare_blood_availability</span>
                 </div>
 
                 <div class="radar-table-card">
                     <div class="table-responsive">
-                        <table class="academic-table" id="rare-blood-table" aria-label="Rare blood inventory across facilities">
+                        <table class="academic-table" id="rare-blood-table"
+                            aria-label="Rare blood inventory across facilities">
                             <thead>
                                 <tr>
                                     <th scope="col">Facility Name</th>
@@ -448,13 +748,15 @@
                             </thead>
                             <tbody id="rare-blood-tbody">
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted py-4">Loading rare phenotype inventory...</td>
+                                    <td colspan="6" class="text-center text-muted py-4">Loading rare phenotype
+                                        inventory...</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                     <div class="card-footer-note">
-                        <span>Notice: Bombay blood group (Oh) occurs in ~1 in 10,000 individuals in India. Transfusions require homologous H-deficient donors.</span>
+                        <span>Notice: Bombay blood group (Oh) occurs in ~1 in 10,000 individuals in India. Transfusions
+                            require homologous H-deficient donors.</span>
                     </div>
                 </div>
             </section>
@@ -468,13 +770,41 @@
                             <span class="tag tag-neutral">Aggregated by District</span>
                         </div>
                         <h2 id="shortages-title" class="section-title">District Deficit Radar</h2>
-                        <p class="section-sub">Districts experiencing acute supply depletion (0–2 units) aggregated across all reporting blood centres.</p>
+                        <p class="section-sub">Districts experiencing acute supply depletion (0–2 units) aggregated
+                            across all reporting blood centres.</p>
                     </div>
-                    <div class="shortage-controls">
+                    <div class="shortage-controls"
+                        style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
                         <label for="shortage-state-filter" class="field-label sr-only">Filter State</label>
                         <select id="shortage-state-filter" class="custom-select select-sm">
                             <option value="ALL">All States</option>
                         </select>
+                        <label for="shortage-group-filter" class="field-label sr-only">Blood Group</label>
+                        <select id="shortage-group-filter" class="custom-select select-sm">
+                            <option value="O-" selected>O-</option>
+                            <option value="O+">O+</option>
+                            <option value="A-">A-</option>
+                            <option value="A+">A+</option>
+                            <option value="B-">B-</option>
+                            <option value="B+">B+</option>
+                            <option value="AB-">AB-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="Bombay (Oh+)">Bombay (Oh+)</option>
+                        </select>
+                        <label for="shortage-comp-filter" class="field-label sr-only">Component</label>
+                        <select id="shortage-comp-filter" class="custom-select select-sm">
+                            <option value="Packed Red Blood Cells" selected>PRBC</option>
+                            <option value="Whole Blood">Whole Blood</option>
+                            <option value="Platelet Concentrate">Platelets</option>
+                            <option value="Fresh Frozen Plasma">FFP</option>
+                        </select>
+                        <button type="button" id="export-shortages-btn" class="btn btn-outline btn-sm"
+                            title="Download Shortage Data as CSV with UTF-8 BOM">
+                            <svg class="icon">
+                                <use href="#icon-download"></use>
+                            </svg>
+                            <span>Export CSV</span>
+                        </button>
                     </div>
                 </div>
 
@@ -485,21 +815,274 @@
                                 <tr>
                                     <th scope="col">District</th>
                                     <th scope="col">State</th>
-                                    <th scope="col">Inspected Group</th>
+                                    <th scope="col">Blood Group</th>
                                     <th scope="col" class="text-right">Total Units</th>
-                                    <th scope="col" class="text-right">Reporting Centres</th>
-                                    <th scope="col">Deficit Severity</th>
+                                    <th scope="col" class="text-right">Reporting Banks</th>
+                                    <th scope="col" class="text-right">Banks with 0 Units</th>
+                                    <th scope="col" class="text-right">Severity Score</th>
+                                    <th scope="col">Shortage Status</th>
                                 </tr>
                             </thead>
                             <tbody id="shortages-tbody">
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted py-4">Loading district shortage data...</td>
+                                    <td colspan="8" class="text-center text-muted py-4">Loading district shortage
+                                        data...</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                     <div class="card-footer-note">
-                        <span>Calculated dynamically in mart_district_status by summarizing real facility units per component.</span>
+                        <span>Notice: "Zero listed" can also mean that a blood bank does not report inventory to
+                            eRaktKosh. Always inspect the "Reporting Banks" count to gauge coverage. Calculated in <code
+                                class="code-inline">mart_district_status</code>.</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PHASE 6: CLIENT-SIDE DONOR HELP SECTION -->
+            <section class="donor-section" id="donor-section" aria-labelledby="donor-title">
+                <div class="section-header">
+                    <div>
+                        <div class="section-tag-row">
+                            <span class="tag tag-vol">Client-Side Only</span>
+                            <span class="tag tag-neutral">Zero Personal Data Stored</span>
+                        </div>
+                        <h2 id="donor-title" class="section-title">Donor Eligibility &amp; Assistance</h2>
+                        <p class="section-sub">Quick screening questionnaire driven by official WHO and NBTC India
+                            guidelines. Evaluated entirely in your browser; no data is ever sent to the server or saved.
+                        </p>
+                    </div>
+                    <span class="chart-source-note">NBTC Blood Donor Selection Guidelines (2020)</span>
+                </div>
+
+                <div class="donor-grid">
+                    <!-- Questionnaire Card -->
+                    <div class="donor-card">
+                        <h3 class="donor-card-title">Eligibility Questionnaire</h3>
+                        <form id="donor-form" class="donor-form"
+                            onsubmit="event.preventDefault(); evaluateDonorEligibility();">
+                            <div class="form-row-2">
+                                <div class="field-item">
+                                    <label for="donor-age" class="field-label">Age (years) *</label>
+                                    <input type="number" id="donor-age" class="custom-input" min="15" max="80"
+                                        value="24" required>
+                                    <span class="field-hint">Must be 18–65 years</span>
+                                </div>
+                                <div class="field-item">
+                                    <label for="donor-weight" class="field-label">Weight (kg) *</label>
+                                    <input type="number" id="donor-weight" class="custom-input" min="30" max="150"
+                                        value="62" required>
+                                    <span class="field-hint">Minimum 45 kg</span>
+                                </div>
+                            </div>
+
+                            <div class="form-row-2">
+                                <div class="field-item">
+                                    <label for="donor-gender" class="field-label">Biological Gender *</label>
+                                    <div class="select-wrapper">
+                                        <select id="donor-gender" class="custom-select">
+                                            <option value="male" selected>Male (90 days interval)</option>
+                                            <option value="female">Female (120 days interval)</option>
+                                        </select>
+                                        <svg class="select-chevron" aria-hidden="true">
+                                            <use href="#icon-chevron-down"></use>
+                                        </svg>
+                                    </div>
+                                    <span class="field-hint">Official NBTC minimum donation gap</span>
+                                </div>
+                                <div class="field-item">
+                                    <label for="donor-last-date" class="field-label">Last Blood Donation Date</label>
+                                    <input type="date" id="donor-last-date" class="custom-input">
+                                    <span class="field-hint">Leave blank if first-time donor</span>
+                                </div>
+                            </div>
+
+                            <div class="screening-questions">
+                                <h4 class="screening-title">Medical Screening (Yes / No)</h4>
+                                <div class="screening-item">
+                                    <span>Tattoos, acupuncture, or body piercing in the past 6 months?</span>
+                                    <div class="screening-radios">
+                                        <label><input type="radio" name="screen_tattoo" value="no" checked> No</label>
+                                        <label><input type="radio" name="screen_tattoo" value="yes"> Yes</label>
+                                    </div>
+                                </div>
+                                <div class="screening-item">
+                                    <span>Major surgical operation or received blood transfusion in past 6
+                                        months?</span>
+                                    <div class="screening-radios">
+                                        <label><input type="radio" name="screen_surgery" value="no" checked> No</label>
+                                        <label><input type="radio" name="screen_surgery" value="yes"> Yes</label>
+                                    </div>
+                                </div>
+                                <div class="screening-item">
+                                    <span>Currently experiencing fever, active infection, or taking antibiotics?</span>
+                                    <div class="screening-radios">
+                                        <label><input type="radio" name="screen_illness" value="no" checked> No</label>
+                                        <label><input type="radio" name="screen_illness" value="yes"> Yes</label>
+                                    </div>
+                                </div>
+                                <div class="screening-item">
+                                    <span>Hemoglobin is verified &ge; 12.5 g/dL?</span>
+                                    <div class="screening-radios">
+                                        <label><input type="radio" name="screen_hb" value="yes" checked> Yes / Unknown
+                                            (tested at camp)</label>
+                                        <label><input type="radio" name="screen_hb" value="no"> No (&lt;12.5)</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-actions" style="margin-top: 1rem;">
+                                <button type="submit" class="btn btn-primary"
+                                    style="width: 100%; justify-content: center;">
+                                    <svg class="icon">
+                                        <use href="#icon-user-check"></use>
+                                    </svg>
+                                    <span>Evaluate Eligibility (Client-Side)</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Result & Where to Donate Card -->
+                    <div class="donor-card donor-card-result">
+                        <div id="donor-result-box" class="donor-result-box">
+                            <div class="result-badge-row">
+                                <span class="tag tag-instock" id="donor-status-tag">Likely Eligible</span>
+                                <span class="result-timestamp">Calculated locally</span>
+                            </div>
+                            <h4 id="donor-result-heading" class="donor-result-heading">You appear eligible to donate
+                                blood!</h4>
+                            <p id="donor-result-explanation" class="donor-result-explanation">
+                                Based on the entered age, weight, and health screening criteria, you meet the standard
+                                donor selection guidelines published by the National Blood Transfusion Council (NBTC
+                                India).
+                            </p>
+                            <div id="donor-next-date-card" class="donor-next-date-card">
+                                <svg class="icon">
+                                    <use href="#icon-clock"></use>
+                                </svg>
+                                <div>
+                                    <div class="next-date-label">Next Eligible Whole Blood Donation Date:</div>
+                                    <strong id="donor-next-date-val" class="next-date-val">Ready to donate
+                                        today</strong>
+                                </div>
+                            </div>
+                            <div class="donor-official-disclaimer">
+                                <strong>Medical Disclaimer:</strong> Guidance only, not medical advice. Final
+                                eligibility is determined by the Medical Officer at the licensed blood centre through
+                                confidential health history and on-site hemoglobin testing.
+                                <br>
+                                <span class="source-link">Source: <a href="https://nbtc.mohfw.gov.in/" target="_blank"
+                                        rel="noopener">NBTC Blood Donor Selection Guidelines (MoHFW)</a></span>
+                            </div>
+                        </div>
+
+                        <!-- Where to Donate Suggestion List (Low Stock Districts) -->
+                        <div class="where-to-donate-box">
+                            <h4 class="where-title">Where Your Blood Group is Most Needed</h4>
+                            <p class="where-desc">Local blood centres currently reporting low stock of your blood group.
+                                <em>Note: This is an analytical suggestion based on inventory levels, not an official
+                                    appeal from the facility.</em></p>
+                            <div id="donor-suggested-banks" class="donor-suggested-banks">
+                                <div class="text-muted text-sm py-2">Select a district to view blood centres with low
+                                    inventory...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PHASE 8: LAKEHOUSE DATA HEALTH & OBSERVABILITY SECTION -->
+            <section class="health-section" id="health-section" aria-labelledby="health-title">
+                <div class="section-header">
+                    <div>
+                        <div class="section-tag-row">
+                            <span class="tag tag-neutral">Lakehouse Observability</span>
+                            <span class="tag tag-govt">Data Quality Audit</span>
+                        </div>
+                        <h2 id="health-title" class="section-title">Lakehouse Data Health &amp; Pipeline Runs</h2>
+                        <p class="section-sub">Real-time audit telemetry, pipeline sync age, stale facility
+                            distribution, and dbt contract test verification across bronze, silver, and gold lakehouse
+                            layers.</p>
+                    </div>
+                    <span class="chart-source-note">Powered by gold.pipeline_runs &amp; DuckDB metadata</span>
+                </div>
+
+                <!-- 4 KPI Cards -->
+                <div class="health-kpi-grid">
+                    <div class="health-kpi-card">
+                        <div class="kpi-label">Last Successful Sync</div>
+                        <div class="kpi-value-lg" id="health-last-sync">--</div>
+                        <div class="kpi-sub" id="health-sync-age">-- hours ago</div>
+                    </div>
+                    <div class="health-kpi-card">
+                        <div class="kpi-label">Fresh Facilities (24h)</div>
+                        <div class="kpi-value-lg" id="health-fresh-24h">--</div>
+                        <div class="kpi-sub" id="health-fresh-pct">--% of total network</div>
+                    </div>
+                    <div class="health-kpi-card">
+                        <div class="kpi-label">Stale Facilities (&gt;7d / &gt;30d)</div>
+                        <div class="kpi-value-lg" id="health-stale-counts">-- / --</div>
+                        <div class="kpi-sub">Flagged for registry verification</div>
+                    </div>
+                    <div class="health-kpi-card">
+                        <div class="kpi-label">dbt Schema Quality Tests</div>
+                        <div class="kpi-value-lg text-instock" id="health-dbt-tests">37 / 37 PASS</div>
+                        <div class="kpi-sub">Bronze &bull; Silver &bull; Gold contracts</div>
+                    </div>
+                </div>
+
+                <div class="health-tables-grid">
+                    <!-- Top Stale States Table -->
+                    <div class="radar-table-card">
+                        <div class="card-head" style="padding: 1rem 1.25rem 0.5rem;">
+                            <h4 class="card-title" style="font-size: 1rem;">Top States by Stale Facilities (&gt;7 Days)
+                            </h4>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="academic-table" id="health-stale-states-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">State</th>
+                                        <th scope="col" class="text-right">Total Banks</th>
+                                        <th scope="col" class="text-right">Stale &gt;7d</th>
+                                        <th scope="col" class="text-right">Stale &gt;30d</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="health-stale-states-tbody">
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-2">Loading stale state
+                                            metrics...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Recent Pipeline Runs Table -->
+                    <div class="radar-table-card">
+                        <div class="card-head" style="padding: 1rem 1.25rem 0.5rem;">
+                            <h4 class="card-title" style="font-size: 1rem;">Recent Pipeline Audit Executions</h4>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="academic-table" id="health-runs-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Run ID</th>
+                                        <th scope="col">Started</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col" class="text-right">Facilities</th>
+                                        <th scope="col">dbt Tests</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="health-runs-tbody">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-2">Loading pipeline run
+                                            audit...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -510,7 +1093,8 @@
                     <div>
                         <span class="hero-kicker">Technical Architecture &amp; Methodology</span>
                         <h2 id="about-title" class="section-title">Medallion Lakehouse Architecture</h2>
-                        <p class="section-sub">A production-grade ELT pipeline designed with DuckDB and dbt Core for the MCA Mini Project at CHARUSAT.</p>
+                        <p class="section-sub">A production-grade ELT pipeline designed with DuckDB and dbt Core as an
+                            Academic Project.</p>
                     </div>
                 </div>
 
@@ -521,7 +1105,10 @@
                             <span class="method-layer-badge badge-bronze">Bronze Layer</span>
                             <h3 class="method-card-title">Immutable Landing &amp; Ingestion</h3>
                         </div>
-                        <p class="method-card-desc">Asynchronous scraper querying eRaktKosh district endpoints with polite concurrency (Semaphore 10), identifiable academic User-Agent, and circuit breakers. Each scrape writes an immutable timestamped Parquet snapshot verified with SHA-256 before append-only loading into DuckDB raw tables.</p>
+                        <p class="method-card-desc">Asynchronous scraper querying eRaktKosh district endpoints with
+                            polite concurrency (Semaphore 10), identifiable academic User-Agent, and circuit breakers.
+                            Each scrape writes an immutable timestamped Parquet snapshot verified with SHA-256 before
+                            append-only loading into DuckDB raw tables.</p>
                         <ul class="method-card-list">
                             <li>Zero CSV round-trip corruption</li>
                             <li>Immutable timestamped landing files</li>
@@ -535,7 +1122,9 @@
                             <span class="method-layer-badge badge-silver">Silver Layer</span>
                             <h3 class="method-card-title">Unnesting &amp; Strict Normalization</h3>
                         </div>
-                        <p class="method-card-desc">dbt staging models unnest nested component structures into atomic rows per (facility, component, blood_group, units). Utilizes a strict SQL normalizer macro guaranteeing clinical distinction between B+ vs AB+ and O+ vs Bombay Oh+.</p>
+                        <p class="method-card-desc">dbt staging models unnest nested component structures into atomic
+                            rows per (facility, component, blood_group, units). Utilizes a strict SQL normalizer macro
+                            guaranteeing clinical distinction between B+ vs AB+ and O+ vs Bombay Oh+.</p>
                         <ul class="method-card-list">
                             <li>35 dbt contract &amp; data quality tests</li>
                             <li>Pure relational schema: one row per component group</li>
@@ -549,7 +1138,10 @@
                             <span class="method-layer-badge badge-gold">Gold Layer</span>
                             <h3 class="method-card-title">Dimensional Marts &amp; Analytics</h3>
                         </div>
-                        <p class="method-card-desc">Dimensional and aggregate marts powering sub-millisecond analytical queries. Replaces fragile application-layer regex parsing with pure SQL aggregations on <code class="code-inline">fct_stock_current</code> and incremental <code class="code-inline">fct_stock_snapshot</code>.</p>
+                        <p class="method-card-desc">Dimensional and aggregate marts powering sub-millisecond analytical
+                            queries. Replaces fragile application-layer regex parsing with pure SQL aggregations on
+                            <code class="code-inline">fct_stock_current</code> and incremental <code
+                                class="code-inline">fct_stock_snapshot</code>.</p>
                         <ul class="method-card-list">
                             <li>Reliability scoring algorithm (0–100 scale)</li>
                             <li>Append-only snapshots with zero fake data</li>
@@ -563,38 +1155,53 @@
                     <div class="formula-grid">
                         <div class="formula-col">
                             <h4 class="formula-title">Facility Reliability Scoring Algorithm</h4>
-                            <p class="formula-desc">Every facility receives a computed trustworthiness score between 0 and 100 based on three objective criteria:</p>
+                            <p class="formula-desc">Every facility receives a computed trustworthiness score between 0
+                                and 100 based on three objective criteria:</p>
                             <div class="formula-breakdown">
                                 <div class="formula-row">
                                     <span class="formula-metric">Data Freshness (50 pts)</span>
-                                    <span class="formula-points">Updated &le;24h (50 pts) &bull; &le;7d (30 pts) &bull; &le;30d (10 pts)</span>
+                                    <span class="formula-points">Updated &le;24h (50 pts) &bull; &le;7d (30 pts) &bull;
+                                        &le;30d (10 pts)</span>
                                 </div>
                                 <div class="formula-row">
                                     <span class="formula-metric">Contact Validity (25 pts)</span>
-                                    <span class="formula-points">Verifiable 10-digit mobile, landline, or active registry phone</span>
+                                    <span class="formula-points">Verifiable 10-digit mobile, landline, or active
+                                        registry phone</span>
                                 </div>
                                 <div class="formula-row">
                                     <span class="formula-metric">Inventory Completeness (25 pts)</span>
-                                    <span class="formula-points">Comprehensive component reporting across all 8 standard blood groups</span>
+                                    <span class="formula-points">Comprehensive component reporting across all 8 standard
+                                        blood groups</span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="formula-col">
                             <h4 class="formula-title">Academic Ethics &amp; Source Attribution</h4>
-                            <p class="formula-desc">This project is developed solely for academic research and educational demonstration as part of the MCA degree at CHARUSAT. It does not replace official emergency services.</p>
+                            <p class="formula-desc">This project is developed solely for academic research and
+                                educational demonstration as an Academic Project. It does not replace
+                                official emergency services.</p>
                             <div class="ethics-list">
                                 <div class="ethics-item">
-                                    <svg class="icon"><use href="#icon-shield-check"></use></svg>
-                                    <span><strong>Zero Fake Data Policy:</strong> Multi-day trends reflect genuine periodic scrapes. No artificial backfills.</span>
+                                    <svg class="icon">
+                                        <use href="#icon-shield-check"></use>
+                                    </svg>
+                                    <span><strong>Zero Fake Data Policy:</strong> Multi-day trends reflect genuine
+                                        periodic scrapes. No artificial backfills.</span>
                                 </div>
                                 <div class="ethics-item">
-                                    <svg class="icon"><use href="#icon-shield-check"></use></svg>
-                                    <span><strong>Honest Location Labeling:</strong> Pins represent district-centroid approximations, explicitly labeled.</span>
+                                    <svg class="icon">
+                                        <use href="#icon-shield-check"></use>
+                                    </svg>
+                                    <span><strong>Honest Location Labeling:</strong> Pins represent district-centroid
+                                        approximations, explicitly labeled.</span>
                                 </div>
                                 <div class="ethics-item">
-                                    <svg class="icon"><use href="#icon-shield-check"></use></svg>
-                                    <span><strong>Source Politeness:</strong> Rate-limited requests with polite delays and an identifiable User-Agent.</span>
+                                    <svg class="icon">
+                                        <use href="#icon-shield-check"></use>
+                                    </svg>
+                                    <span><strong>Source Politeness:</strong> Rate-limited requests with polite delays
+                                        and an identifiable User-Agent.</span>
                                 </div>
                             </div>
                         </div>
@@ -605,7 +1212,8 @@
     </main>
 
     <!-- 7-Day Stock Trend Modal (Restyled, accessible, no emojis) -->
-    <div id="history-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-hosp-name">
+    <div id="history-modal" class="modal-overlay hidden" role="dialog" aria-modal="true"
+        aria-labelledby="modal-hosp-name">
         <div class="modal-container" role="document">
             <div class="modal-header">
                 <div>
@@ -614,7 +1222,9 @@
                     <p id="modal-hosp-loc" class="modal-subtitle">District, State</p>
                 </div>
                 <button type="button" id="modal-close-btn" class="close-btn" aria-label="Close trend details modal">
-                    <svg class="icon"><use href="#icon-x"></use></svg>
+                    <svg class="icon">
+                        <use href="#icon-x"></use>
+                    </svg>
                 </button>
             </div>
 
@@ -631,7 +1241,9 @@
                             <option value="Random Donor Platelets">Random Donor Platelets (RDP)</option>
                             <option value="Plasma">Plasma</option>
                         </select>
-                        <svg class="select-chevron" aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
+                        <svg class="select-chevron" aria-hidden="true">
+                            <use href="#icon-chevron-down"></use>
+                        </svg>
                     </div>
                 </div>
             </div>
@@ -657,11 +1269,13 @@
             </div>
 
             <div class="modal-chart-wrapper">
-                <canvas id="historyChart" height="280" aria-label="Line chart showing daily units available over past 14 days" role="img"></canvas>
+                <canvas id="historyChart" height="280"
+                    aria-label="Line chart showing daily units available over past 14 days" role="img"></canvas>
             </div>
 
             <div class="modal-footer">
-                <span class="modal-source-note">Verified against append-only DuckDB snapshots. Multi-day trajectories reflect real incremental runs of the data pipeline.</span>
+                <span class="modal-source-note">Verified against append-only DuckDB snapshots. Multi-day trajectories
+                    reflect real incremental runs of the data pipeline.</span>
             </div>
         </div>
     </div>
@@ -672,11 +1286,15 @@
             <div class="modal-header">
                 <div>
                     <span class="tag tag-vol" id="sos-modal-badge">Direct Transfusion Assistance</span>
-                    <h3 id="sos-modal-title" class="modal-title" data-i18n="sosTitle">Emergency Blood Availability SOS Card</h3>
-                    <p class="modal-subtitle">Share verified facility coordinates and availability with family, doctors, or patient groups.</p>
+                    <h3 id="sos-modal-title" class="modal-title">Emergency Blood Availability SOS
+                        Card</h3>
+                    <p class="modal-subtitle">Share verified facility coordinates and availability with family, doctors,
+                        or patient groups.</p>
                 </div>
                 <button type="button" id="sos-close-btn" class="close-btn" aria-label="Close SOS modal">
-                    <svg class="icon"><use href="#icon-x"></use></svg>
+                    <svg class="icon">
+                        <use href="#icon-x"></use>
+                    </svg>
                 </button>
             </div>
 
@@ -684,15 +1302,116 @@
                 <div id="sos-preview-text" class="sos-preview-card"></div>
                 <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem;">
                     <button type="button" id="sos-copy-btn" class="btn btn-primary" style="flex: 1;">
-                        <svg class="icon"><use href="#icon-share-2"></use></svg>
-                        <span data-i18n="sosCopyBtn">Copy SOS Message</span>
+                        <svg class="icon">
+                            <use href="#icon-share-2"></use>
+                        </svg>
+                        <span>Copy SOS Message</span>
                     </button>
-                    <a id="sos-whatsapp-btn" href="#" target="_blank" rel="noopener" class="btn btn-text" style="flex: 1; border: 1px solid var(--line); justify-content: center; background: #25D366; color: #FFFFFF; font-weight: 600;">
-                        <span data-i18n="sosWhatsAppBtn">Share via WhatsApp</span>
+                    <a id="sos-whatsapp-btn" href="#" target="_blank" rel="noopener" class="btn btn-text"
+                        style="flex: 1; border: 1px solid var(--line); justify-content: center; background: #25D366; color: #FFFFFF; font-weight: 600;">
+                        <span>Share via WhatsApp</span>
                     </a>
                 </div>
-                <div id="sos-copy-feedback" style="font-size: 0.8125rem; color: var(--stock-instock); margin-top: 0.5rem; text-align: center; display: none;" data-i18n="sosCopied">
+                <div id="sos-copy-feedback"
+                    style="font-size: 0.8125rem; color: var(--stock-instock); margin-top: 0.5rem; text-align: center; display: none;">
                     SOS card copied to clipboard!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PHASE 1: TRUST SCORE EXPLANATION MODAL -->
+    <div id="trust-modal" class="modal-overlay hidden" role="dialog" aria-modal="true"
+        aria-labelledby="trust-modal-title">
+        <div class="modal-container" role="document">
+            <div class="modal-header">
+                <div>
+                    <span class="tag tag-neutral">Algorithmic Transparency</span>
+                    <h3 id="trust-modal-title" class="modal-title">Blood Bank Trust Score (0–100)</h3>
+                    <p class="modal-subtitle">Objective composite index measuring reporting reliability and contact
+                        readiness.</p>
+                </div>
+                <button type="button" id="trust-close-btn" class="close-btn" aria-label="Close trust score modal">
+                    <svg class="icon">
+                        <use href="#icon-x"></use>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="modal-body" style="padding: 1.5rem 1.75rem;">
+                <p style="margin-bottom: 1.25rem; color: var(--ink-700);">
+                    In an emergency, listing units that were updated weeks ago or listing invalid phone numbers creates
+                    life-threatening delays. Our Lakehouse computes a 0–100 Trust Score in dbt model <code
+                        class="code-inline">mart_reliability_score</code> using three objective pillars:
+                </p>
+
+                <div class="formula-breakdown" style="margin-bottom: 1.5rem;">
+                    <div class="formula-row">
+                        <div style="display: flex; flex-direction: column;">
+                            <strong style="color: var(--ink-900);">1. Data Freshness (50 pts maximum)</strong>
+                            <span style="font-size: 0.8125rem; color: var(--ink-500);">Rewards active digital reporting
+                                to eRaktKosh:</span>
+                        </div>
+                        <span class="formula-points" style="text-align: right;">
+                            &lt;24 hours: <strong>50 pts</strong><br>
+                            &lt;3 days: <strong>35 pts</strong><br>
+                            &lt;7 days: <strong>20 pts</strong><br>
+                            &lt;14 days: <strong>8 pts</strong><br>
+                            &ge;14 days: <strong>0 pts</strong>
+                        </span>
+                    </div>
+
+                    <div class="formula-row">
+                        <div style="display: flex; flex-direction: column;">
+                            <strong style="color: var(--ink-900);">2. Contact Validity (25 pts maximum)</strong>
+                            <span style="font-size: 0.8125rem; color: var(--ink-500);">Verified telephone contact exists
+                                in national registry:</span>
+                        </div>
+                        <span class="formula-points" style="text-align: right;">
+                            Valid phone (&ge;8 numeric digits): <strong>25 pts</strong><br>
+                            Missing or placeholder phone: <strong>0 pts</strong>
+                        </span>
+                    </div>
+
+                    <div class="formula-row">
+                        <div style="display: flex; flex-direction: column;">
+                            <strong style="color: var(--ink-900);">3. Component Completeness (25 pts maximum)</strong>
+                            <span style="font-size: 0.8125rem; color: var(--ink-500);">Breadth of blood components
+                                managed and reported:</span>
+                        </div>
+                        <span class="formula-points" style="text-align: right;">
+                            &ge;3 distinct components: <strong>25 pts</strong><br>
+                            1–2 components: <strong>15 pts</strong><br>
+                            0 components reported: <strong>0 pts</strong>
+                        </span>
+                    </div>
+                </div>
+
+                <div
+                    style="background: var(--canvas); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 1rem 1.25rem;">
+                    <strong
+                        style="display: block; margin-bottom: 0.5rem; color: var(--ink-900); font-size: 0.875rem;">Reliability
+                        Tiers</strong>
+                    <div
+                        style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; text-align: center;">
+                        <div
+                            style="padding: 0.5rem; background: var(--stock-instock-bg); border: 1px solid var(--stock-instock-line); border-radius: var(--radius-sm);">
+                            <strong style="color: var(--stock-instock);">High (&ge;75)</strong>
+                            <div style="font-size: 0.75rem; color: var(--ink-500); margin-top: 2px;">Fresh &amp; active
+                            </div>
+                        </div>
+                        <div
+                            style="padding: 0.5rem; background: var(--stock-low-bg); border: 1px solid var(--stock-low-line); border-radius: var(--radius-sm);">
+                            <strong style="color: var(--stock-low);">Medium (40–74)</strong>
+                            <div style="font-size: 0.75rem; color: var(--ink-500); margin-top: 2px;">Moderate lag</div>
+                        </div>
+                        <div
+                            style="padding: 0.5rem; background: var(--stock-critical-bg); border: 1px solid var(--stock-critical-line); border-radius: var(--radius-sm);">
+                            <strong style="color: var(--stock-critical);">Low (&lt;40)</strong>
+                            <div style="font-size: 0.75rem; color: var(--ink-500); margin-top: 2px;">Call to verify
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -704,7 +1423,8 @@
             <div class="footer-top">
                 <div class="footer-brand">
                     <span class="footer-brand-title">eRaktKosh Blood Lakehouse</span>
-                    <p class="footer-brand-desc">National blood center inventory intelligence lakehouse. Academic Mini Project for Master of Computer Applications (MCA), Charotar University of Science and Technology (CHARUSAT).</p>
+                    <p class="footer-brand-desc">National blood center inventory intelligence lakehouse. Academic
+                        Project for clinical decision support and public health informatics.</p>
                 </div>
                 <div class="footer-emergency">
                     <span class="emergency-label">National emergency helplines</span>
@@ -716,17 +1436,20 @@
             </div>
 
             <div class="footer-disclaimer">
-                <p>Data sourced from eRaktKosh (MoHFW, Govt. of India). Academic project, not an official service. Call the blood bank to confirm.</p>
+                <p>Data sourced from eRaktKosh (MoHFW, Govt. of India). Academic project, not an official service. Call
+                    the blood bank to confirm.</p>
             </div>
 
             <div class="footer-bottom">
                 <div class="footer-meta">
-                    <span>eRaktKosh Blood Lakehouse &bull; MCA Academic Project &bull; CHARUSAT</span>
+                    <span>eRaktKosh Blood Lakehouse &bull; Academic Project</span>
                     <span class="footer-sep">&bull;</span>
                     <span>Engine: DuckDB + dbt Core Medallion Architecture</span>
                 </div>
                 <div class="footer-links">
                     <a href="/docs" target="_blank" rel="noopener">OpenAPI Specification</a>
+                    <span class="footer-sep">&bull;</span>
+                    <a href="/dbt-docs/" target="_blank" rel="noopener">dbt Lineage &amp; Models</a>
                     <span class="footer-sep">&bull;</span>
                     <a href="#finder-section">Emergency Finder</a>
                     <span class="footer-sep">&bull;</span>
@@ -740,7 +1463,6 @@
         </div>
     </footer>
 
-    <script src="/js/translations.js"></script>
     <script src="/js/app.js"></script>
 </body>
 

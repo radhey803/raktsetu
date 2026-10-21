@@ -39,7 +39,7 @@ def test_fixture_meta_endpoint(fixture_db_con):
         assert resp.status_code == 200
         data = resp.json()
         assert data["total_facilities"] == 2
-        assert "CHARUSAT" in data["institution"]
+        assert "Academic" in data["institution"]
     finally:
         app.dependency_overrides.clear()
 

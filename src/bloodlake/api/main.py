@@ -1,8 +1,7 @@
 """
 eRaktKosh Blood Lakehouse FastAPI Application
 =============================================
-Academic Mini Project - Master of Computer Applications (MCA)
-Charotar University of Science and Technology (CHARUSAT)
+Academic Project - Blood Inventory Intelligence Lakehouse
 
 Serves high-concurrency analytical queries from DuckDB and hosts the Vanilla JS/CSS
 web interface from the web/ directory.
@@ -10,7 +9,7 @@ web interface from the web/ directory.
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from bloodlake.api.routes import router
@@ -20,7 +19,7 @@ app = FastAPI(
     title=settings.project_name,
     description=(
         "Real-Time Medallion Blood Lakehouse & Emergency Finder across 781 districts in India. "
-        "Academic Mini Project for Master of Computer Applications (MCA), CHARUSAT."
+        "Academic Project for clinical decision support and public health informatics."
     ),
     version=settings.version,
     docs_url="/docs",
@@ -58,6 +57,11 @@ if web_dir.exists():
     if static_dir.exists():
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
+    # Mount dbt docs if generated in dbt/target
+    dbt_target = settings.base_dir / "dbt" / "target"
+    if dbt_target.exists() and (dbt_target / "index.html").exists():
+        app.mount("/dbt-docs", StaticFiles(directory=str(dbt_target), html=True), name="dbt_docs")
+
     @app.get("/", response_class=HTMLResponse)
     def serve_index():
         index_file = web_dir / "index.html"
@@ -69,6 +73,24 @@ if web_dir.exists():
     def serve_dashboard():
         index_file = web_dir / "index.html"
         return FileResponse(str(index_file))
+
+    @app.get("/manifest.json")
+    def serve_manifest():
+        manifest_file = web_dir / "manifest.json"
+        if manifest_file.exists():
+            return FileResponse(str(manifest_file), media_type="application/manifest+json")
+        return Response(status_code=404)
+
+    @app.get("/sw.js")
+    def serve_service_worker():
+        sw_file = web_dir / "sw.js"
+        if sw_file.exists():
+            return FileResponse(
+                str(sw_file),
+                media_type="application/javascript",
+                headers={"Service-Worker-Allowed": "/"},
+            )
+        return Response(status_code=404)
 
 
 # Legacy Endpoint Shims for Full Backward Compatibility

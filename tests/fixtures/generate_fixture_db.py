@@ -85,10 +85,16 @@ def create_synthetic_fixture_db(db_path: Path = FIXTURE_DB_PATH) -> Path:
         CREATE TABLE main_gold.mart_district_status (
             state_name VARCHAR,
             district_name VARCHAR,
-            blood_group VARCHAR,
             component_name VARCHAR,
-            total_units BIGINT,
+            blood_group VARCHAR,
             total_reporting_banks BIGINT,
+            stocked_banks BIGINT,
+            banks_with_zero BIGINT,
+            total_units BIGINT,
+            min_facility_units BIGINT,
+            max_facility_units BIGINT,
+            shortage_flag BOOLEAN,
+            severity_score INTEGER,
             shortage_status VARCHAR
         );
     """)
@@ -100,10 +106,11 @@ def create_synthetic_fixture_db(db_path: Path = FIXTURE_DB_PATH) -> Path:
             hospital_name VARCHAR,
             state_name VARCHAR,
             district_name VARCHAR,
-            data_freshness_points INTEGER,
-            contact_points INTEGER,
-            completeness_points INTEGER,
+            freshness_pts INTEGER,
+            contact_pts INTEGER,
+            completeness_pts INTEGER,
             reliability_score INTEGER,
+            reliability_label VARCHAR,
             reliability_tier VARCHAR
         );
     """)
@@ -155,12 +162,12 @@ def create_synthetic_fixture_db(db_path: Path = FIXTURE_DB_PATH) -> Path:
         ('Gujarat', 2, 2, 0, 95, CURRENT_TIMESTAMP);
 
         INSERT INTO main_gold.mart_district_status VALUES
-        ('Gujarat', 'Anand', 'O-', 'Packed Red Blood Cells', 17, 2, 'NORMAL'),
-        ('Gujarat', 'Kheda', 'O-', 'Packed Red Blood Cells', 0, 1, 'HIGH_SHORTAGE');
+        ('Gujarat', 'Anand', 'Packed Red Blood Cells', 'O-', 2, 2, 0, 17, 2, 15, false, 10, 'NORMAL'),
+        ('Gujarat', 'Kheda', 'Packed Red Blood Cells', 'O-', 1, 0, 1, 0, 0, 0, true, 100, 'HIGH_SHORTAGE');
 
         INSERT INTO main_gold.mart_reliability_score VALUES
-        (9901, 'Synthetic Civil Hospital', 'Gujarat', 'Anand', 50, 25, 25, 100, 'HIGH'),
-        (9902, 'Synthetic Red Cross Centre', 'Gujarat', 'Anand', 50, 25, 15, 90, 'HIGH');
+        (9901, 'Synthetic Civil Hospital', 'Gujarat', 'Anand', 50, 25, 25, 100, 'High', 'High'),
+        (9902, 'Synthetic Red Cross Centre', 'Gujarat', 'Anand', 50, 25, 15, 90, 'High', 'High');
 
         INSERT INTO main_gold.mart_rare_blood_availability VALUES
         (9901, 'Synthetic Civil Hospital', 'Gujarat', 'Anand', 'Bombay (Oh+)', 'Packed Red Blood Cells', 3);

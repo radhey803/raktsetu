@@ -82,7 +82,7 @@ models:
           - not_null
 
   - name: mart_reliability_score
-    description: "Facility reliability rating (0-100) combining data freshness (50 pts), contact verification (25 pts), and component completeness (25 pts)"
+    description: "Facility reliability rating (0-100): Freshness 50 pts (<24h=50, <3d=35, <7d=20, <14d=8, older=0), valid contact 25 pts (>=8 digit phone), completeness 25 pts (share of expected components)"
     columns:
       - name: hospital_code
         tests:
@@ -91,11 +91,16 @@ models:
       - name: reliability_score
         tests:
           - not_null
+      - name: reliability_label
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['High', 'Medium', 'Low']
       - name: reliability_tier
         tests:
           - not_null
           - accepted_values:
-              values: ['HIGH', 'MODERATE', 'LOW']
+              values: ['High', 'Medium', 'Low']
 
   - name: mart_stock_change
     description: "7-day inventory consumption rate and days-of-cover estimates, only calculated when >= 7 real snapshot dates exist"

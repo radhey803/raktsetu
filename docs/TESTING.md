@@ -1,86 +1,60 @@
 # eRaktKosh Blood Lakehouse: Testing & Quality Assurance Report
 
-**Academic Context:** Master of Computer Applications (MCA) Mini Project (800 Marks)  
-**Institution:** Charotar University of Science and Technology (CHARUSAT)  
+**Academic Context:** Academic Project Mini Project (800 Marks)  
+**Context:** Academic Research Project  
 **Test Frameworks:** `pytest 9.1.1`, `dbt-duckdb 1.11.0`, `ruff 0.17.0`, `FastAPI TestClient`  
 **Execution Timestamp:** 2026-10-15  
-**Overall Suite Status:** **ALL 80 TESTS PASSED (45 pytest + 35 dbt)**
+**Overall Suite Status:** **ALL 135 TESTS PASSED (98 pytest + 37 dbt)**
 
 ---
 
 ## 1. Testing Philosophy & Verification Strategy
 
 The testing strategy follows the **Medallion Lakehouse Reliability Model**:
-1. **Unit Testing:** Isolates algorithmic components (strict blood group normalization, reliability scoring formula, geocoding coordinate resolution, scraper rate-limiting/backoff, and parquet serialization).
-2. **Integration Testing:** Tests FastAPI REST endpoints end-to-end against an isolated, synthetic test fixture database (`tests/fixtures/fixture_lakehouse.duckdb`).
-3. **Data Contract & Integrity Testing (dbt):** Validates column uniqueness, non-null constraints, and clinical blood taxonomy across Bronze, Silver, and Gold relational models.
-4. **Anomaly Quality Gates:** Checks data drift and protects serving instances by blocking publishing if facility count drops below 80% of historical baselines.
+1. **Unit Testing:** Isolates algorithmic components (strict blood group normalization, reliability scoring formula, geocoding coordinate resolution & Haversine distance, emergency multi-pillar ranking formula, stock change risk flags, and CSV export with UTF-8 BOM).
+2. **Integration Testing:** Tests FastAPI REST endpoints end-to-end against an isolated test fixture database (`tests/fixtures/fixture_lakehouse.duckdb`).
+3. **Data Contract & Integrity Testing (dbt Core):** Validates column uniqueness, non-null constraints, and clinical blood taxonomy across Bronze, Silver, and Gold relational models.
+4. **Publish Gates & Anomaly Detection:** Checks data drift and protects serving instances by blocking publishing if facility count drops below 80% of historical baselines or if any dbt test fails.
 
 ```mermaid
 graph TD
     A[Scraper Ingestion] -->|SHA-256 Parquet| B[Landing Zone]
-    B -->|Ingest Raw| C[Bronze: raw_inventory]
-    C -->|dbt clean & unnest| D[Silver: stg_inventory]
+    B -->|Ingest Raw| C[Bronze: raw_blood_inventory]
+    C -->|dbt clean & unnest| D[Silver: stg_inventory_components]
     D -->|dbt test: accepted_values, not_null| E{Silver Quality Gate}
     E -->|Pass| F[Gold Marts]
-    F -->|dbt test: uniqueness, relationships| G{Gold Quality Gate}
-    G -->|Pass| H[Anomaly Gate: >=80% facility retention]
+    F -->|dbt test: uniqueness, relationships| G{Gold Quality Gate: 37 Tests}
+    G -->|Pass| H[Publish Gate: >=80% facility retention & zero test failures]
     H -->|Pass| I[Atomic Swap to serving.duckdb]
-    H -->|Fail (<80%)| J[Pipeline Aborted & Alert Raised]
+    H -->|Fail| J[Pipeline Aborted & Last Serving DB Preserved]
 ```
 
 ---
 
-## 2. Test Execution Matrix (40 Comprehensive Test Cases)
+## 2. Test Execution Matrix (Verified Real Executions)
 
-| Test ID | Module / Layer | Scenario Description | Test Input / Parameters | Expected Outcome | Actual Outcome | Status |
-|---|---|---|---|---|---|---|
-| **TC-01** | `Normalizer` | B+ does not match AB+ | Raw text: `'B+Ve: 12'` | Normalized as `B+`, never matches `AB+` | `B+` isolated; `AB+` is unaffected | **PASS** |
-| **TC-02** | `Normalizer` | AB+ does not match B+ | Raw text: `'AB+Ve: 8'` | Normalized as `AB+`, never matches `B+` | `AB+` isolated; `B+` count unchanged | **PASS** |
-| **TC-03** | `Normalizer` | O+ does not match Bombay Oh+ | Raw text: `'Oh+ : 2'` | Normalized as `Bombay (Oh+)`, distinct from `O+` | `Bombay (Oh+)` isolated from universal `O+` | **PASS** |
-| **TC-04** | `Normalizer` | Rh-negative phenotype handling | Raw text: `'A-Ve: 4, B-Ve: 2, O-Ve: 5'` | Exact extraction of `A-`, `B-`, `O-` | `{'A-': 4, 'B-': 2, 'O-': 5}` | **PASS** |
-| **TC-05** | `Reliability` | Perfect facility evaluation | Freshness: &le;24h, Valid phone, 8 blood groups | Score = 100/100, Tier = `HIGH` | Score = 100, Tier = `HIGH` | **PASS** |
-| **TC-06** | `Reliability` | Stale facility scoring penalty | No update recorded for 45 days | Freshness points: 0/50, Score &le; 50 | Score = 50, Tier = `MEDIUM` | **PASS** |
-| **TC-07** | `Reliability` | Missing phone penalty | Contact: `Phone: - , Fax: -` | Contact points: 0/25 | Contact points = 0 awarded | **PASS** |
-| **TC-08** | `Reliability` | Critically unreliable facility | Stale (>60d), invalid phone, only 1 group | Score &le; 20/100, Tier = `LOW` | Score = 15, Tier = `LOW` | **PASS** |
-| **TC-09** | `Geocoding` | Anand district resolution | State: `Gujarat`, District: `Anand` | Lat &sim; 22.5645, Lng &sim; 72.9289, Approx = True | Lat: 22.5645, Lng: 72.9289, Approx: True | **PASS** |
-| **TC-10** | `Geocoding` | Deterministic pin jitter | Two facilities in same district code | Unique non-overlapping coordinates | &Delta;lat &ne; 0, &Delta;lng &ne; 0 (jittered) | **PASS** |
-| **TC-11** | `Geocoding` | Unknown district fallback | State: `Unknown`, District: `Nowhere` | Fallback to India centroid (20.5937, 78.9629) | Fallback applied, flag `is_approximate=True` | **PASS** |
-| **TC-12** | `Landing` | Immutable Parquet write & read | 100 mock facility records | Timestamped parquet file written with SHA-256 | File created, SHA-256 verified, 100 rows read | **PASS** |
-| **TC-13** | `Scraper` | Successful HTTP district query | State code: 24, District code: 446 | Returns parsed facilities list with HTTP 200 | 5 facilities extracted | **PASS** |
-| **TC-14** | `Scraper` | HTTP 429 rate limit backoff | Mock 429 response followed by 200 | Retries after exponential backoff delay | Backoff executed, successful recovery | **PASS** |
-| **TC-15** | `Scraper` | Malformed JSON upstream | Response: `<html>502 Bad Gateway</html>` | Graceful parse error handling without crashing | Logged error, returns empty list `[]` | **PASS** |
-| **TC-16** | `Scraper` | Circuit breaker tripping | >20% consecutive district network errors | Scraper execution aborted safely | Circuit breaker tripped, partial run saved | **PASS** |
-| **TC-17** | `Scraper` | Polite concurrency verification | Semaphore bound to 10 | Max concurrent outgoing HTTP connections &le; 10 | Active semaphore permits maintained &le; 10 | **PASS** |
-| **TC-18** | `Warehouse` | Append-only raw table load | Run ID: `run_test_01`, 100 records | Ingested to `main_bronze.raw_blood_inventory` | Appended cleanly without schema drift | **PASS** |
-| **TC-19** | `Warehouse` | Pipeline run metadata logging | Execution start, completion, rows, status | Recorded in `main_gold.pipeline_runs` | Run recorded with status `SUCCESS` | **PASS** |
-| **TC-20** | `CLI` | Pipeline CLI `--help` command | Execute `bloodlake --help` | Exit code 0, lists all subcommands | Displayed `scrape`, `load`, `transform`, `all` | **PASS** |
-| **TC-21** | `CLI` | Pipeline status command | Execute `bloodlake status` | Returns warehouse run summary | Last run ID, timestamp, rows displayed | **PASS** |
-| **TC-22** | `CLI` | Anomaly gate passes valid count | Scrape facility count: 4,680 (100% of baseline) | Publishing allowed | Gate returned True (no anomaly) | **PASS** |
-| **TC-23** | `CLI` | Anomaly gate blocks data loss | Scrape facility count: 2,500 (<80% of baseline) | Publishing blocked with critical alert | Gate returned False, aborted publication | **PASS** |
-| **TC-24** | `CLI` | Atomic database swap | Atomic rename `serving.duckdb.tmp` | Zero read interruption during file replace | Atomic rename `os.replace` succeeded | **PASS** |
-| **TC-25** | `API: Meta` | Academic attribution endpoint | `GET /api/v1/meta` | HTTP 200, contains CHARUSAT & facility count | Status 200, institution = "CHARUSAT" | **PASS** |
-| **TC-26** | `API: Health` | Liveness health check | `GET /healthz` | HTTP 200, `status="healthy"`, DuckDB connected | Status 200, `database="DuckDB Lakehouse"` | **PASS** |
-| **TC-27** | `API: Summary` | National summary KPIs | `GET /api/v1/summary` | Total banks > 0, fresh banks > 0, top states list | Status 200, top states populated | **PASS** |
-| **TC-28** | `API: Locations` | Hierarchy dropdown query | `GET /api/v1/locations` | Dict of states mapping to sorted district arrays | Status 200, Gujarat contains Anand, Kheda | **PASS** |
-| **TC-29** | `API: Banks` | Blood bank directory pagination | `GET /api/v1/banks?page=1&page_size=10` | 10 items, pagination metadata, total count | Status 200, 10 items returned with metadata | **PASS** |
-| **TC-30** | `API: Search` | Pure SQL availability query | `GET /api/v1/availability?district=Anand&component=PRBC` | Direct SQL on `fct_stock_current`, zero regex | Status 200, items contain Anand facilities | **PASS** |
-| **TC-31** | `API: History` | Honest trend under 2 snapshots | `GET /api/v1/history?hospital_code=871` | Flag `has_sufficient_history=False`, honest notice | `has_sufficient_history=False`, message returned | **PASS** |
-| **TC-32** | `API: Shortages` | District deficit early warning | `GET /api/v1/shortages?blood_group=O-` | Returns districts ordered by ascending units | Status 200, High deficit districts listed first | **PASS** |
-| **TC-33** | `API: Rare` | Rare phenotype search | `GET /api/v1/rare` | Returns facilities with Bombay Oh+, Oh-, AB- | Status 200, Bombay phenotype centers returned | **PASS** |
-| **TC-34** | `Fixture API` | Synthetic fixture meta test | `GET /api/v1/meta` against fixture | Exact 2 synthetic facilities reported | Total facilities = 2 | **PASS** |
-| **TC-35** | `Fixture API` | Synthetic stock query | `GET /api/v1/availability` against fixture | Exactly 15 units O- PRBC at hospital 9901 | Units = 15 matched exactly | **PASS** |
-| **TC-36** | `Fixture API` | Synthetic 2-date trend chart | `GET /api/v1/history?hospital_code=9901` | Flag `has_sufficient_history=True`, 2 points | `has_sufficient_history=True`, 2 points | **PASS** |
-| **TC-37** | `dbt: Silver` | Unnesting component test | dbt test `not_null_stg_inventory_components_blood_group` | Zero null blood groups in staging | Passed (0 nulls) | **PASS** |
-| **TC-38** | `dbt: Silver` | Accepted blood group values | dbt test `accepted_values_stg_inventory_components_blood_group` | Strictly 10 clinical phenotypes | Passed (all values in accepted list) | **PASS** |
-| **TC-39** | `dbt: Gold` | Dim blood banks uniqueness | dbt test `unique_dim_blood_banks_hospital_code` | Zero duplicate hospital codes | Passed (0 duplicate codes) | **PASS** |
-| **TC-40** | `dbt: Gold` | Reliability score tiers | dbt test `accepted_values_mart_reliability_score_reliability_tier` | Tiers strictly `HIGH`, `MODERATE`, `LOW` | Passed (no invalid tiers) | **PASS** |
+| Test Suite | File | Tests Count | Scope & Verification | Status |
+|---|---|:---:|---|:---:|
+| **Emergency Mode** | `tests/unit/test_emergency_mode.py` | 5 | ABO/Rh red cell compatibility matrix for all 8 standard groups + Bombay Oh; clinical warnings for Rh- and Bombay; emergency 4-pillar ranking formula ($0.35F + 0.30T + 0.25U + 0.10D$); schema validation. | **PASS** |
+| **Reliability Score** | `tests/unit/test_reliability_score.py` | 36 | 0-100 Trust Score boundary testing: freshness (0, 1, 2, 3, 4, 6, 7, 13, 14, 30 days, None); valid contact (landlines, 10-digit mobile, short strings, dashes, None); component completeness (0, 1, 2, 3, 5 components); tier classification (High $\ge 75$, Medium $40-74$, Low $< 40$). | **PASS** |
+| **Geocoding & Distance** | `tests/unit/test_geocoding_service.py` | 8 | Haversine distance with known city pairs (Anand-Ahmedabad ~65 km, Mumbai-Pune ~120 km, Delhi-Jaipur ~240 km); same point returns 0 km; district centroid coordinates lookup; deterministic offset; precision labels (`exact`, `street`, `district_centroid`, `failed`). | **PASS** |
+| **Stock Change & Risk** | `tests/unit/test_stock_change_risk.py` | 6 | Append-only snapshot deltas; honest empty state when snapshots $< 2$; consecutive falling risk flag (monotonic drop across 3 intervals, $\ge 4$ snapshots); fluctuating stock non-trigger; sudden drop to zero anomaly detection. | **PASS** |
+| **CSV Export** | `tests/unit/test_csv_export.py` | 4 | Search availability CSV export with UTF-8 BOM (`\ufeff`) for Excel; shortage summary CSV export; government MoHFW attribution headers and clinical disclaimer rows. | **PASS** |
+| **Blood Normalizer** | `tests/unit/test_normalizer.py` | 3 | B+ strictly never matches AB+; O+ strictly never matches Bombay Oh+; Rh-negative isolation across all standard groups. | **PASS** |
+| **Landing Pipeline** | `tests/unit/test_landing_pipeline.py` | 1 | Immutable timestamped Parquet serialization, SHA-256 verification, and landing read integrity. | **PASS** |
+| **Pipeline CLI** | `tests/unit/test_pipeline_cli.py` | 8 | CLI `--help`, `status`, anomaly gate pass/fail thresholds ($80\%$), publish command, mocked subcommands (`scrape`, `load`, `transform`, `all`). | **PASS** |
+| **Data Schemas** | `tests/unit/test_schemas.py` | 3 | Pydantic schema validation for facility item, blood availability, and metadata models. | **PASS** |
+| **Async Scraper** | `tests/unit/test_scraper.py` | 6 | District fetching success, empty district response, JSON decode resilience, HTTP 429 exponential backoff, circuit breaker trip on sustained failures, semaphore concurrency bound. | **PASS** |
+| **Warehouse Loader** | `tests/unit/test_warehouse_loader.py` | 2 | Bronze ingestion and pipeline run tracking in DuckDB. | **PASS** |
+| **Integration API** | `tests/integration/test_api.py` | 10 | Live FastAPI endpoints: summary, availability, locations, history honest empty state, shortages, rare blood, health dashboard, CORS, error handling. | **PASS** |
+| **Fixture API** | `tests/integration/test_fixture_api.py` | 6 | End-to-end tests against synthetic 2-snapshot test fixture: meta, availability, 2-point history trend, shortage queries. | **PASS** |
+| **dbt Core Models** | `dbt/models/` | 37 | Relational constraints: `not_null`, `unique`, `accepted_values` across staging and gold marts (`mart_reliability_score`, `mart_district_status`, `mart_rare_blood_availability`, `fct_stock_current`, `fct_stock_snapshot`, `dim_blood_banks`). | **PASS** |
 
 ---
 
 ## 3. Real Execution Logs & Proof of Compliance
 
-### 3.1 Pytest Suite Execution (45 Unit & Integration Tests)
+### 3.1 Pytest Suite Execution (98 Unit & Integration Tests)
 ```bash
 $ uv run pytest
 ============================= test session starts ==============================
@@ -90,46 +64,47 @@ configfile: pyproject.toml
 testpaths: tests
 plugins: platformdirs-4.13.0, anyio-4.15.1, asyncio-1.4.0, cov-7.1.0
 
-tests/integration/test_api.py ..........                                 [ 22%]
-tests/integration/test_fixture_api.py ......                             [ 35%]
-tests/unit/test_geocoding_service.py ...                                 [ 42%]
-tests/unit/test_landing_pipeline.py .                                    [ 44%]
-tests/unit/test_normalizer.py ...                                        [ 51%]
-tests/unit/test_pipeline_cli.py ........                                 [ 68%]
-tests/unit/test_reliability_score.py ...                                 [ 75%]
-tests/unit/test_schemas.py ...                                           [ 82%]
-tests/unit/test_scraper.py ......                                        [ 95%]
+tests/integration/test_api.py ..........                                 [ 10%]
+tests/integration/test_fixture_api.py ......                             [ 16%]
+tests/unit/test_csv_export.py ....                                       [ 20%]
+tests/unit/test_emergency_mode.py .....                                  [ 25%]
+tests/unit/test_geocoding_service.py ........                            [ 33%]
+tests/unit/test_landing_pipeline.py .                                    [ 34%]
+tests/unit/test_normalizer.py ...                                        [ 37%]
+tests/unit/test_pipeline_cli.py ........                                 [ 45%]
+tests/unit/test_reliability_score.py ................................... [ 81%]
+.                                                                        [ 82%]
+tests/unit/test_schemas.py ...                                           [ 85%]
+tests/unit/test_scraper.py ......                                        [ 91%]
+tests/unit/test_stock_change_risk.py ......                              [ 97%]
 tests/unit/test_warehouse_loader.py ..                                   [100%]
 
-======================== 45 passed, 3 warnings in 1.79s ========================
+======================== 98 passed, 3 warnings in 2.00s ========================
 ```
 
-### 3.2 dbt Core Relational Contracts & Data Tests (35 Tests)
+### 3.2 dbt Core Relational Contracts & Data Tests (37 Tests)
 ```bash
 $ uv run dbt test --project-dir dbt --profiles-dir dbt
-14:32:37  Running with dbt=1.12.5
-14:32:37  Registered adapter: duckdb=1.11.0
-14:32:38  Found 12 models, 35 data tests, 1 source, 501 macros
-14:32:38  Concurrency: 4 threads (target='dev')
+15:50:15  Registered adapter: duckdb=1.11.0
+15:50:16  Found 12 models, 37 data tests, 1 source, 501 macros
+15:50:16  Concurrency: 4 threads (target='dev')
 ...
-14:32:41  Finished running 35 data tests in 0 hours 0 minutes and 3.41 seconds (3.41s).
-14:32:41  Completed successfully
-14:32:41  Done. PASS=35 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=35
+15:50:19  Finished running 37 data tests in 0 hours 0 minutes and 3.05 seconds (3.05s).
+15:50:19  Completed successfully
+15:50:19  Done. PASS=37 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=37
 ```
 
-### 3.3 Code Quality & Formatting (Ruff Clean)
+### 3.3 Code Quality & Linting (Ruff Clean)
 ```bash
-$ uv run ruff check src/ tests/
+$ uv run ruff check .
 All checks passed!
-
-$ uv run ruff format --check src/ tests/
-19 files already formatted
 ```
 
 ---
 
-## 4. Summary of Verification
+## 4. Key Quality Assurance Principles Verified
 
-1. **Zero Fake Data:** All tests verify that snapshot history queries real timestamps. When fewer than 2 snapshots exist, the system returns `has_sufficient_history: false` and displays the honest empty state.
-2. **Deterministic B+ vs AB+ Isolation:** Unit tests confirm that the SQL normalizer regex `(^|[^A-Za-z])B[\+\-]([Vv]e)?` prevents any collision between group B and AB.
-3. **Serving DB Atomicity:** Pipeline tests verify that writes occur to temporary buffers and only replace `serving.duckdb` upon passing all 35 data tests and the anomaly gate.
+1. **Zero Fake Data:** All snapshot history endpoints query real timestamps. When fewer than 2 snapshots exist in production, the system returns `has_sufficient_history: false` and renders an honest informational notice.
+2. **Medical Rule Integrity:** All donor eligibility rules, donation intervals, and red cell compatibility mappings trace directly to official guidelines in `data/medical_rules.json` with source citations.
+3. **No Personal Data Exposure:** Client-side eligibility evaluations execute completely within the browser engine; zero form data is transmitted over the network.
+4. **Publish Gate Integrity:** The pipeline automatically aborts database replacement if dbt tests fail or if the facility count drops by $>20\%$, preventing partial or corrupted data releases.

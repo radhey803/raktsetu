@@ -1,0 +1,182 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "updated_at": "2026-10-15",
+    "disclaimer": "Guidance only, not medical advice. Confirm with a doctor or licensed blood bank before making clinical decisions.",
+    "attribution": "Guidelines consolidated from National Blood Transfusion Council (NBTC, MoHFW, Govt. of India), WHO, and Indian Red Cross Society."
+  },
+  "compatibility": {
+    "red_cells": {
+      "O-": {
+        "compatible_donor_groups": ["O-"],
+        "is_universal_donor": true,
+        "is_universal_recipient": false,
+        "clinical_note": "Universal red cell donor. Can ONLY receive O- negative blood.",
+        "source": "NBTC India Blood Transfusion Guidelines & WHO BTS",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      },
+      "O+": {
+        "compatible_donor_groups": ["O+", "O-"],
+        "is_universal_donor": false,
+        "is_universal_recipient": false,
+        "clinical_note": "Can receive O+ and O- red blood cells.",
+        "source": "NBTC India Blood Transfusion Guidelines & WHO BTS",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      },
+      "A-": {
+        "compatible_donor_groups": ["A-", "O-"],
+        "is_universal_donor": false,
+        "is_universal_recipient": false,
+        "clinical_note": "Can receive A- and O- red blood cells.",
+        "source": "NBTC India Blood Transfusion Guidelines & WHO BTS",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      },
+      "A+": {
+        "compatible_donor_groups": ["A+", "A-", "O+", "O-"],
+        "is_universal_donor": false,
+        "is_universal_recipient": false,
+        "clinical_note": "Can receive A+, A-, O+, and O- red blood cells.",
+        "source": "NBTC India Blood Transfusion Guidelines & WHO BTS",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      },
+      "B-": {
+        "compatible_donor_groups": ["B-", "O-"],
+        "is_universal_donor": false,
+        "is_universal_recipient": false,
+        "clinical_note": "Can receive B- and O- red blood cells.",
+        "source": "NBTC India Blood Transfusion Guidelines & WHO BTS",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      },
+      "B+": {
+        "compatible_donor_groups": ["B+", "B-", "O+", "O-"],
+        "is_universal_donor": false,
+        "is_universal_recipient": false,
+        "clinical_note": "Can receive B+, B-, O+, and O- red blood cells.",
+        "source": "NBTC India Blood Transfusion Guidelines & WHO BTS",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      },
+      "AB-": {
+        "compatible_donor_groups": ["AB-", "A-", "B-", "O-"],
+        "is_universal_donor": false,
+        "is_universal_recipient": false,
+        "clinical_note": "Can receive all Rh-negative red blood cells (AB-, A-, B-, O-).",
+        "source": "NBTC India Blood Transfusion Guidelines & WHO BTS",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      },
+      "AB+": {
+        "compatible_donor_groups": ["AB+", "AB-", "A+", "A-", "B+", "B-", "O+", "O-"],
+        "is_universal_donor": false,
+        "is_universal_recipient": true,
+        "clinical_note": "Universal red cell recipient. Can receive all standard ABO and Rh blood groups.",
+        "source": "NBTC India Blood Transfusion Guidelines & WHO BTS",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      },
+      "Bombay (Oh+)": {
+        "compatible_donor_groups": ["Bombay (Oh+)", "Bombay (Oh-)"],
+        "is_universal_donor": false,
+        "is_universal_recipient": false,
+        "clinical_note": "Extremely rare phenotype (lacks H-antigen). CANNOT receive O, A, B, or AB blood. Can ONLY receive Bombay Blood Group.",
+        "source": "NBTC India Guidelines for Management of Rare Blood Groups",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      },
+      "Bombay (Oh-)": {
+        "compatible_donor_groups": ["Bombay (Oh-)"],
+        "is_universal_donor": false,
+        "is_universal_recipient": false,
+        "clinical_note": "Ultra-rare Rh-negative Bombay phenotype. Can ONLY receive Bombay Oh- units.",
+        "source": "NBTC India Guidelines for Management of Rare Blood Groups",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      }
+    }
+  },
+  "donor_eligibility": {
+    "age": {
+      "min_years": 18,
+      "max_years": 65,
+      "description": "Donors must be between 18 and 65 years of age.",
+      "source": "Drugs & Cosmetics Act (Schedule F, Part XII-B) & NBTC India",
+      "source_url": "https://nbtc.mohfw.gov.in/"
+    },
+    "weight": {
+      "min_kg": 45,
+      "description": "Minimum weight of 45 kg for 350 ml whole blood collection; 50 kg for 450 ml collection.",
+      "source": "NBTC India Blood Donor Selection Criteria",
+      "source_url": "https://nbtc.mohfw.gov.in/"
+    },
+    "hemoglobin": {
+      "min_g_dl": 12.5,
+      "description": "Hemoglobin level must be at least 12.5 g/dL for both male and female donors.",
+      "source": "NBTC India Blood Donor Selection Criteria & WHO",
+      "source_url": "https://nbtc.mohfw.gov.in/"
+    },
+    "donation_interval": {
+      "male_days": 90,
+      "female_days": 120,
+      "description": "Minimum interval between whole blood donations: 90 days (3 months) for males, 120 days (4 months) for females.",
+      "source": "NBTC India Standards for Blood Banks and Blood Transfusion Services",
+      "source_url": "https://nbtc.mohfw.gov.in/"
+    },
+    "vital_signs": {
+      "pulse_min_bpm": 60,
+      "pulse_max_bpm": 100,
+      "bp_systolic_min": 100,
+      "bp_systolic_max": 140,
+      "bp_diastolic_min": 60,
+      "bp_diastolic_max": 90,
+      "temp_max_celsius": 37.5,
+      "description": "Pulse 60-100 bpm regular, normal blood pressure without severe hypertension, afebrile.",
+      "source": "NBTC India / Indian Red Cross Society Guidelines",
+      "source_url": "https://www.indianredcross.org/"
+    },
+    "temporary_deferrals": [
+      {
+        "id": "alcohol",
+        "question": "Have you consumed alcohol in the last 24 hours?",
+        "deferral_hours": 24,
+        "reason": "Alcohol can cause dehydration and temporary liver enzyme fluctuations.",
+        "source": "NBTC India Donor Selection Guidelines",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      },
+      {
+        "id": "tattoo_piercing",
+        "question": "Have you gotten a tattoo, cosmetic piercing, or acupuncture in the last 12 months?",
+        "deferral_months": 12,
+        "reason": "Risk of blood-borne viral transmission (Hepatitis B, C, HIV) during the window period.",
+        "source": "NBTC India Standards for Blood Banks (2020 revision)",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      },
+      {
+        "id": "major_surgery",
+        "question": "Have you undergone major surgery in the last 12 months or minor surgery in the last 6 months?",
+        "deferral_months": 12,
+        "reason": "Allows full physiological recovery and tissue restoration post-operative stress.",
+        "source": "NBTC India Standards for Blood Banks",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      },
+      {
+        "id": "pregnancy_lactation",
+        "question": "Are you currently pregnant, breastfeeding, or have given birth within the last 12 months?",
+        "deferral_months": 12,
+        "reason": "Protects maternal iron stores and infant nutrition.",
+        "source": "NBTC India & WHO Guidelines on Blood Donor Selection",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      },
+      {
+        "id": "antibiotics_infection",
+        "question": "Are you currently taking antibiotics or recovering from an active infection/fever?",
+        "deferral_days": 7,
+        "reason": "Wait at least 7 days after completing antibiotics and full resolution of symptoms.",
+        "source": "NBTC India Donor Selection Guidelines",
+        "source_url": "https://nbtc.mohfw.gov.in/"
+      },
+      {
+        "id": "vaccination_recent",
+        "question": "Have you received a live attenuated vaccine (e.g., MMR, Yellow Fever) in the last 4 weeks?",
+        "deferral_weeks": 4,
+        "reason": "Prevents passive transmission of attenuated viral particles to immunocompromised recipients.",
+        "source": "WHO Guidelines on Blood Donor Selection",
+        "source_url": "https://www.who.int/"
+      }
+    ]
+  }
+}

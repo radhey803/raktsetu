@@ -1,7 +1,7 @@
 # eRaktKosh Blood Lakehouse: Comprehensive Viva Voce Examination Guide
 
-**Institution**: Charotar University of Science and Technology (CHARUSAT)  
-**Department**: Department of Computer Applications (MCA Program)  
+**Context**: Academic Research Project  
+**Department**: Academic Research Team  
 **Project**: eRaktKosh Blood Lakehouse (Academic Mini Project — 800 Marks)  
 **Topics Covered**: Modern Data Engineering, Lakehouse Architecture, In-Process OLAP, dbt Transformations, Asynchronous Ingestion, Data Quality Contracts, and Full-Stack System Design.
 
@@ -415,9 +415,140 @@ With historical daily snapshots accumulating in `fct_stock_snapshot`, we can tra
 **Answer**:  
 "Our Lakehouse architecture is decoupled by design. The serving layer (`serving.duckdb`) is completely independent of the scraping layer. Even if the eRaktKosh portal is completely offline or college Wi-Fi is disconnected, our local lakehouse contains a fully verified, real snapshot of 4,692 facilities across 35 states and 59,259 stock records. All search queries, interactive map navigation, and analytical marts run 100% offline at local speeds."
 
-### Q60: How does this project satisfy the 800-mark MCA Mini Project curriculum requirements at CHARUSAT?
+### Q60: How does this project satisfy the 800-mark Academic Project curriculum requirements at CHARUSAT?
 **Answer**:  
 1. **Data Engineering Rigor**: Implements modern lakehouse design (ELT, Medallion Architecture, Parquet landing, DuckDB, dbt Core transformations).
 2. **Full-Stack Competence**: Production-grade asynchronous FastAPI backend, RESTful API design, and a responsive vanilla frontend with Leaflet mapping and Chart.js analytics.
-3. **Software Engineering Best Practices**: Clean repository structure, Typer CLI, 45 pytest tests, 35 dbt tests, pre-commit Ruff linting, and automated GitHub Actions CI/CD.
+3. **Software Engineering Best Practices**: Clean repository structure, Typer CLI, 98 pytest tests, 37 dbt tests, pre-commit Ruff linting, and automated CI/CD.
 4. **Social & Ethical Impact**: Solves an authentic public health crisis in India by surfacing real, life-saving blood availability without commercial distractions or fabricated data.
+
+---
+
+## Part VI: Real-Use-Case Decision Features & Clinical Integrity
+
+### Q61: What is the exact formula for the Blood Bank Trust Score (0-100), and why was this weighting chosen?
+**Answer**:  
+The Trust Score evaluates a blood bank's operational reporting reliability across three auditable pillars:
+$$\text{Trust Score} = \text{Freshness (50 pts)} + \text{Valid Contact (25 pts)} + \text{Component Completeness (25 pts)}$$
+1. **Freshness (50 pts)**: Penalizes outdated listings because stale blood records lead to fatal delays during emergency travel. $<24$h = 50 pts, $<3$d = 35 pts, $<7$d = 20 pts, $<14$d = 8 pts, $\ge 14$d = 0 pts.
+2. **Valid Contact (25 pts)**: Verifies that the facility provides a non-blank, formatted telephone number with $\ge 8$ digits. A listing without a phone number is practically useless in emergencies.
+3. **Component Completeness (25 pts)**: Measures whether the facility catalogs separation into specialized components (Whole Blood, PRBC, FFP, Platelets). Listing $\ge 3$ components yields 25 pts, $1-2$ yields 15 pts, and $0$ yields 0 pts.
+
+Facilities are classified into three actionable tiers: **High ($\ge 75$)**, **Medium ($40-74$)**, and **Low ($<40$)**. When Low, the UI displays an explicit warning: *"Low reliability, call to confirm before travelling."*
+
+### Q62: Why did you implement a rule-based risk flag ("Falling") instead of a machine learning / deep learning model?
+**Answer**:  
+For life-critical emergency infrastructure in healthcare, **interpretability, predictability, and verifiable data provenance** strictly outweigh black-box probabilistic predictions:
+1. **Lack of Long Historical Baselines**: The eRaktKosh lakehouse is an append-only store accumulating snapshots in production. Training an ML model on sparse data would hallucinate demand patterns and produce false confidence.
+2. **Explainability in Clinical Emergencies**: A doctor or patient can understand: *"Stock is marked 'Falling' because available units decreased in 3 consecutive snapshots across the last 4 observations."* An opaque random forest or neural network saying *"82% risk probability"* provides no verifiable clinical reasoning.
+3. **Zero Synthetic Data Rule**: Fabricating synthetic historical training data violates our foundational principle of clinical honesty. Rule-based triggers provide deterministic, zero-hallucination alerts.
+
+### Q63: Where do your medical compatibility and donor eligibility rules come from, and why is the disclaimer mandatory?
+**Answer**:  
+All medical logic is centralized in `data/medical_rules.json`, with strict citations from:
+- **National Blood Transfusion Council (NBTC), MoHFW, Government of India**: *National Standards for Blood Transfusion Services & Voluntary Blood Donation Guidelines (2020)*.
+- **World Health Organization (WHO)**: *Safe Blood and Blood Products Module (ABO/Rh Blood Group Systems)*.
+- **Indian Red Cross Society**: Donor physical standards.
+
+Every rule entry contains `"source"` and `"source_url"` fields displayed directly in the user interface.  
+**Mandatory Disclaimer**: *"Guidance only, not medical advice. Confirm with a doctor or blood bank."* In medicine, software cannot perform cross-matching, antibody screening, or clinical triage. The disclaimer prevents patient misinterpretation and maintains academic and ethical integrity.
+
+### Q64: How does Smart Emergency Mode rank blood banks, and how are clinical Rh- and Bombay warnings handled?
+**Answer**:  
+When emergency mode is activated:
+1. The backend resolves the patient's blood group to **all compatible donor groups** using the NBTC red cell compatibility matrix (e.g. an $A+$ patient can receive $A+, A-, O+, O-$ PRBC).
+2. DuckDB filters active stock in `fct_stock_current` across all compatible donor groups.
+3. Facilities are ranked using a multi-pillar scoring formula ($0-100$ index):
+   $$\text{Rank Score} = 0.35 \times \text{Freshness} + 0.30 \times \text{Trust} + 0.25 \times \text{Units} + 0.10 \times \text{Distance}$$
+4. The top 5 facilities are returned with a human-readable explanation (`why_ranked_here`, e.g., *"18 units available, updated 2h ago, trust 92, approx. 14 km away"*).
+5. If the patient is **Rh-negative**, the system issues a clinical alert: *"Patient is Rh-negative; can strictly receive only Rh-negative donor red cells to avoid anti-D hemolytic alloimmunization."*
+6. If the patient has **Bombay Phenotype ($Oh+$ or $Oh-$)**, a high-priority warning is raised: *"Bombay phenotype lacks the H antigen. Normal O-negative blood will cause acute fatal hemolysis. Must receive blood exclusively from a verified Bombay donor."*
+
+### Q65: How do you calculate distance without third-party API dependencies or user tracking?
+**Answer**:  
+We use the **Haversine Great Circle Formula** implemented directly in Python and SQL:
+$$d = 2R \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta \phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta \lambda}{2}\right)}\right)$$
+- Coordinates are captured exclusively via user-initiated HTML5 browser geolocation (`navigator.geolocation`).
+- Coordinates are never logged, persisted in DuckDB, or written to server logs.
+- Distance is labeled honestly as *"approx. X km"*, and facilities mapped to district administrative centers are explicitly flagged as *"approximate location"* to avoid misleading users.
+
+### Q66: How do you respect OpenStreetMap Nominatim geocoding policies while resolving hospital locations?
+**Answer**:  
+OpenStreetMap's Nominatim geocoder enforces a strict acceptable use policy:
+1. **Rate Limiting**: Strictly capped at a maximum of **1 request per second** (`time.sleep(1.0)`).
+2. **Identification**: Includes a custom, identifiable HTTP `User-Agent` header (`eRaktKosh-Academic-Lakehouse/1.0 (academic research; contact@bloodlake.org)`).
+3. **Permanent Caching**: Every successful geocode is stored permanently in DuckDB table `main_gold.geocode_cache` (`hospital_code`, `lat`, `lng`, `precision`, `cached_at`). Subsequent runs read from the cache, making the process 100% resumable and generating zero redundant external HTTP traffic.
+4. **Precision Labeling**: Geocodes are tagged with their true resolution level: `exact`, `street`, `district_centroid`, or `failed`.
+
+### Q67: Why does the donor eligibility checker run completely client-side in the browser?
+**Answer**:  
+Under India's **Digital Personal Data Protection Act (DPDP Act 2023)** and global healthcare privacy standards (HIPAA/GDPR), collecting health information (age, body weight, pregnancy status, HIV/hepatitis screening, recent tattoo dates) incurs severe compliance obligations and exposes users to surveillance risks.  
+By executing the eligibility checker entirely in **client-side Vanilla JavaScript** (`web/js/app.js`):
+- Zero donor health answers, weights, or dates ever leave the user's browser.
+- No personal user records exist in the backend database.
+- It provides instantaneous, private guidance to prospective donors without requiring account creation or phone number verification.
+
+### Q68: What are the official donation gap rules, and why are male and female donation intervals different?
+**Answer**:  
+Per NBTC (National Blood Transfusion Council) 2020 Guidelines:
+- **Male Donors**: Minimum gap of **90 days** (3 months) between whole blood donations.
+- **Female Donors**: Minimum gap of **120 days** (4 months).
+**Biological Rationale**: Adult females experience routine physiological iron loss during menstrual cycles and have lower baseline ferritin (iron store) levels compared to males. A longer interval (120 days) allows adequate erythropoiesis and iron store replenishment, preventing iron-deficiency anemia in female donors.
+
+### Q69: In district shortage analysis, what is the crucial distinction between "zero listed" and "non-reporting"?
+**Answer**:  
+In government portal reporting, a count of 0 units can represent either of two completely different realities:
+1. **Physical Stockout**: The facility is active and updated its inventory today, but genuine demand has depleted available units to 0.
+2. **Non-Reporting Facility**: The facility has not entered data into the portal for weeks or months, meaning its real physical inventory is simply unknown.
+
+To prevent panic and false conclusions, our dbt model `mart_district_status` and UI explicitly report:
+- `reporting_banks`: Count of facilities that have reported data.
+- `banks_with_zero`: Count of reporting facilities with zero stock.
+- The UI displays an explanatory callout: *"Zero units listed reflects active facilities reporting zero stock as well as facilities not reporting. Always call the blood bank to confirm."*
+
+### Q70: How does the Lakehouse handle snapshot history when fewer than 2 real snapshots exist?
+**Answer**:  
+We follow the **Zero Fake Data Rule**:
+- We strictly delete and reject any synthetic, random, or seeded historical snapshot rows.
+- If the append-only table `fct_stock_snapshot` contains $<2$ real snapshots for a facility, the system does not invent a fictional sparkline or trend.
+- Instead, it returns an honest status: `has_sufficient_history: false` and renders a clear informational badge: *"Trend data builds up daily with each refresh. First genuine lakehouse snapshot recorded on [Date]. Needs at least 2 real snapshots for trajectory."*
+This honesty preserves academic integrity and examiner trust during viva evaluations.
+
+### Q71: What is the dual-database publish gate, and what conditions abort publication?
+**Answer**:  
+The Lakehouse maintains two DuckDB files:
+1. `blood_warehouse.duckdb`: Internal working database where the asynchronous scraper ingests landing parquet and dbt runs bronze, silver, and gold models.
+2. `serving.duckdb`: Read-only, production database queried by the FastAPI web server.
+
+**The Publish Gate Conditions**:
+1. All 37 dbt data tests (`not_null`, `unique`, `accepted_values`) must pass with 0 errors.
+2. The total count of scraped facilities must be $\ge 80\%$ of the previous run baseline.
+
+If either condition fails (e.g. an upstream portal outage or network corruption), publication is immediately aborted. The working database is frozen for forensic logging in `pipeline_runs`, and the existing `serving.duckdb` remains untouched, guaranteeing zero downtime and zero corrupted data releases.
+
+### Q72: Why do CSV exports include a UTF-8 Byte Order Mark (BOM)?
+**Answer**:  
+When generating CSV files containing Indian facility names, state designations, and district names that may include Unicode characters or non-ASCII scripts (Hindi, Gujarati), standard Microsoft Excel assumes ANSI or Windows-1252 encoding by default on Windows machines.  
+By prefixing the CSV stream with the UTF-8 Byte Order Mark (`\ufeff`), Microsoft Excel immediately recognizes the file as UTF-8 encoded, preventing garbled character corruption (mojibake) and displaying all medical facility records and attribution headers with 100% fidelity.
+
+### Q73: How does the Progressive Web App (PWA) provide offline resilience in clinical environments?
+**Answer**:  
+Hospital basements and rural clinic corridors frequently suffer from severe mobile signal degradation.
+1. The **Service Worker (`web/sw.js`)** precaches the core application shell (HTML, CSS, Vanilla JS, and inline SVG sprites) during installation.
+2. When the user executes a search, the successful HTTP response is automatically cached in the browser's CacheStorage.
+3. If network connectivity drops, the Service Worker intercepts fetch requests and serves the last cached results, while the UI displays an honest status banner: *"Offline mode: displaying cached results from [timestamp]."*
+
+### Q74: Why did you eliminate emoji icons and implement an inline SVG sprite with icon + text status indicators?
+**Answer**:  
+1. **Clinical Authority**: Emojis render inconsistently across operating systems (Apple, Android, Windows, Linux) and impart an unprofessional, casual aesthetic unsuitable for emergency medical software.
+2. **Colorblind Accessibility (WCAG 2.1 AA)**: Over 8% of men have red-green color vision deficiency. Displaying a status purely by color (e.g. a red or green dot) violates WCAG Guideline 1.4.1. In our design system, every status is communicated via **icon + text** (e.g., a shield icon + "High", a warning triangle + "Medium", an alert octagon + "Low").
+3. **Performance & Crispness**: Inline SVG symbols scale infinitely without pixelation, require 0 external font/icon requests, and guarantee instantaneous sub-millisecond rendering.
+
+### Q75: How does this project prove that an MCA student can build production-ready data engineering systems?
+**Answer**:  
+This project demonstrates the complete modern data engineering lifecycle:
+- **Resilient Ingestion**: Asynchronous HTTP client with semaphore rate-limiting, exponential backoff, and circuit breakers.
+- **Medallion Architecture**: Clear separation of concerns from raw Parquet landing (Bronze) to clean normalized entities (Silver) to decision-ready analytical marts (Gold).
+- **Relational Integrity**: 37 dbt tests verifying data contracts and schemas in DuckDB.
+- **End-to-End Delivery**: High-concurrency FastAPI serving layer, offline-capable PWA frontend, 135 passing automated tests, and audited medical sourcing—all achieved with zero synthetic data.
+

@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     project_name: str = "eRaktKosh Blood Lakehouse"
     project_subtitle: str = "National Blood Inventory Intelligence & Emergency Finder"
     version: str = "1.0.0"
-    institution: str = "Charotar University of Science and Technology (CHARUSAT)"
-    department: str = "Faculty of Computer Science and Applications (FCA) - MCA"
+    institution: str = "Academic Research Initiative"
+    department: str = "Faculty of Computer Science and Applications"
     academic_guide: str = "Academic Project Mentor"
     author_name: str = "Radhey Gajera"
 
@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     scraper_max_retries: int = 3
     min_run_interval_hours: float = 6.0
     user_agent: str = (
-        "BloodLake/1.0 (Academic Research; CHARUSAT MCA Mini Project; "
+        "BloodLake/1.0 (Academic Research; Academic Project; "
         "mailto:radheygajera@gmail.com)"
     )
 

@@ -1,20 +1,20 @@
 # eRaktKosh Blood Lakehouse: Real-Time Medallion Data Engineering & Emergency Blood Inventory Intelligence System
 
 **Project Report Submitted in Partial Fulfillment of the Requirements for the Degree of**  
-**Master of Computer Applications (MCA)**  
+**Academic Project**  
 **Department of Computer Applications**  
-**Charotar University of Science and Technology (CHARUSAT), Changa, Gujarat**
+**Academic Research Project**
 
 ---
 
 ## Candidate & Guide Information
 - **Student Name:** [Student Name]
 - **Enrollment Number:** [Enrollment Number]
-- **Degree Programme:** Master of Computer Applications (MCA)
+- **Degree Programme:** Academic Project
 - **Course Title:** Mini Project (800 Marks)
 - **Academic Year:** 2026–2027
 - **Internal Project Guide:** [Internal Guide Name / Designation]
-- **Institutional Department:** Charusat Institute of Computer Technology (CMPICA)
+- **Institutional Department:** Faculty of Computer Science and Applications
 
 ---
 
@@ -441,7 +441,7 @@ As detailed in [`docs/TESTING.md`](file:///home/radhey/Documents/project_idea/do
 ## Chapter 11: Conclusion & Future Scope
 
 ### 11.1 Conclusion
-The **eRaktKosh Blood Lakehouse** successfully bridges the gap between raw national health data and emergency medical utility. By applying rigorous data engineering practices—immutable Parquet landing, Medallion transformations, automated quality gates, and vectorized columnar querying—the project demonstrates how open health data can be elevated into a reliable, high-speed intelligence network. The project satisfies all requirements for the MCA Mini Project (800 Marks) with complete technical documentation and reproducible testing.
+The **eRaktKosh Blood Lakehouse** successfully bridges the gap between raw national health data and emergency medical utility. By applying rigorous data engineering practices—immutable Parquet landing, Medallion transformations, automated quality gates, and vectorized columnar querying—the project demonstrates how open health data can be elevated into a reliable, high-speed intelligence network. The project satisfies all requirements for the Academic Project (800 Marks) with complete technical documentation and reproducible testing.
 
 ### 11.2 Future Scope
 1. **Machine Learning Shortage Forecasting:** Once 60+ days of genuine snapshot history accumulate, implement ARIMA / Prophet time-series models to predict seasonal district-level shortages 7 days in advance.

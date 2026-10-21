@@ -1,8 +1,8 @@
 # eRaktKosh Blood Lakehouse: Final Project Verification & Academic Sign-Off
 
-**Institution**: Charotar University of Science and Technology (CHARUSAT)  
+**Context**: Academic Research Project  
 **Department**: Faculty of Computer Science and Applications (FCA) — Department of Computer Applications  
-**Degree**: Master of Computer Applications (MCA)  
+**Degree**: Academic Project  
 **Course / Evaluation**: Academic Mini Project (800 Marks)  
 **Project Title**: eRaktKosh Blood Lakehouse: National Blood Inventory Intelligence & Emergency Triage Platform  
 **Author / Student**: Radhey Gajera  
@@ -72,7 +72,7 @@ The **eRaktKosh Blood Lakehouse** has been refactored, validated, and documented
 ### Phase 6: Academic Documentation (`Commit: 987b47e`)
 - **Objective**: Author exhaustive university-standard documentation.
 - **Evidence**:
-  - `docs/REPORT.md`: Comprehensive 800-mark MCA Academic Project Report.
+  - `docs/REPORT.md`: Comprehensive 800-mark Academic Project Report.
   - `docs/ARCHITECTURE.md`: Architecture specification with 6 formal ADRs.
   - `docs/DATA_DICTIONARY.md`: Complete column-level catalog for Bronze, Silver, and Gold schemas.
   - `docs/API.md`: REST API reference with real curl examples, schemas, and HTTP error codes.
@@ -167,7 +167,7 @@ Before entering the examination room:
 - [x] **Verify Personal Details in [REPORT.md](REPORT.md)**:
   - Student Name: **Radhey Gajera**
   - Department: **Faculty of Computer Science and Applications (FCA) — MCA**
-  - Institution: **Charotar University of Science and Technology (CHARUSAT)**
+  - Institution: **Academic Research Project**
 - [x] **Generate PDF Report**:
   - Open `docs/REPORT.md` in VS Code or Chrome using the Markdown PDF extension.
   - Print to PDF with headers, footers, and page numbers for physical submission.
@@ -195,4 +195,4 @@ Before entering the examination room:
 ---
 
 **Certified by AI Pair Programmer & Academic Assistant:**  
-*eRaktKosh Blood Lakehouse is officially certified complete, thoroughly tested, and demo-ready for the 800-Mark MCA Mini Project evaluation at CHARUSAT.*
+*eRaktKosh Blood Lakehouse is officially certified complete, thoroughly tested, and demo-ready for the 800-Mark Academic Project evaluation at CHARUSAT.*

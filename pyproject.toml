@@ -1,7 +1,7 @@
 [project]
 name = "eraktkosh-blood-lakehouse"
 version = "1.0.0"
-description = "eRaktKosh Blood Lakehouse: Real-Time Medallion Lakehouse & Emergency Blood Finder (MCA Mini Project, CHARUSAT)"
+description = "eRaktKosh Blood Lakehouse: Real-Time Medallion Lakehouse & Emergency Blood Finder (Academic Project)"
 readme = "README.md"
 authors = [
     { name = "Radhey Gajera", email = "radheygajera@gmail.com" }
@@ -53,6 +53,9 @@ ignore = ["B008", "E501", "B904"]
 
 [dependency-groups]
 dev = [
+    "matplotlib>=3.11.2",
+    "pillow>=12.3.0",
     "pip-audit>=2.10.1",
+    "python-docx>=1.2.0",
     "ruff>=0.17.0",
 ]

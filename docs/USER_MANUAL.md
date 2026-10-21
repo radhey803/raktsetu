@@ -1,8 +1,8 @@
 # eRaktKosh Blood Lakehouse: User & Evaluator Manual
 
-**Institution**: Charotar University of Science and Technology (CHARUSAT)  
-**Department**: Department of Computer Applications (MCA Program)  
-**Course Code / Project**: MCA Mini Project (800 Marks)  
+**Context**: Academic Research Project  
+**Department**: Academic Research Team  
+**Course Code / Project**: Academic Project (800 Marks)  
 **Application**: eRaktKosh Blood Lakehouse  
 **Version**: 1.0.0 (Demo Ready)  
 

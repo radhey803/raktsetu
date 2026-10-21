@@ -5,20 +5,25 @@
 MART RELIABILITY SCORE FORMULA (0 - 100 Points)
 ================================================================================
 1. Freshness Score (Max 50 Points):
-   - Last updated within 24 hours (<= 1 day): 50 pts
-   - Last updated within 7 days (2 to 7 days): 35 pts
-   - Last updated within 30 days (8 to 30 days): 15 pts
-   - Critically stale (> 30 days or NULL): 0 pts
+   - Last updated < 24h (<= 1 day): 50 pts
+   - Last updated < 3d (2 to 3 days): 35 pts
+   - Last updated < 7d (4 to 6 days): 20 pts
+   - Last updated < 14d (7 to 13 days): 8 pts
+   - Older (>= 14 days or NULL): 0 pts
 
 2. Valid Contact Score (Max 25 Points):
-   - Contains phone number (matches digits >= 8): 25 pts
-   - Has street address but unverified phone: 10 pts
-   - Missing both contact and address: 0 pts
+   - Phone number passes basic format check (>= 8 numeric digits): 25 pts
+   - Missing or invalid phone: 0 pts
 
 3. Component Completeness Score (Max 25 Points):
    - Tracks >= 3 distinct blood components (PRBC, Platelets, FFP, etc.): 25 pts
    - Tracks 1 or 2 blood components: 15 pts
    - No components reported: 0 pts
+
+Reliability Labels:
+   - High: Score >= 75
+   - Medium: Score between 40 and 74
+   - Low: Score < 40
 ================================================================================
 */
 
@@ -66,14 +71,14 @@ scored AS (
         -- 1. Freshness Points (0-50)
         CASE
             WHEN days_since_update <= 1 THEN 50
-            WHEN days_since_update <= 7 THEN 35
-            WHEN days_since_update <= 30 THEN 15
+            WHEN days_since_update <= 3 THEN 35
+            WHEN days_since_update <= 6 THEN 20
+            WHEN days_since_update <= 13 THEN 8
             ELSE 0
         END AS freshness_points,
-        -- 2. Contact Points (0-25)
+        -- 2. Contact Points (0-25): Phone number check (>= 8 digits)
         CASE
-            WHEN hospital_contact LIKE '%Phone%' OR regexp_matches(hospital_contact, '[0-9]{8,}') THEN 25
-            WHEN hospital_address IS NOT NULL AND LENGTH(hospital_address) > 10 THEN 10
+            WHEN regexp_matches(hospital_contact, '[0-9]{8,}') THEN 25
             ELSE 0
         END AS contact_points,
         -- 3. Component Completeness Points (0-25)
@@ -103,8 +108,13 @@ SELECT
     completeness_points,
     (freshness_points + contact_points + completeness_points) AS reliability_score,
     CASE
-        WHEN (freshness_points + contact_points + completeness_points) >= 75 THEN 'HIGH'
-        WHEN (freshness_points + contact_points + completeness_points) >= 50 THEN 'MODERATE'
-        ELSE 'LOW'
+        WHEN (freshness_points + contact_points + completeness_points) >= 75 THEN 'High'
+        WHEN (freshness_points + contact_points + completeness_points) >= 40 THEN 'Medium'
+        ELSE 'Low'
+    END AS reliability_label,
+    CASE
+        WHEN (freshness_points + contact_points + completeness_points) >= 75 THEN 'High'
+        WHEN (freshness_points + contact_points + completeness_points) >= 40 THEN 'Medium'
+        ELSE 'Low'
     END AS reliability_tier
 FROM scored

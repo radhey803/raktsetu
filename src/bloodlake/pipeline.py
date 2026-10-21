@@ -40,7 +40,7 @@ logger = logging.getLogger("bloodlake.pipeline")
 console = Console()
 app = typer.Typer(
     name="bloodlake",
-    help="eRaktKosh Blood Lakehouse: Nationwide ELT Pipeline & Quality Orchestrator (MCA CHARUSAT)",
+    help="eRaktKosh Blood Lakehouse: Nationwide ELT Pipeline & Quality Orchestrator (Academic Project)",
     no_args_is_help=True,
 )
 

@@ -147,19 +147,57 @@ async def scrape_nationwide(
     tasks_metadata = []
     if target_districts:
         tasks_metadata = target_districts
-    else:
+    elif isinstance(catalog, dict) and "States_and_Districts" in catalog:
+        for state_item in catalog["States_and_Districts"]:
+            state_name = state_item.get("stateName", "")
+            state_code = str(state_item.get("stateCode", ""))
+            districts = state_item.get("districts", [])
+            if isinstance(districts, list):
+                for d in districts:
+                    tasks_metadata.append(
+                        {
+                            "state_name": state_name,
+                            "state_code": state_code,
+                            "district_name": d.get("districtName", ""),
+                            "district_id": str(d.get("districtCode", "")),
+                        }
+                    )
+            elif isinstance(districts, dict):
+                for dist_id, dist_name in districts.items():
+                    tasks_metadata.append(
+                        {
+                            "state_name": state_name,
+                            "state_code": state_code,
+                            "district_name": dist_name,
+                            "district_id": str(dist_id),
+                        }
+                    )
+    elif isinstance(catalog, dict):
         for state_code, state_info in catalog.items():
-            state_name = state_info.get("state_name", state_code)
+            if not isinstance(state_info, dict):
+                continue
+            state_name = state_info.get("state_name", state_info.get("stateName", state_code))
             districts = state_info.get("districts", {})
-            for dist_id, dist_name in districts.items():
-                tasks_metadata.append(
-                    {
-                        "state_name": state_name,
-                        "state_code": str(state_code),
-                        "district_name": dist_name,
-                        "district_id": str(dist_id),
-                    }
-                )
+            if isinstance(districts, list):
+                for d in districts:
+                    tasks_metadata.append(
+                        {
+                            "state_name": state_name,
+                            "state_code": str(state_code),
+                            "district_name": d.get("districtName", d.get("name", "")),
+                            "district_id": str(d.get("districtCode", d.get("id", ""))),
+                        }
+                    )
+            elif isinstance(districts, dict):
+                for dist_id, dist_name in districts.items():
+                    tasks_metadata.append(
+                        {
+                            "state_name": state_name,
+                            "state_code": str(state_code),
+                            "district_name": dist_name,
+                            "district_id": str(dist_id),
+                        }
+                    )
 
     total_districts = len(tasks_metadata)
     logger.info(

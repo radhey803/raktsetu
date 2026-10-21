@@ -1,7 +1,7 @@
 # eRaktKosh Blood Lakehouse: Technical Architecture Specification & ADRs
 
-**Academic Context:** Master of Computer Applications (MCA) Mini Project (800 Marks)  
-**Institution:** Charotar University of Science and Technology (CHARUSAT)  
+**Academic Context:** Academic Project Mini Project (800 Marks)  
+**Context:** Academic Research Project  
 **System Type:** Real-Time Medallion Analytical Blood Lakehouse  
 
 ---

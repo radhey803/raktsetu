@@ -36,11 +36,8 @@ serving.duckdb*
 
 # Data Files & Landing Zone
 data/landing/
-data/archive/
-data/raw/
 *.parquet
 *.csv
-!eraktkosh_all_metadata.json
 
 # dbt Artifacts & Logs
 **/target/
@@ -51,5 +48,5 @@ logs/
 # IDE & OS
 .DS_Store
 Thumbs.db
-.vscode/settings.json
+.vscode/
 .idea/

@@ -45,7 +45,7 @@ The **eRaktKosh Blood Lakehouse** integrates an asynchronous crawler with an in-
 ```mermaid
 flowchart TD
     subgraph Ingestion ["1. Asynchronous Ingestion Layer"]
-        EK[eRaktKosh Public Portal\n781 Administrative Districts] -->|Polite Async Scraper\nSemaphore: 10, Backoff| SCRAPER[src/bloodlake/crawler/async_scraper.py]
+        EK[eRaktKosh Public Portal\n781 Administrative Districts] -->|Polite Async Scraper\nSemaphore: 10, Backoff| SCRAPER[src/bloodlake/scraper.py]
         SCRAPER -->|Immutable Parquet\n+ SHA-256 Checksum| LANDING[data/landing/*.parquet]
     end
 
@@ -90,7 +90,7 @@ flowchart TD
 8. **Data Health & Pipeline Dashboard**:  
    Site-wide stale data banner if the last sync is $>12$ hours old. Observability page showing sync freshness, facility count retention, stale states breakdown, and recent pipeline executions.
 9. **Inclusive Accessibility & Offline PWA**:  
-   Trilingual interface (English, हिन्दी, ગુજરાતી) remembered in `localStorage`. Full WCAG AA contrast, 44px touch targets, screen-reader `aria-live` regions, and an installable PWA Service Worker (`web/sw.js`) with cached offline search replay.
+   Full WCAG AA contrast, 44px touch targets, screen-reader `aria-live` regions, and an installable PWA Service Worker (`web/sw.js`) with cached offline search replay.
 10. **Clinical Aesthetic & Design System**:  
     Warm off-white canvas `#FBF8F6`, deep ink `#1A1214`, primary clinical red `#D21F3C`, refined serif headings, tabular numbers for all stock counts, Carto Positron map tiles, and zero emojis (100% inline SVG sprite with icon + text status indicators).
 
@@ -99,59 +99,68 @@ flowchart TD
 ## 📂 Project Structure
 
 ```
-eraktkosh-blood-lakehouse/
-├── Makefile                      # Automated developer targets (run, test, lint, demo)
-├── pyproject.toml                # Project metadata, dependencies, and tool configs
-├── api.py                        # FastAPI application entry point shim
-├── run_pipeline.py               # Automated pipeline runner wrapper
-├── blood_warehouse.duckdb        # Internal build database
-├── serving.duckdb                # Verified read-only production database
+.
+├── src/bloodlake/              Python package (all backend code)
+│   ├── config.py               Settings and paths (overridable via .env)
+│   ├── db.py                   DuckDB connections (read-only serving / read-write warehouse)
+│   ├── scraper.py              Async eRaktKosh crawler → Parquet landing files
+│   ├── pipeline.py             `bloodlake` CLI: scrape → load → transform → test → publish
+│   ├── medical.py              Blood compatibility rules (reads data/medical_rules.json)
+│   ├── scoring.py              Trust score formula (mirrors the dbt reliability mart)
+│   ├── geo.py                  District/state centroids, Haversine distance, geocode cache
+│   ├── export.py               Excel-friendly CSV export
+│   └── api/
+│       ├── main.py             FastAPI app: mounts routes + serves web/
+│       ├── routes.py           All HTTP endpoints (/api/v1/*)
+│       └── schemas.py          Pydantic response models
+├── dbt/                        SQL transformations (dbt + DuckDB)
+│   ├── macros/                 normalize_blood_group()
+│   └── models/
+│       ├── silver/             Cleaned views over bronze.raw_inventory
+│       └── gold/               Facts, dimensions and marts the API reads
+├── web/                        Frontend (plain HTML/CSS/JS, no build step)
+│   ├── index.html
+│   ├── css/style.css
+│   ├── js/app.js
+│   ├── sw.js, manifest.json    Offline / installable PWA
+│   └── assets/                 Icons
+├── tests/
+│   ├── unit/                   Pure-function and module tests
+│   ├── integration/            API tests against a generated fixture DB
+│   └── fixtures/               generate_fixture_db.py (builds the fixture DB)
 ├── data/
-│   ├── medical_rules.json        # Canonical medical rules (NBTC/WHO sourced)
-│   ├── landing/                  # Immutable Parquet landing partition files
-│   └── geocode_cache.json        # Geocoding permanent cache
-├── dbt/                          # dbt Core Project
-│   ├── dbt_project.yml           # dbt project configuration
-│   ├── profiles.yml              # DuckDB adapter connection profiles
-│   ├── macros/                   # Blood group normalization Jinja macros
-│   └── models/                   # Medallion layers (bronze, silver, gold)
-│       ├── bronze/               # raw_blood_inventory
-│       ├── silver/               # stg_blood_banks, stg_inventory_components
-│       └── gold/                 # dim_blood_banks, fct_stock_current, marts
-├── src/bloodlake/                # Core Python Source Package
-│   ├── api/                      # FastAPI routers, schemas, routes
-│   ├── crawler/                  # aiohttp async scraper (Semaphore 10)
-│   ├── ingestion/                # Parquet landing and bronze loader
-│   ├── warehouse/                # Anomaly gate, snapshots, publish gate
-│   ├── medical.py                # Official medical compatibility & warnings
-│   ├── scoring.py                # Trust score calculation functions
-│   ├── export.py                 # UTF-8 BOM CSV streaming generator
-│   ├── geo.py                    # Nominatim cache, Haversine distance, centroids
-│   └── pipeline.py               # Typer CLI application (`bloodlake`)
-├── web/                          # Clinical Web Application
-│   ├── index.html                # Semantic HTML5 dashboard with inline SVG sprite
-│   ├── manifest.json             # Progressive Web App manifest
-│   ├── sw.js                     # Offline caching service worker
-│   ├── css/style.css             # Vanilla CSS design system (zero frameworks)
-│   └── js/                       # Vanilla JavaScript modules
-│       ├── app.js                # Core UI controller, emergency mode, client-side donor
-│       ├── map.js                # Leaflet & Carto Positron map module
-│       └── translations.js       # Multilingual dictionary (EN, HI, GU)
-├── tests/                        # 98 Automated Tests
-│   ├── unit/                     # Medical, scoring, geocoding, scraper, risk tests
-│   ├── integration/              # FastAPI endpoint tests against isolated fixture
-│   └── fixtures/                 # Synthetic test lakehouse generator
-└── docs/                         # Comprehensive Academic Documentation
-    ├── FEATURES.md               # In-depth guide to all 10 decision features
-    ├── REPORT.md                 # Complete Academic Project Report (800 Marks)
-    ├── ARCHITECTURE.md           # Architecture Decision Records (ADRs) & C4 diagrams
-    ├── DATA_DICTIONARY.md        # Full catalog of Bronze, Silver, and Gold schemas
-    ├── API.md                    # REST API Reference with curl examples
-    ├── USER_MANUAL.md            # Evaluator & user operational guide
-    ├── VIVA_QA.md                # 75 Viva Voce questions and model answers
-    ├── PRESENTATION_OUTLINE.md   # 15-slide presentation outline & demo script
-    └── TESTING.md                # 135-case verified test execution matrix
+│   ├── medical_rules.json      Compatibility & donor rules (NBTC / WHO sourced)
+│   ├── eraktkosh_all_metadata.json   State → district catalogue the scraper crawls
+│   └── landing/                Scraped Parquet files (git-ignored, generated)
+├── demo/                       Offline demo database + presenter notes
+├── docs/
+│   ├── README.md               Index of all documentation — start here
+│   ├── ARCHITECTURE.md, API.md, DATA_DICTIONARY.md, FEATURES.md, TESTING.md, USER_MANUAL.md
+│   ├── adr/                    Architecture Decision Records
+│   ├── diagrams/               UML / architecture PNGs (generated)
+│   ├── screenshots/            UI screenshots used in the report
+│   ├── academic/               Report, viva Q&A, presentation, submission checklists
+│   └── learning/               DuckDB / dbt study notes
+├── reports/                    Final submitted report (.docx / .pdf)
+├── scripts/report/             Generators for diagrams and the .docx report
+├── .github/workflows/          CI, scheduled pipeline, Docker build
+├── Dockerfile, docker-compose.yml
+├── Makefile                    Run `make help` for every command
+└── pyproject.toml, uv.lock     Dependencies (managed with uv)
 ```
+
+Generated at runtime and not committed: `blood_warehouse.duckdb` (pipeline build DB),
+`serving.duckdb` (what the API reads), `data/landing/`, `dbt/target/`.
+
+### Where to start reading
+
+| If you want to… | Read |
+|---|---|
+| Understand the data flow | `src/bloodlake/pipeline.py` → `dbt/models/silver/` → `dbt/models/gold/` |
+| Add or change an API endpoint | `src/bloodlake/api/routes.py` + `schemas.py` |
+| Change the UI | `web/index.html`, `web/js/app.js`, `web/css/style.css` |
+| Change medical rules | `data/medical_rules.json` (loaded by `medical.py`) |
+| See every table and column | `docs/DATA_DICTIONARY.md` |
 
 ---
 
@@ -159,20 +168,18 @@ eraktkosh-blood-lakehouse/
 
 ### 1. Prerequisites
 - Linux / macOS / Windows WSL2
-- Python 3.11 or 3.12
+- Python 3.12
 - [`uv`](https://docs.astral.sh/uv/) package manager
 
 ### 2. Install & Run
 ```bash
-# Clone the repository
 git clone https://github.com/radhey803/eraktkosh-blood-lakehouse.git
 cd eraktkosh-blood-lakehouse
 
-# Install virtual environment with uv
-uv sync
-
-# Run the live web server
-uv run uvicorn api:app --reload --port 8000
+make install          # uv sync
+make demo-offline     # no scrape needed: uses demo/fallback_lakehouse.duckdb
+# or, with an existing serving.duckdb:
+make run
 ```
 Visit: **[http://localhost:8000](http://localhost:8000)**  
 API Documentation (Swagger UI): **[http://localhost:8000/docs](http://localhost:8000/docs)**
@@ -182,14 +189,9 @@ API Documentation (Swagger UI): **[http://localhost:8000/docs](http://localhost:
 ## 🧪 Automated Testing
 
 ```bash
-# Run all 98 Pytest unit and integration tests (<2s)
-uv run pytest
-
-# Run all 37 dbt relational schema and contract tests (~3s)
-uv run dbt test --project-dir dbt --profiles-dir dbt
-
-# Check code formatting and linting
-uv run ruff check .
+make test        # pytest unit + integration tests with coverage
+make dbt-test    # dbt data tests
+make lint        # ruff lint + format check
 ```
 
 ---
@@ -198,11 +200,13 @@ uv run ruff check .
 
 ```bash
 uv run bloodlake --help        # View all subcommands
-uv run bloodlake scrape        # Scrape all 781 districts
-uv run bloodlake ingest        # Ingest landing parquet into Bronze
-uv run bloodlake transform     # Run dbt Silver & Gold marts
-uv run bloodlake snapshot      # Append daily snapshot to fct_stock_snapshot
-uv run bloodlake all           # Execute end-to-end pipeline with publish gate
+uv run bloodlake scrape        # Crawl all districts into data/landing/
+uv run bloodlake load          # Load newest landing Parquet into bronze
+uv run bloodlake transform     # dbt build: silver + gold (incl. incremental snapshots)
+uv run bloodlake test          # Anomaly gate: facility count >= 80% of last run
+uv run bloodlake publish       # Atomic copy warehouse -> serving.duckdb
+uv run bloodlake all --force   # Everything above, end to end
+uv run bloodlake status        # Recent pipeline runs
 ```
 
 ---

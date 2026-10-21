@@ -1,59 +1,61 @@
-.PHONY: help setup install lint format test dbt-test run demo demo-offline scrape ingest transform snapshot pipeline docs clean
+.PHONY: help install run demo demo-offline test lint format \
+        scrape load transform gate publish pipeline status \
+        dbt-test docs serve-docs diagrams report clean
 
 SHELL := /bin/bash
+APP   := bloodlake.api.main:app
 
 help:
-	@echo "========================================================================"
-	@echo "🩸 eRaktKosh Blood Lakehouse: Makefile (Academic Project)"
-	@echo "========================================================================"
-	@echo "make run           - Run FastAPI server with hot-reload (http://localhost:8000)"
-	@echo "make demo          - Run test assertions and launch live demo server"
-	@echo "make demo-offline  - Restore serving database from demo fallback and launch"
-	@echo "make test          - Run pytest test suite (45 unit & integration tests)"
-	@echo "make dbt-test      - Run all 35 dbt relational schema and contract tests"
-	@echo "make lint          - Check code quality with Ruff"
-	@echo "make format        - Format code and fix linter issues with Ruff"
-	@echo "make scrape        - Run asynchronous crawler across 781 districts (~26s)"
-	@echo "make ingest        - Ingest Parquet landing files into Bronze layer"
-	@echo "make transform     - Run dbt transformation models (Silver & Gold layers)"
-	@echo "make snapshot      - Record daily inventory snapshot into fct_stock_snapshot"
-	@echo "make pipeline      - Execute full pipeline end-to-end (bloodlake all)"
-	@echo "make docs          - Generate dbt documentation and catalog"
-	@echo "make clean         - Remove temporary cache files and test artifacts"
-	@echo "========================================================================"
-
-setup: install
+	@echo "Raktsetu / eRaktKosh Blood Lakehouse"
+	@echo ""
+	@echo "Setup & app"
+	@echo "  make install       Install dependencies (uv sync)"
+	@echo "  make run           Run the API + web UI with hot-reload on http://localhost:8000"
+	@echo "  make demo          Run the test suite, then start the server"
+	@echo "  make demo-offline  Restore serving.duckdb from demo/ and start the server"
+	@echo ""
+	@echo "Quality"
+	@echo "  make test          Run pytest with coverage"
+	@echo "  make lint          Ruff lint + format check"
+	@echo "  make format        Ruff auto-format and fix"
+	@echo "  make dbt-test      Run dbt data tests"
+	@echo ""
+	@echo "Data pipeline (each step = one 'bloodlake' CLI command)"
+	@echo "  make scrape        Crawl eRaktKosh into data/landing/ (Parquet)"
+	@echo "  make load          Load the newest landing file into bronze"
+	@echo "  make transform     dbt build (silver + gold, incl. snapshots)"
+	@echo "  make gate          Facility-count anomaly gate"
+	@echo "  make publish       Copy warehouse -> serving.duckdb atomically"
+	@echo "  make pipeline      All of the above, end to end"
+	@echo "  make status        Show recent pipeline runs"
+	@echo ""
+	@echo "Docs & report"
+	@echo "  make docs          Generate dbt docs (served at /dbt-docs/)"
+	@echo "  make serve-docs    Serve dbt docs on http://localhost:8080"
+	@echo "  make diagrams      Regenerate UML diagrams into docs/diagrams/"
+	@echo "  make report        Rebuild reports/Raktsetu_Project_Report.docx"
+	@echo "  make clean         Remove caches and build artifacts"
 
 install:
 	uv sync
 
 run:
-	uv run uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+	uv run uvicorn $(APP) --host 0.0.0.0 --port 8000 --reload
 
 demo:
-	@echo "========================================================================"
-	@echo "🩸 eRaktKosh Blood Lakehouse: Initializing Evaluator Demo"
-	@echo "========================================================================"
 	uv run pytest tests/ -q
-	uv run uvicorn api:app --host 0.0.0.0 --port 8000
+	uv run uvicorn $(APP) --host 0.0.0.0 --port 8000
 
 demo-offline:
-	@echo "========================================================================"
-	@echo "🩸 eRaktKosh Blood Lakehouse: Offline Fallback Mode"
-	@echo "========================================================================"
 	@if [ ! -f demo/fallback_lakehouse.duckdb ]; then \
 		echo "Creating demo/fallback_lakehouse.duckdb from serving.duckdb..."; \
 		cp serving.duckdb demo/fallback_lakehouse.duckdb; \
 	fi
 	@cp demo/fallback_lakehouse.duckdb serving.duckdb
-	@echo "Serving database verified. Launching offline server at http://localhost:8000..."
-	uv run uvicorn api:app --host 0.0.0.0 --port 8000
+	uv run uvicorn $(APP) --host 0.0.0.0 --port 8000
 
 test:
 	uv run pytest tests/ -v --cov=src/bloodlake --cov-report=term-missing
-
-dbt-test:
-	uv run dbt test --project-dir dbt --profiles-dir dbt
 
 lint:
 	uv run ruff check .
@@ -63,32 +65,42 @@ format:
 	uv run ruff format .
 	uv run ruff check --fix .
 
+dbt-test:
+	uv run dbt test --project-dir dbt --profiles-dir dbt
+
 scrape:
 	uv run bloodlake scrape
 
-ingest:
-	uv run bloodlake ingest
+load:
+	uv run bloodlake load
 
 transform:
 	uv run bloodlake transform
 
-snapshot:
-	uv run bloodlake snapshot
+gate:
+	uv run bloodlake test
+
+publish:
+	uv run bloodlake publish
 
 pipeline:
 	uv run bloodlake all --force
 
+status:
+	uv run bloodlake status
+
 docs:
 	uv run dbt docs generate --project-dir dbt --profiles-dir dbt
-	@echo "========================================================================"
-	@echo "📚 dbt docs generated in dbt/target!"
-	@echo "Option 1 (Direct in app): Visit http://localhost:8000/dbt-docs/"
-	@echo "Option 2 (Standalone):    Run 'make serve-docs' (http://localhost:8080)"
-	@echo "========================================================================"
 
 serve-docs:
 	uv run dbt docs serve --project-dir dbt --profiles-dir dbt --port 8080
 
+diagrams:
+	uv run python scripts/report/generate_diagrams.py
+
+report: diagrams
+	uv run python scripts/report/build_raktsetu_docx.py
+
 clean:
-	rm -rf .pytest_cache .ruff_cache .coverage htmlcov __pycache__ dbt/target dbt/logs logs/
-	find . -type d -name "__pycache__" -exec rm -rf {} +
+	rm -rf .pytest_cache .ruff_cache .coverage htmlcov dbt/target dbt/logs logs/
+	find . -type d -name "__pycache__" -not -path "./.venv/*" -exec rm -rf {} +

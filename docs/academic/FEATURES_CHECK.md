@@ -35,7 +35,7 @@ Every feature built into this repository directly supports this story while adhe
 | **Phase 8** | **Data Health Dashboard & Publish Gate** | **PASS** | • dbt & Lakehouse metadata: `main_gold.pipeline_runs`<br>• Endpoint: `GET /api/v1/health/dashboard`<br>• Site-wide stale data banner ($>12\text{ hours}$ threshold)<br>• Dual-DB publish gate in `src/bloodlake/pipeline.py` (aborts if dbt fails or facility retention $<80\%$) | • Live metrics: Last sync recency, fresh 24h count, stale facilities by state, pipeline run audit history<br>• Screenshot: `07_data_health_dashboard.png` |
 | **Phase 9** | **Languages & Inclusive Accessibility** | **PASS** | • Dictionary: `web/js/translations.js` (EN, HI, GU)<br>• Language choice persisted in `localStorage`<br>• PWA Manifest: `web/manifest.json`<br>• Service Worker: `web/sw.js` with offline search caching<br>• WCAG AA contrast, 44px touch targets, aria-live | • Screenshot: `08_multilingual_pwa.png` (demonstrating full Gujarati UI translation)<br>• PWA installable and offline resilient |
 | **Phase 10** | **Clinical Editorial Design System** | **PASS** | • Styling: `web/css/style.css` (pure Vanilla CSS)<br>• Palette: Canvas `#FBF8F6`, Ink `#1A1214`, Primary Red `#D21F3C`<br>• Typography: Serif headings + clean Grotesk + tabular numerals<br>• Zero Emojis: 100% inline SVG sprite with icon + text | • Clean clinical aesthetic without neon glows or marketing clutter<br>• Screenshots: `01_home_hero_stats.png` through `08_multilingual_pwa.png` |
-| **Phase 11** | **Automated Testing & Documentation** | **PASS** | • Automated tests: **98 Pytest unit/integration tests**<br>• dbt contracts: **37 relational data tests**<br>• Code quality: Ruff check clean (0 errors)<br>• Documentation: `docs/FEATURES.md`, `docs/TESTING.md`, `docs/VIVA_QA.md` (75 Q&As), `README.md` | • `uv run pytest`: 98 passed, 0 failed in 2.0s<br>• `uv run dbt test`: 37 passed, 0 failed in 3.0s<br>• `uv run ruff check .`: clean |
+| **Phase 11** | **Automated Testing & Documentation** | **PASS** | • Automated tests: **98 Pytest unit/integration tests**<br>• dbt contracts: **37 relational data tests**<br>• Code quality: Ruff check clean (0 errors)<br>• Documentation: `docs/FEATURES.md`, `docs/TESTING.md`, `docs/academic/VIVA_QA.md` (75 Q&As), `README.md` | • `uv run pytest`: 98 passed, 0 failed in 2.0s<br>• `uv run dbt test`: 37 passed, 0 failed in 3.0s<br>• `uv run ruff check .`: clean |
 
 ---
 
@@ -82,8 +82,8 @@ Before your Academic Project viva evaluation at CHARUSAT:
 - [ ] **Run the Daily Scrape Pipeline:**
   Execute `uv run bloodlake all` once per day leading up to your viva. Each run appends a real snapshot to `fct_stock_snapshot`, progressively unlocking multi-day trend graphs with genuine data.
 - [ ] **Verify Live Server Startup:**
-  Run `uv run uvicorn api:app --reload --port 8000` and confirm [http://localhost:8000](http://localhost:8000) loads with the green live-sync indicator.
-- [ ] **Practice the 7-Minute Demo Script (`docs/PRESENTATION_OUTLINE.md`):**
+  Run `uv run uvicorn bloodlake.api.main:app --reload --port 8000` and confirm [http://localhost:8000](http://localhost:8000) loads with the green live-sync indicator.
+- [ ] **Practice the 7-Minute Demo Script (`docs/academic/PRESENTATION_OUTLINE.md`):**
   1. *Minute 1:* State the project story ("phone book vs decision tool") and showcase the hero stats.
   2. *Minute 2:* Click a Trust Score badge and explain the 3-pillar formula (Freshness 50, Contact 25, Completeness 25).
   3. *Minute 3:* Demonstrate Smart Emergency Mode: select `O-`, show the Rh-negative clinical alert, and display the Top 5 Call List with distance.
@@ -91,7 +91,7 @@ Before your Academic Project viva evaluation at CHARUSAT:
   5. *Minute 5:* Open Rare Blood Radar and show live Bombay Oh units in Karnataka/UP.
   6. *Minute 6:* Open Donor Help and demonstrate private, client-side eligibility evaluation (90d male vs 120d female gap).
   7. *Minute 7:* Show Data Health dashboard (37/37 dbt tests PASS) and explain the dual-database publish gate.
-- [ ] **Review the 75 Viva Questions (`docs/VIVA_QA.md`):**
+- [ ] **Review the 75 Viva Questions (`docs/academic/VIVA_QA.md`):**
   Be ready to explain: why rule-based risk instead of machine learning (Q62), how medical rules are sourced (Q63), why zero personal data is stored (Q67), and what the publish gate protects against (Q71).
 
 ---

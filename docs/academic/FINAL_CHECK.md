@@ -72,13 +72,13 @@ The **eRaktKosh Blood Lakehouse** has been refactored, validated, and documented
 ### Phase 6: Academic Documentation (`Commit: 987b47e`)
 - **Objective**: Author exhaustive university-standard documentation.
 - **Evidence**:
-  - `docs/REPORT.md`: Comprehensive 800-mark Academic Project Report.
+  - `docs/academic/REPORT.md`: Comprehensive 800-mark Academic Project Report.
   - `docs/ARCHITECTURE.md`: Architecture specification with 6 formal ADRs.
   - `docs/DATA_DICTIONARY.md`: Complete column-level catalog for Bronze, Silver, and Gold schemas.
   - `docs/API.md`: REST API reference with real curl examples, schemas, and HTTP error codes.
   - `docs/USER_MANUAL.md`: Evaluator and user operational guide.
-  - `docs/VIVA_QA.md`: 60 high-probability viva voce questions and model answers.
-  - `docs/PRESENTATION_OUTLINE.md`: 15-slide presentation outline and 7-minute live demo script.
+  - `docs/academic/VIVA_QA.md`: 60 high-probability viva voce questions and model answers.
+  - `docs/academic/PRESENTATION_OUTLINE.md`: 15-slide presentation outline and 7-minute live demo script.
   - Root `README.md`: Polished college mini-project guide.
 - **Verdict**: **PASS**
 
@@ -169,7 +169,7 @@ Before entering the examination room:
   - Department: **Faculty of Computer Science and Applications (FCA) — MCA**
   - Institution: **Academic Research Project**
 - [x] **Generate PDF Report**:
-  - Open `docs/REPORT.md` in VS Code or Chrome using the Markdown PDF extension.
+  - Open `docs/academic/REPORT.md` in VS Code or Chrome using the Markdown PDF extension.
   - Print to PDF with headers, footers, and page numbers for physical submission.
 - [x] **Pre-Viva Terminal Smoke Test**:
   ```bash

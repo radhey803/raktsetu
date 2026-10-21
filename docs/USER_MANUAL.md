@@ -63,7 +63,7 @@ The application is engineered to be lightweight, self-contained, and runnable on
    ```
 3. Start the Uvicorn web server:
    ```bash
-   uv run uvicorn api:app --reload --port 8000
+   uv run uvicorn bloodlake.api.main:app --reload --port 8000
    ```
 
 ---
@@ -220,7 +220,7 @@ If the college Wi-Fi is disconnected, slow, or blocks requests to external gover
 **Q2: What happens if port 8000 is already in use by another service?**  
 *Answer*: You can run the server on any custom port:
 ```bash
-uv run uvicorn api:app --reload --port 8080
+uv run uvicorn bloodlake.api.main:app --reload --port 8080
 ```
 Then access `http://localhost:8080` in your browser.
 

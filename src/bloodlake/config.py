@@ -27,14 +27,12 @@ class Settings(BaseSettings):
     warehouse_path: Path = base_dir / "blood_warehouse.duckdb"
     serving_path: Path = base_dir / "serving.duckdb"
     serving_staging_path: Path = base_dir / "serving.duckdb.tmp"
-    metadata_path: Path = base_dir / "eraktkosh_all_metadata.json"
+    metadata_path: Path = base_dir / "data" / "eraktkosh_all_metadata.json"
     web_dir: Path = base_dir / "web"
     dbt_project_dir: Path = base_dir / "dbt"
 
     # Data Tier Landing Directories
     data_landing_dir: Path = base_dir / "data" / "landing"
-    data_archive_dir: Path = base_dir / "data" / "archive"
-    data_raw_dir: Path = base_dir / "data" / "raw"
 
     # Scraper Parameters (Polite & Resilient)
     eraktkosh_base_url: str = (
@@ -61,7 +59,5 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# Ensure critical data directories exist
+# Ensure the landing zone exists
 settings.data_landing_dir.mkdir(parents=True, exist_ok=True)
-settings.data_archive_dir.mkdir(parents=True, exist_ok=True)
-settings.data_raw_dir.mkdir(parents=True, exist_ok=True)

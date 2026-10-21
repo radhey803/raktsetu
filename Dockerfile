@@ -49,11 +49,11 @@ COPY --from=builder /app/.venv /app/.venv
 COPY src/ /app/src/
 COPY dbt/ /app/dbt/
 COPY web/ /app/web/
-COPY eraktkosh_all_metadata.json /app/
+COPY data/eraktkosh_all_metadata.json data/medical_rules.json /app/data/
 COPY pyproject.toml README.md /app/
 
 # Create runtime directories with appropriate permissions
-RUN mkdir -p /app/data/landing /app/data/archive /app/logs \
+RUN mkdir -p /app/data/landing /app/logs \
     && chown -R bloodgrid:bloodgrid /app
 
 USER bloodgrid
@@ -61,6 +61,6 @@ USER bloodgrid
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
+    CMD curl -f http://localhost:8000/healthz || exit 1
 
-CMD ["uvicorn", "bloodgrid.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "bloodlake.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

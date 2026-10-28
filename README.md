@@ -4,7 +4,7 @@
 
 **Find compatible blood across India in seconds, with how fresh and how reliable each listing is.**
 
-*MCA Project · CMPICA, CHARUSAT · by Radhey Gajera & Shruti Gajipara · Guide: Ms. Konica Soni*
+*Academic project*
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg?logo=python&logoColor=white)](pyproject.toml)
 [![DuckDB](https://img.shields.io/badge/DuckDB-lakehouse-FFF000.svg?logo=duckdb&logoColor=black)](https://duckdb.org)
@@ -145,15 +145,6 @@ reports/            project report + presentation
 - A snapshot every 6 hours, not live stock; accuracy depends on blood banks updating eRaktKosh.
 - Map locations are district centres, not exact hospital addresses.
 - "Near me" needs HTTPS or localhost; the interface is English only.
-
-## 👥 Team
-
-| | Role |
-|---|---|
-| **Radhey Gajera** (25MCA057) | Data pipeline, dbt lakehouse, core API and algorithms, architecture, DevOps |
-| **Shruti Gajipara** (25MCA058) | Frontend and PWA, supporting APIs, testing, documentation |
-
-Guide: **Ms. Konica Soni**, CMPICA, CHARUSAT.
 
 ## 📄 License
 

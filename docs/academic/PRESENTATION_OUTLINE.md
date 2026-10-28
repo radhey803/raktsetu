@@ -168,9 +168,8 @@
     - Primary Accent: Subdued clinical red (`#D21F3C`)
     - Icons: 100% inline SVG Lucide-style icons (stroke 1.5px, 18px size)
   - Vanilla HTML5, CSS3, and JavaScript: Zero npm build step, $<150$ KB total payload, loads in $<50$ ms.
-  - Multilingual support: Instant client-side switching between English, Hindi, and Gujarati.
 - **Speaker Notes**:
-  > "The frontend was crafted to inspire trust. Rather than looking like a generic AI dashboard with dark glassmorphism and emojis, it uses a disciplined red-and-white clinical theme. Built with vanilla web standards, it has zero dependencies, loads in 50 milliseconds, and supports English, Hindi, and Gujarati."
+  > "The frontend was crafted to inspire trust. Rather than looking like a generic AI dashboard with dark glassmorphism and emojis, it uses a disciplined red-and-white clinical theme. Built with vanilla web standards, it has zero dependencies and loads in 50 milliseconds."
 
 ---
 

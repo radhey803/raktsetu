@@ -143,7 +143,7 @@ graph LR
   2. *Built-in Testing:* dbt provides automated schema tests (`unique`, `not_null`, `accepted_values`) executed prior to publication.
   3. *Self-Documenting:* Generates visual dependency graphs (DAG) and relational data catalogs (`dbt docs generate`).
   4. *Academic Pedagogy:* Demonstrates state-of-the-art analytics engineering practices taught in modern data architecture courses.
-- **Consequences:** Introduces a dbt compilation step into the pipeline execution. Mitigated by `dbt-duckdb` executing all 12 models and 35 tests in under 4 seconds.
+- **Consequences:** Introduces a dbt compilation step into the pipeline execution. Mitigated by `dbt-duckdb` executing all 10 models and 37 tests in under 4 seconds.
 
 ---
 

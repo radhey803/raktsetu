@@ -1,5 +1,7 @@
 # Documentation
 
+> 📘 **Start here:** [guide/00_START_HERE.md](guide/00_START_HERE.md) is the complete beginner-friendly guide (17 chapters). The files below are older reference notes.
+
 ## For developers
 
 | Document | What it covers |

@@ -1,220 +1,160 @@
 <div align="center">
 
-# eRaktKosh Blood Lakehouse
+# 🩸 Raktsetu: Real-Time Blood Availability Finder
 
-**National Blood Inventory Intelligence & Emergency Triage Decision Tool**  
-*Academic Mini Project (800 Marks) • Academic Project*  
-**Academic Research Project**
+**Find compatible blood across India in seconds, with how fresh and how reliable each listing is.**
+
+*MCA Project · CMPICA, CHARUSAT · by Radhey Gajera & Shruti Gajipara · Guide: Ms. Konica Soni*
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg?logo=python&logoColor=white)](pyproject.toml)
-[![DuckDB](https://img.shields.io/badge/DuckDB-1.1+-FFF000.svg?logo=duckdb&logoColor=black)](https://duckdb.org)
-[![dbt-duckdb](https://img.shields.io/badge/dbt-DuckDB-FF694B.svg?logo=dbt&logoColor=white)](dbt/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?logo=fastapi&logoColor=white)](src/bloodlake/api/main.py)
-[![Pytest](https://img.shields.io/badge/Pytest-98%20Passed-brightgreen.svg)](tests/)
-[![dbt Tests](https://img.shields.io/badge/dbt%20Tests-37%20Passed-brightgreen.svg)](dbt/)
-[![Code Style: Ruff](https://img.shields.io/badge/Code%20Style-Ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![DuckDB](https://img.shields.io/badge/DuckDB-lakehouse-FFF000.svg?logo=duckdb&logoColor=black)](https://duckdb.org)
+[![dbt](https://img.shields.io/badge/dbt-37%20tests-FF694B.svg?logo=dbt&logoColor=white)](dbt/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-API-009688.svg?logo=fastapi&logoColor=white)](src/bloodlake/api/main.py)
+[![pytest](https://img.shields.io/badge/pytest-98%20passed-brightgreen.svg)](tests/)
+[![Playwright](https://img.shields.io/badge/Playwright-146%20checks-2EAD33.svg?logo=playwright&logoColor=white)](tests/e2e/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-> *"eRaktKosh shows blood stock like a phone book. My system turns it into a decision tool: where to go, how much to trust the listing, what is running low, and how it changed over time."*
+<img src="docs/screenshots/01_home.png" alt="Raktsetu home page" width="720">
 
+</div>
+
+> [!IMPORTANT]
+> Uses public data from **eRaktKosh** (MoHFW, Govt. of India). This is an academic project, **not an official
+> government service**. Compatibility hints follow NBTC India / WHO guidance and are **not medical advice**.
+> Always call the blood bank before travelling.
+
+---
+
+## 📌 The problem
+
+In an emergency, families phone blood bank after blood bank. The data exists on eRaktKosh, but:
+- you search **one district at a time**;
+- it doesn't show **compatible groups** (an O- patient can only receive O- red cells);
+- it doesn't warn you when a bank **hasn't updated for weeks**.
+
+**Raktsetu** collects stock from **4,716 blood banks in 701 districts** every 6 hours, checks its quality,
+and serves it through a fast, mobile-friendly web app that also works offline.
+
+---
+
+## ✨ Features
+
+| | |
+|---|---|
+| 🚑 **Emergency Mode**: shows only compatible donor groups (including plasma and Bombay rules), ranks banks by freshness, trust, units and distance, and explains *why* each one is ranked there | <img src="docs/screenshots/02_emergency.png" width="380"> |
+| 🔎 **Blood Finder**: filter by state, district, group and component; sort by freshness, units, trust or distance; filters are kept in the URL so you can share a search | <img src="docs/screenshots/03b_cards.png" width="380"> |
+| 📍 **Map + Near Me**: every bank on a map; GPS search widens from 50 → 150 → 400 km until it finds stock | <img src="docs/screenshots/04_map.png" width="380"> |
+| ⭐ **Trust score (0–100)**: freshness (50) + valid phone (25) + component coverage (25) | <img src="docs/screenshots/06_trust_modal.png" width="380"> |
+| 📈 **Stock trend** per bank, from real snapshots only (no invented history) | <img src="docs/screenshots/05_trend_modal.png" width="380"> |
+| ⚠️ **District shortages + Rare Blood Radar** (Rh-negative and Bombay), with Excel-safe **CSV export** | <img src="docs/screenshots/09_shortages.png" width="380"> |
+
+Also included: a donor eligibility checker, a data health panel, an installable **PWA** with offline mode, and a responsive layout from 360 px phones up.
+
+<div align="center">
+<img src="docs/screenshots/12_mobile_home.png" width="180"> &nbsp;
+<img src="docs/screenshots/13_mobile_menu.png" width="180"> &nbsp;
+<img src="docs/screenshots/15_mobile_emergency.png" width="180">
 </div>
 
 ---
 
-> [!IMPORTANT]
-> **Source Attribution & Medical Disclaimer**:  
-> Data sourced from eRaktKosh (Ministry of Health and Family Welfare, Govt. of India). Academic project for Academic Project at Academic Research Project; not an official government service.  
-> **Medical Guidance**: Sourced from official NBTC India & WHO standards. Guidance only, not medical advice. Always call the blood bank to confirm bed-side availability before travelling.
-
----
-
-## 📌 Problem Statement & Core Philosophy
-
-Across India, finding blood in emergencies is hindered by information asymmetry:
-1. **Passive Listing vs. Active Decision Support**: Existing portals list numbers without telling users if a facility updated recently, whether they have a working phone, or which compatible alternative donor groups could save the patient.
-2. **False Confidence from Stale Data**: Relatives waste critical "golden hour" time travelling to facilities with records un-updated for 30+ days.
-3. **Regex Collisions & Phenotype Traps**: Naive search scripts confuse `B+` inside `AB+` or misclassify life-critical `Bombay (Oh+)` as regular `O+`.
-4. **Zero Fake Data Contract**: We strictly reject synthetic numbers or fabricated history. If a trend requires real historical snapshots that do not exist yet, we show an honest notice instead of generating fictional numbers.
-
----
-
-## ⚡ The Modern Lakehouse Architecture
-
-The **eRaktKosh Blood Lakehouse** integrates an asynchronous crawler with an in-process columnar lakehouse built on **DuckDB**, **dbt Core**, and **FastAPI**:
+## 🏗️ How it works
 
 ```mermaid
-flowchart TD
-    subgraph Ingestion ["1. Asynchronous Ingestion Layer"]
-        EK[eRaktKosh Public Portal\n781 Administrative Districts] -->|Polite Async Scraper\nSemaphore: 10, Backoff| SCRAPER[src/bloodlake/scraper.py]
-        SCRAPER -->|Immutable Parquet\n+ SHA-256 Checksum| LANDING[data/landing/*.parquet]
-    end
-
-    subgraph Lakehouse ["2. Storage & Transformation (DuckDB + dbt)"]
-        LANDING -->|Raw Parquet Ingestion| BRONZE[(bronze.raw_blood_inventory\nAppend-Only)]
-        BRONZE -->|dbt Staging Views| SILVER[(silver.stg_blood_banks\nsilver.stg_inventory_components)]
-        SILVER -->|dbt Gold Dimensional Marts| GOLD[(gold.dim_blood_banks\ngold.fct_stock_current\ngold.fct_stock_snapshot\ngold.mart_reliability_score\ngold.mart_district_status\ngold.mart_rare_blood_availability\ngold.mart_stock_change)]
-    end
-
-    subgraph QualityGate ["3. Dual-Database Publish Gate"]
-        GOLD --> DBT_TEST[37 dbt Data Tests\nUnique, Non-null, Accepted Values]
-        DBT_TEST --> ANOMALY_TEST[Publish Gate:\nFacility Count >= 80% Baseline & Zero Failures]
-        ANOMALY_TEST -->|Passed| ATOMIC_SWAP[Atomic Copy & Swap:\nblood_warehouse.duckdb -> serving.duckdb]
-        ANOMALY_TEST -->|Failed| ABORT[Abort Publish & Log Alert\nKeep Last Good Serving DB]
-    end
-
-    subgraph Serving ["4. Analytical Serving & Interface"]
-        ATOMIC_SWAP --> API[FastAPI High-Concurrency Backend]
-        API --> ENDPOINTS[/api/v1/availability\n/api/v1/emergency\n/api/v1/shortages\n/api/v1/rare\n/api/v1/health/dashboard\n/api/v1/export/*]
-        API --> UI[Clinical Vanilla Web App\nCarto Positron Tiles / Inline SVG Sprite / PWA]
-    end
+flowchart LR
+    A[eRaktKosh] -->|async scraper| B[(Parquet<br/>landing)]
+    B --> C[(DuckDB<br/>bronze)]
+    C -->|dbt| D[(silver → gold)]
+    D --> E{quality gate<br/>dbt tests + 80% check}
+    E -->|pass| F[(serving.duckdb)]
+    E -->|fail| X[keep last good data]
+    F --> G[FastAPI] --> H[Web app / PWA]
 ```
+
+1. **Collect:** a polite async scraper (`aiohttp`, at most 10 requests at once, retries, circuit breaker) fetches every district.
+2. **Land:** raw answers are saved as Parquet files that are never changed, each with a SHA-256 hash.
+3. **Transform:** **dbt** turns raw data into cleaned (silver) and ready-to-use (gold) DuckDB tables: current stock, history, trust score, shortages and rare blood.
+4. **Gate:** if 37 data tests fail or the number of banks drops below 80% of the last run, nothing is published.
+5. **Publish:** the database is copied to `serving.duckdb` in one atomic step.
+6. **Serve:** FastAPI answers JSON; a plain HTML/CSS/JS PWA shows it.
+
+<details>
+<summary>📐 Architecture and ER diagrams</summary>
+
+<img src="docs/diagrams/architecture_diagram.png" width="420"> <img src="docs/diagrams/er_diagram.png" width="420">
+</details>
+
+**Tech stack:** Python 3.12 · uv · aiohttp · PyArrow/Parquet · DuckDB · dbt-duckdb · FastAPI · Pydantic · Leaflet · Chart.js · Service Worker · pytest · Playwright · ruff · Docker · GitHub Actions
 
 ---
 
-## 🚀 Key Real-Use-Case Decision Features
+## 🚀 Quick start
 
-1. **Blood Bank Trust Score (0–100)**:  
-   Proprietary 3-pillar formula: Freshness ($50\text{ pts}$), Valid Contact Phone ($25\text{ pts}$), and Component Completeness ($25\text{ pts}$). Categorized into `High` ($\ge 75$), `Medium` ($40-74$), and `Low` ($<40$). Low-trust facilities display an explicit warning callout: *"Low reliability, call to confirm before travelling."*
-2. **Smart Emergency Mode & Compatibility Matrix**:  
-   Input patient blood group and component. Resolves all WHO/NBTC compatible donor red cells, queries active stock, and ranks the top 5 facilities using an audited formula ($0.35F + 0.30T + 0.25U + 0.10D$) with plain-language explanations. Automatically issues clinical warnings for Rh-negative and Bombay ($Oh$) phenotypes.
-3. **Nearest Bank by Distance & Geocoding**:  
-   User-initiated HTML5 browser geolocation calculates Haversine great-circle distance in SQL. Fallback to 781 district centroids with deterministic non-overlapping offsets. Integrates with Nominatim geocoding under strict 1 req/sec rate limits and permanent DuckDB caching (`geocode_cache`).
-4. **District Shortage Ranking & Rare Blood Radar**:  
-   dbt model `mart_district_status` highlights districts facing severe component deficits, distinguishing between physical stockouts and non-reporting facilities. Rare Blood Radar triages nationwide Bombay phenotype and Rh-negative units with trust and freshness badges.
-5. **Stock History, Trend & Rule-Based Risk Flags**:  
-   Append-only snapshot tracking with a strict zero-fake-data policy. Evaluates consecutive falling demand (decreased across 3 snapshot intervals) and sudden drop-to-zero anomalies.
-6. **Client-Side Donor Help & Gap Calculator**:  
-   100% private, client-side questionnaire (age, weight, donation interval). Calculates next donation date (90 days male, 120 days female per NBTC 2020) and suggests local blood banks with shortages. Zero personal data transmitted or stored.
-7. **Sharing & Excel-Compatible CSV Export**:  
-   Search state synchronized directly in URL query parameters. One-click WhatsApp emergency dispatch card. CSV exports for availability and shortages formatted with UTF-8 BOM (`\ufeff`) for seamless opening in Microsoft Excel with MoHFW attribution headers.
-8. **Data Health & Pipeline Dashboard**:  
-   Site-wide stale data banner if the last sync is $>12$ hours old. Observability page showing sync freshness, facility count retention, stale states breakdown, and recent pipeline executions.
-9. **Inclusive Accessibility & Offline PWA**:  
-   Full WCAG AA contrast, 44px touch targets, screen-reader `aria-live` regions, and an installable PWA Service Worker (`web/sw.js`) with cached offline search replay.
-10. **Clinical Aesthetic & Design System**:  
-    Warm off-white canvas `#FBF8F6`, deep ink `#1A1214`, primary clinical red `#D21F3C`, refined serif headings, tabular numbers for all stock counts, Carto Positron map tiles, and zero emojis (100% inline SVG sprite with icon + text status indicators).
-
----
-
-## 📂 Project Structure
-
-```
-.
-├── src/bloodlake/              Python package (all backend code)
-│   ├── config.py               Settings and paths (overridable via .env)
-│   ├── db.py                   DuckDB connections (read-only serving / read-write warehouse)
-│   ├── scraper.py              Async eRaktKosh crawler → Parquet landing files
-│   ├── pipeline.py             `bloodlake` CLI: scrape → load → transform → test → publish
-│   ├── medical.py              Blood compatibility rules (reads data/medical_rules.json)
-│   ├── scoring.py              Trust score formula (mirrors the dbt reliability mart)
-│   ├── geo.py                  District/state centroids, Haversine distance, geocode cache
-│   ├── export.py               Excel-friendly CSV export
-│   └── api/
-│       ├── main.py             FastAPI app: mounts routes + serves web/
-│       ├── routes.py           All HTTP endpoints (/api/v1/*)
-│       └── schemas.py          Pydantic response models
-├── dbt/                        SQL transformations (dbt + DuckDB)
-│   ├── macros/                 normalize_blood_group()
-│   └── models/
-│       ├── silver/             Cleaned views over bronze.raw_inventory
-│       └── gold/               Facts, dimensions and marts the API reads
-├── web/                        Frontend (plain HTML/CSS/JS, no build step)
-│   ├── index.html
-│   ├── css/style.css
-│   ├── js/app.js
-│   ├── sw.js, manifest.json    Offline / installable PWA
-│   └── assets/                 Icons
-├── tests/
-│   ├── unit/                   Pure-function and module tests
-│   ├── integration/            API tests against a generated fixture DB
-│   └── fixtures/               generate_fixture_db.py (builds the fixture DB)
-├── data/
-│   ├── medical_rules.json      Compatibility & donor rules (NBTC / WHO sourced)
-│   ├── eraktkosh_all_metadata.json   State → district catalogue the scraper crawls
-│   └── landing/                Scraped Parquet files (git-ignored, generated)
-├── demo/                       Offline demo database + presenter notes
-├── docs/
-│   ├── README.md               Index of all documentation — start here
-│   ├── ARCHITECTURE.md, API.md, DATA_DICTIONARY.md, FEATURES.md, TESTING.md, USER_MANUAL.md
-│   ├── adr/                    Architecture Decision Records
-│   ├── diagrams/               UML / architecture PNGs (generated)
-│   ├── screenshots/            UI screenshots used in the report
-│   ├── academic/               Report, viva Q&A, presentation, submission checklists
-│   └── learning/               DuckDB / dbt study notes
-├── reports/                    Final submitted report (.docx / .pdf)
-├── scripts/report/             Generators for diagrams and the .docx report
-├── .github/workflows/          CI, scheduled pipeline, Docker build
-├── Dockerfile, docker-compose.yml
-├── Makefile                    Run `make help` for every command
-└── pyproject.toml, uv.lock     Dependencies (managed with uv)
-```
-
-Generated at runtime and not committed: `blood_warehouse.duckdb` (pipeline build DB),
-`serving.duckdb` (what the API reads), `data/landing/`, `dbt/target/`.
-
-### Where to start reading
-
-| If you want to… | Read |
-|---|---|
-| Understand the data flow | `src/bloodlake/pipeline.py` → `dbt/models/silver/` → `dbt/models/gold/` |
-| Add or change an API endpoint | `src/bloodlake/api/routes.py` + `schemas.py` |
-| Change the UI | `web/index.html`, `web/js/app.js`, `web/css/style.css` |
-| Change medical rules | `data/medical_rules.json` (loaded by `medical.py`) |
-| See every table and column | `docs/DATA_DICTIONARY.md` |
-
----
-
-## 🛠️ Quickstart
-
-### 1. Prerequisites
-- Linux / macOS / Windows WSL2
-- Python 3.12
-- [`uv`](https://docs.astral.sh/uv/) package manager
-
-### 2. Install & Run
 ```bash
 git clone https://github.com/radhey803/eraktkosh-blood-lakehouse.git
 cd eraktkosh-blood-lakehouse
-
 make install          # uv sync
-make demo-offline     # no scrape needed: uses demo/fallback_lakehouse.duckdb
-# or, with an existing serving.duckdb:
-make run
+make pipeline         # scrape eRaktKosh → build the lakehouse (about 5–15 min, needs internet)
+make run              # http://localhost:8000   ·   API docs: http://localhost:8000/docs
 ```
-Visit: **[http://localhost:8000](http://localhost:8000)**  
-API Documentation (Swagger UI): **[http://localhost:8000/docs](http://localhost:8000/docs)**
+
+| Command | What it does |
+|---|---|
+| `make scrape / load / transform / gate / publish` | Run one pipeline step at a time |
+| `make status` | Recent pipeline runs |
+| `make test` · `make lint` · `make dbt-test` | Tests and code checks |
+| `uv run python tests/e2e/e2e_check.py` | 146-check browser test (with `make run` running) |
+| `make report` | Rebuild the project report (DOCX/PDF) |
+
+Full setup for Linux, macOS and Windows, with fixes for common errors: **[docs/guide/02_INSTALLATION.md](docs/guide/02_INSTALLATION.md)**
 
 ---
 
-## 🧪 Automated Testing
+## 📘 Documentation
 
-```bash
-make test        # pytest unit + integration tests with coverage
-make dbt-test    # dbt data tests
-make lint        # ruff lint + format check
+A complete beginner-friendly guide (17 chapters) is in **[docs/guide/](docs/guide/00_START_HERE.md)**:
+
+| | |
+|---|---|
+| [Start here](docs/guide/00_START_HERE.md) · [Concepts](docs/guide/01_CONCEPTS_FOR_BEGINNERS.md) · [Install](docs/guide/02_INSTALLATION.md) · [User guide](docs/guide/03_USER_GUIDE.md) | Getting started |
+| [Architecture](docs/guide/04_ARCHITECTURE.md) · [Pipeline](docs/guide/05_DATA_PIPELINE.md) · [dbt](docs/guide/06_DBT_MODELS.md) · [Database](docs/guide/07_DATABASE.md) | Data engineering |
+| [API](docs/guide/08_BACKEND_API.md) · [Domain logic](docs/guide/09_DOMAIN_LOGIC.md) · [Frontend](docs/guide/10_FRONTEND.md) | App |
+| [Testing](docs/guide/11_TESTING.md) · [Deployment](docs/guide/12_DEPLOYMENT_AND_OPERATIONS.md) · [Troubleshooting](docs/guide/13_TROUBLESHOOTING.md) | Operations |
+| [Build it yourself](docs/guide/14_BUILD_IT_YOURSELF.md) · [Tech stack](docs/guide/15_TECH_STACK_REFERENCE.md) · [Glossary & FAQ](docs/guide/16_GLOSSARY_AND_FAQ.md) | Learning |
+
+Also: [design decisions (ADRs)](docs/adr/) · [project report (PDF)](reports/Raktsetu_Project_Report.pdf) · [presentation (PDF)](reports/Raktsetu_Presentation.pdf)
+
+---
+
+## 📂 Repository layout
+
+```text
+src/bloodlake/      scraper, pipeline CLI, API, medical rules, scoring, geo, CSV export
+dbt/                silver + gold SQL models, tests, blood-group macro
+web/                index.html, app.js, style.css, service worker, manifest
+data/               district metadata, medical rules, district coordinates
+tests/              unit, integration (fixture DB), e2e (Playwright)
+docs/               guide, ADRs, diagrams, screenshots
+reports/            project report + presentation
 ```
 
 ---
 
-## ⚙️ Lakehouse CLI (`bloodlake`)
+## ⚠️ Limitations
 
-```bash
-uv run bloodlake --help        # View all subcommands
-uv run bloodlake scrape        # Crawl all districts into data/landing/
-uv run bloodlake load          # Load newest landing Parquet into bronze
-uv run bloodlake transform     # dbt build: silver + gold (incl. incremental snapshots)
-uv run bloodlake test          # Anomaly gate: facility count >= 80% of last run
-uv run bloodlake publish       # Atomic copy warehouse -> serving.duckdb
-uv run bloodlake all --force   # Everything above, end to end
-uv run bloodlake status        # Recent pipeline runs
-```
+- A snapshot every 6 hours, not live stock; accuracy depends on blood banks updating eRaktKosh.
+- Map locations are district centres, not exact hospital addresses.
+- "Near me" needs HTTPS or localhost; the interface is English only.
 
----
+## 👥 Team
 
-## 🏛️ Academic Attribution
+| | Role |
+|---|---|
+| **Radhey Gajera** (25MCA057) | Data pipeline, dbt lakehouse, core API and algorithms, architecture, DevOps |
+| **Shruti Gajipara** (25MCA058) | Frontend and PWA, supporting APIs, testing, documentation |
 
-- **Context**: Academic Research Project
-- **Program**: Academic Project
-- **Evaluation**: Mini Project (800 Marks)
-- **Data Source**: eRaktKosh Portal, MoHFW, Government of India
-- **License**: MIT License
+Guide: **Ms. Konica Soni**, CMPICA, CHARUSAT.
+
+## 📄 License
+
+[Apache 2.0](LICENSE). Blood stock data belongs to eRaktKosh (MoHFW, Govt. of India).

@@ -29,7 +29,7 @@ The data architecture adheres to the **Medallion Lakehouse Paradigm**:
 2. **Silver Layer (dbt Core):** Unnests nested component blobs into atomic relational records per `(facility, component, blood_group, units, source_updated_at)` and enforces a strict regex normalizer macro proving clinical isolation between standard phenotypes (`B+` vs. `AB+`) and rare variants (`O+` vs. Bombay `Oh+`).
 3. **Gold Layer (Analytical Marts):** Constructs dimensional models (`dim_blood_banks`, `fct_stock_current`, `fct_stock_snapshot`), computes an algorithmic **Reliability Score (0–100)** incorporating data recency (50 pts), contact validity (25 pts), and component completeness (25 pts), and isolates rare blood availability (`mart_rare_blood_availability`) alongside district deficits (`mart_district_status`).
 
-Serving is handled by an atomic blue/green deployment strategy into a read-only DuckDB instance served by **FastAPI** with structured SQL queries (zero fragile runtime regular expressions). The front-end delivers an accessible, clinical-grade interface utilizing Vanilla HTML5, CSS3, and JavaScript with CartoDB Positron maps, Chart.js time-series visualizations, and multilingual localization (English, Hindi, Gujarati). Crucially, the system enforces a strict **Zero Fake Data Policy**: time-series trajectories begin only from verified historical pipeline executions, presenting honest evaluation states when fewer than two consecutive snapshots exist.
+Serving is handled by an atomic blue/green deployment strategy into a read-only DuckDB instance served by **FastAPI** with structured SQL queries (zero fragile runtime regular expressions). The front-end delivers an accessible, clinical-grade interface utilizing Vanilla HTML5, CSS3, and JavaScript with CartoDB Positron maps and Chart.js time-series visualizations. Crucially, the system enforces a strict **Zero Fake Data Policy**: time-series trajectories begin only from verified historical pipeline executions, presenting honest evaluation states when fewer than two consecutive snapshots exist.
 
 ---
 
@@ -109,7 +109,7 @@ The current digital blood ecosystem in India suffers from significant operationa
 - **FR-5 [Search]:** API must support multi-attribute filtering (State, District, Component, Blood Group, Minimum Units, Query) via pure SQL on Gold marts.
 - **FR-6 [History]:** API must deliver daily stock trajectories from verified snapshot tables.
 - **FR-7 [Anomaly Gate]:** Pipeline must reject builds where facility count drops below 80% of historical baselines.
-- **FR-8 [Localization]:** UI must allow seamless switching between English, Hindi, and Gujarati.
+- **FR-8 [Localization]:** Out of scope for this release; the UI is English-only.
 
 ### 4.3 Non-Functional Requirements (NFR)
 - **NFR-1 [Performance]:** API response time for complex availability queries must remain &le; 25 ms.
@@ -278,7 +278,7 @@ sequenceDiagram
     CLI->>Scraper: Execute scrape_nationwide()
     Scraper-->>CLI: 4,680 facility records written to Parquet
     CLI->>Duck: Ingest Parquet into bronze.raw_blood_inventory
-    CLI->>dbt: Execute dbt build (12 models, 35 tests)
+    CLI->>dbt: Execute dbt build (10 models, 37 tests)
     dbt-->>CLI: PASS=35 WARN=0 ERROR=0
     CLI->>Gate: Evaluate facility retention vs baseline
     Gate-->>CLI: 4,680 >= 80% baseline -> PASS
@@ -379,7 +379,6 @@ def publish_serving_database(source_warehouse: Path, serving_db: Path):
         "dim_blood_banks",
         "fct_stock_current",
         "fct_stock_snapshot",
-        "fct_state_blood_summary",
         "mart_district_status",
         "mart_reliability_score",
         "mart_rare_blood_availability",

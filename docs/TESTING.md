@@ -86,7 +86,7 @@ tests/unit/test_warehouse_loader.py ..                                   [100%]
 ```bash
 $ uv run dbt test --project-dir dbt --profiles-dir dbt
 15:50:15  Registered adapter: duckdb=1.11.0
-15:50:16  Found 12 models, 37 data tests, 1 source, 501 macros
+15:50:16  Found 10 models, 37 data tests, 1 source, 501 macros
 15:50:16  Concurrency: 4 threads (target='dev')
 ...
 15:50:19  Finished running 37 data tests in 0 hours 0 minutes and 3.05 seconds (3.05s).

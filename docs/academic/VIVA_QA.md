@@ -372,9 +372,9 @@ It uses **Chart.js** via a clean canvas element inside an accessible modal dialo
 - Plots multi-series lines for each blood group over real snapshot dates.
 - Destroys previous canvas instances before re-rendering to prevent memory leaks.
 
-### Q52: What is the purpose of the multilingual translation dictionary?
+### Q52: Does the UI support Hindi or Gujarati?
 **Answer**:  
-In emergency healthcare, accessibility across diverse linguistic populations is vital. `web/js/translations.js` provides instant client-side switching between **English**, **Hindi (हिन्दी)**, and **Gujarati (ગુજરાતી)** without requiring server-side reloads.
+Not in this release. An early client-side dictionary (English/Hindi/Gujarati) was removed to keep the medical wording reviewed in one language; localisation is listed as future work.
 
 ---
 

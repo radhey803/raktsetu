@@ -266,10 +266,10 @@ The publish gate prevents corrupted publishes, but cannot restore upstream conne
 Patients and attendants in distress in India come from diverse linguistic backgrounds and may browse under low network conditions on mobile phones.
 
 ### Realistic Usage Scenario
-A rural family in Kheda navigates the portal in Gujarati on an Android smartphone with poor 2G/3G connectivity. The application loads quickly as an installable Progressive Web App (PWA), persists cached hospital cards, and maintains high-contrast typography in sunlight.
+A rural family in Kheda navigates the portal on an Android smartphone with poor 2G/3G connectivity. The application loads quickly as an installable Progressive Web App (PWA), persists cached hospital cards, and maintains high-contrast typography in sunlight.
 
 ### How It Works
-- **Trilingual Dictionary:** English, Hindi (हिन्दी), and Gujarati (ગુજરાતી) supported via client-side dictionary in `web/js/translations.js`. User language preference is remembered in `localStorage`.
+- **Language:** the UI is English-only. A Hindi/Gujarati dictionary existed earlier but was removed.
 - **Progressive Web App (PWA):**
   - Web App Manifest: `web/manifest.json`.
   - Service Worker: `web/sw.js` precaches core app shell (HTML, CSS, JS, SVG sprites) and caches last-loaded search results with an offline fallback indicator: *"Offline mode: displaying cached results from [timestamp]."*

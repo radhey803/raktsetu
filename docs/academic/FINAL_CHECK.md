@@ -57,7 +57,6 @@ The **eRaktKosh Blood Lakehouse** has been refactored, validated, and documented
   - Clinical Red-and-White design system (`#FBF8F6` canvas, `#1A1214` ink, `#D21F3C` red) with zero emojis and 100% inline SVG Lucide icons.
   - Leaflet map with Carto Positron tiles and explicit *"approximate location, district level"* labels.
   - Added Rare Blood Phenotype Radar, District Deficit Radar, and one-click WhatsApp SOS sharing.
-  - Multilingual support for English, Hindi, and Gujarati.
 - **Verdict**: **PASS**
 
 ### Phase 5: Testing & Quality Assurance (`Commit: f11d3fa`)

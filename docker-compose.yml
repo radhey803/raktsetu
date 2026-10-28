@@ -6,40 +6,8 @@ services:
     container_name: bloodgrid_api
     ports:
       - "8000:8000"
-    environment:
-      - BLOODGRID_ENV=development
-      - BLOODGRID_LOG_LEVEL=INFO
-      - BLOODGRID_WAREHOUSE_PATH=/app/blood_warehouse.duckdb
-      - BLOODGRID_SERVING_PATH=/app/serving.duckdb
-      - BLOODGRID_POSTGRES_URL=postgresql://bloodgrid:bloodgrid_pass@postgres:5432/bloodgrid_app
-      - BLOODGRID_CARTO_API_KEY=${BLOODGRID_CARTO_API_KEY:-cb1_4kjs_1_d65cb9aedbd3050cfd5fd35a}
     volumes:
       - ./data:/app/data
-      - ./logs:/app/logs
       - ./blood_warehouse.duckdb:/app/blood_warehouse.duckdb:ro
       - ./serving.duckdb:/app/serving.duckdb:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
     restart: unless-stopped
-
-  postgres:
-    image: postgres:16-alpine
-    container_name: bloodgrid_postgres
-    environment:
-      POSTGRES_USER: bloodgrid
-      POSTGRES_PASSWORD: bloodgrid_pass
-      POSTGRES_DB: bloodgrid_app
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bloodgrid -d bloodgrid_app"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-volumes:
-  postgres_data:

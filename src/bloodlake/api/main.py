@@ -7,7 +7,7 @@ Serves high-concurrency analytical queries from DuckDB and hosts the Vanilla JS/
 web interface from the web/ directory.
 """
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -30,7 +30,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_credentials=True,
+    allow_credentials=False,  # browsers reject credentials with a wildcard origin
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
@@ -61,6 +61,11 @@ if web_dir.exists():
     dbt_target = settings.base_dir / "dbt" / "target"
     if dbt_target.exists() and (dbt_target / "index.html").exists():
         app.mount("/dbt-docs", StaticFiles(directory=str(dbt_target), html=True), name="dbt_docs")
+    else:
+
+        @app.get("/dbt-docs/", response_class=HTMLResponse)
+        def dbt_docs_missing():
+            return HTMLResponse("<p>dbt docs not generated yet. Run <code>make docs</code>.</p>")
 
     @app.get("/", response_class=HTMLResponse)
     def serve_index():
@@ -128,10 +133,13 @@ def legacy_search(
     component: str = "Packed Red Blood Cells",
     blood_group: str = None,
     search_query: str = None,
-    limit: int = 300,
+    sort: str = "freshness",
+    lat: float = None,
+    lng: float = None,
+    limit: int = Query(300, ge=1, le=10000),
 ):
     from bloodlake.db import get_serving_connection
-    from bloodlake.geo import resolve_facility_lat_lng
+    from bloodlake.geo import haversine_distance_km, resolve_facility_lat_lng
 
     con = get_serving_connection(read_only=True)
     try:
@@ -143,17 +151,19 @@ def legacy_search(
         if district and district != "ALL":
             where_clauses.append("b.district_name = ?")
             params.append(district)
+        comp_clause = ""
+        comp_params = []
         if component and component != "ALL":
-            where_clauses.append("s.component_name = ?")
-            params.append(component)
+            comp_clause = "WHERE component_name = ?"
+            comp_params = [component]
         if blood_group and blood_group != "ALL":
             where_clauses.append("s.blood_group = ?")
             params.append(blood_group)
         if search_query and search_query.strip():
             where_clauses.append(
-                "(LOWER(b.hospital_name) LIKE ? OR LOWER(b.hospital_address) LIKE ?)"
+                "(contains(LOWER(b.hospital_name), ?) OR contains(LOWER(b.hospital_address), ?))"
             )
-            q = f"%{search_query.strip().lower()}%"
+            q = search_query.strip().lower()
             params.extend([q, q])
 
         where_sql = " AND ".join(where_clauses)
@@ -170,21 +180,29 @@ def legacy_search(
                 MAX(s.source_updated_at) AS last_updated_at,
                 DATE_DIFF('day', MAX(s.source_updated_at), CURRENT_TIMESTAMP) AS days_since_update,
                 COALESCE(r.reliability_score, 50) AS reliability_score,
-                COALESCE(r.reliability_tier, 'SILVER') AS reliability_tier,
-                string_agg(s.blood_group || ': ' || CAST(s.units AS VARCHAR), ', ') AS stock_summary
+                COALESCE(r.reliability_label, r.reliability_tier, 'Medium') AS reliability_tier,
+                string_agg(s.blood_group || ': ' || CAST(s.units AS VARCHAR), ', ') AS stock_summary,
+                COUNT(*) OVER () AS total_matches
             FROM main_gold.dim_blood_banks b
-            JOIN main_gold.fct_stock_current s ON b.hospital_code = s.hospital_code
+            JOIN (
+                -- one row per bank and group; "ALL" components are summed, not listed twice
+                SELECT hospital_code, blood_group, SUM(units) AS units,
+                       MAX(source_updated_at) AS source_updated_at
+                FROM main_gold.fct_stock_current {comp_clause}
+                GROUP BY hospital_code, blood_group
+            ) s ON b.hospital_code = s.hospital_code
             LEFT JOIN main_gold.mart_reliability_score r ON b.hospital_code = r.hospital_code
             WHERE {where_sql}
             GROUP BY
                 b.hospital_code, b.hospital_name, b.hospital_type, b.facility_type,
                 b.state_name, b.district_name, b.hospital_contact, b.hospital_address,
-                r.reliability_score, r.reliability_tier
+                r.reliability_score, r.reliability_label, r.reliability_tier
             ORDER BY days_since_update ASC NULLS LAST, reliability_score DESC
             LIMIT ?;
         """
-        params.append(limit)
-        rows = con.execute(sql, params).fetchall()
+        by_distance = sort == "distance" and lat is not None and lng is not None
+        # distance is computed in Python, so fetch every match and cut after sorting
+        rows = con.execute(sql, comp_params + params + [None if by_distance else limit]).fetchall()
 
         hospitals = []
         for r in rows:
@@ -202,8 +220,14 @@ def legacy_search(
                 score,
                 tier,
                 stock_str,
+                _total,
             ) = r
-            lat, lng, is_approx = resolve_facility_lat_lng(h_code, s_name, d_name)
+            f_lat, f_lng, is_approx = resolve_facility_lat_lng(h_code, s_name, d_name)
+            dist_km = (
+                haversine_distance_km(lat, lng, f_lat, f_lng)
+                if lat is not None and lng is not None
+                else None
+            )
             hospitals.append(
                 {
                     "code": h_code,
@@ -219,14 +243,21 @@ def legacy_search(
                     else "Packed Red Blood Cells",
                     "stock": stock_str or "",
                     "last_updated": str(updated_at)[:19] if updated_at else "",
-                    "days_stale": days_ago if days_ago is not None else 0,
+                    "days_stale": days_ago,
                     "reliability_score": score,
                     "reliability_tier": tier,
-                    "lat": lat,
-                    "lng": lng,
+                    "lat": f_lat,
+                    "lng": f_lng,
                     "is_approximate": is_approx,
+                    "distance_km": dist_km,
                 }
             )
-        return {"hospitals": hospitals, "total": len(hospitals)}
+        if by_distance:
+            hospitals.sort(key=lambda h: h["distance_km"])
+            hospitals = hospitals[:limit]
+        elif sort == "reliability":
+            hospitals.sort(key=lambda h: -h["reliability_score"])
+        total = rows[0][-1] if rows else 0
+        return {"hospitals": hospitals, "total": total}
     finally:
         con.close()

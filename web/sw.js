@@ -4,12 +4,11 @@
  * with offline fallback support.
  */
 
-const CACHE_NAME = 'eraktkosh-shell-v2';
-const DATA_CACHE_NAME = 'eraktkosh-data-v2';
+const CACHE_NAME = 'eraktkosh-shell-v4';
+const DATA_CACHE_NAME = 'eraktkosh-data-v4';
 
 const APP_SHELL_FILES = [
   '/',
-  '/index.html',
   '/css/style.css',
   '/js/app.js',
   '/manifest.json',
@@ -64,6 +63,7 @@ self.addEventListener('fetch', (event) => {
               error: 'offline',
               message: 'Offline mode active. No cached response available for this query.'
             }), {
+              status: 503,
               headers: { 'Content-Type': 'application/json' }
             });
           });
@@ -72,10 +72,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // App Shell: Cache-first with network fallback
+  // App Shell: Network-first so code updates reach returning visitors; cache when offline
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return cachedResponse || fetch(event.request);
-    })
+    fetch(event.request)
+      .then((response) => {
+        // Cache the shell plus CDN libraries/fonts (not map tiles, which would bloat the cache)
+        const cacheable = APP_SHELL_FILES.includes(url.pathname) ||
+          (url.origin !== self.location.origin && !url.hostname.includes('basemaps'));
+        if ((response.ok || response.type === 'opaque') && cacheable) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });

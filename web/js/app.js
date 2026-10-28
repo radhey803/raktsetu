@@ -28,13 +28,28 @@ document.addEventListener('DOMContentLoaded', () => {
     initDashboard();
 });
 
+function setupMobileNav() {
+    const toggle = document.querySelector('.nav-toggle');
+    const nav = document.getElementById('main-nav');
+    if (!toggle || !nav) return;
+    const setOpen = (open) => {
+        nav.classList.toggle('open', open);
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    };
+    toggle.addEventListener('click', () => setOpen(!nav.classList.contains('open')));
+    nav.addEventListener('click', (e) => { if (e.target.closest('a')) setOpen(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
+}
+
 async function initDashboard() {
+    setupMobileNav();
     registerServiceWorker();
     setupNetworkAndFreshnessWatchers();
     loadSummaryKPIs();
     await loadLocations();
-    readURLParams();
     setupEventListeners();
+    readURLParams();
     setupEmergencyMode();
     setupDonorModule();
     setupExportButtons();
@@ -43,17 +58,22 @@ async function initDashboard() {
     loadRareBloodInventory();
     loadDistrictShortages();
     loadDataHealthDashboard();
-    updateLiveSyncTime();
-    checkSyncFreshness();
 }
 
-function updateLiveSyncTime() {
+function updateLiveSyncTime(lastSync) {
     const el = document.getElementById('live-sync-time');
-    if (!el) return;
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    el.textContent = `${hours}:${minutes}`;
+    if (el) el.textContent = lastSync ? lastSync.slice(11, 16) : '--:--';
+}
+
+// First number after "Phone:" in eRaktKosh contact strings ("Phone: a, b ,Fax: c, ...")
+function extractPrimaryPhone(contact) {
+    const m = (contact || '').match(/Phone:\s*([0-9\-\s,]+)/i);
+    const phone = m ? m[1].split(',')[0].trim() : '';
+    return phone && phone !== '-' ? phone : '';
+}
+
+function totalUnits(h) {
+    return Object.values(parseStockGroups(h.stock)).reduce((a, b) => a + (b || 0), 0);
 }
 
 // ----------------- 1. STAT STRIP METRICS & CHART -----------------
@@ -64,13 +84,11 @@ async function loadSummaryKPIs() {
 
         // Animated count-up for numbers
         animateCounter('kpi-total-banks', data.total_banks || 0);
-        animateCounter('kpi-fresh-banks', data.fresh_banks || 0);
-        animateCounter('kpi-stale-banks', data.stale_banks || 0);
-
-        const todayEl = document.getElementById('kpi-today-banks');
-        if (todayEl) {
-            animateCounter('kpi-today-banks', data.fresh_banks || 3864);
-        }
+        const heroTotal = document.getElementById('hero-total-banks');
+        if (heroTotal && data.total_banks) heroTotal.textContent = data.total_banks.toLocaleString('en-IN');
+        animateCounter('kpi-fresh-banks', data.fresh_banks_24h || 0);
+        animateCounter('kpi-stale-banks', data.stale_banks_30d || 0);
+        animateCounter('kpi-today-banks', data.fresh_banks_24h || 0);
 
         // Render National Facility Distribution Chart
         if (data.top_states && data.top_states.length > 0) {
@@ -274,6 +292,7 @@ function setupEventListeners() {
     });
 
     searchBtn.addEventListener('click', searchHospitals);
+    document.getElementById('sort-select')?.addEventListener('change', searchHospitals);
     searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') searchHospitals();
     });
@@ -390,25 +409,6 @@ function setupEventListeners() {
         });
     }
 
-    // SOS modal handlers
-    const closeSosBtn = document.getElementById('sos-close-btn');
-    const copySosBtn = document.getElementById('sos-copy-btn');
-    if (closeSosBtn) closeSosBtn.addEventListener('click', closeSosModal);
-    if (copySosBtn) {
-        copySosBtn.addEventListener('click', () => {
-            if (currentSosText) {
-                navigator.clipboard.writeText(currentSosText).then(() => {
-                    const feedback = document.getElementById('sos-copy-feedback');
-                    if (feedback) {
-                        feedback.style.display = 'block';
-                        setTimeout(() => { feedback.style.display = 'none'; }, 2500);
-                    }
-                }).catch(() => {
-                    alert('Copied to clipboard!');
-                });
-            }
-        });
-    }
 }
 
 function resetAllFilters() {
@@ -443,7 +443,10 @@ function resetAllFilters() {
 }
 
 // ----------------- 4. QUERY WAREHOUSE & SKELETON LOADING -----------------
+let searchSeq = 0;
+
 async function searchHospitals() {
+    const seq = ++searchSeq;
     currentPage = 1; // Reset to page 1 on search
     const state = document.getElementById('state-select').value;
     const district = document.getElementById('district-select').value;
@@ -479,7 +482,7 @@ async function searchHospitals() {
             params.append('lat', userLat);
             params.append('lng', userLng);
         }
-        params.append('limit', '500');
+        params.append('limit', '10000');
 
         // Sync query parameters to browser address bar (Phase 7 URL state sync)
         syncURLParams(state, district, selectedComponent, selectedBloodGroup);
@@ -498,7 +501,10 @@ async function searchHospitals() {
             if (paginationWrapper) paginationWrapper.classList.add('hidden');
             return;
         }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        if (seq !== searchSeq) return; // a newer search has started
+        if (data.error) throw new Error(data.message || data.error);
 
         // Sort data based on selected priority
         const hospitals = data.hospitals || [];
@@ -509,7 +515,7 @@ async function searchHospitals() {
                 return distA - distB;
             });
         } else if (sortVal === 'units') {
-            hospitals.sort((a, b) => (b.units || 0) - (a.units || 0));
+            hospitals.sort((a, b) => totalUnits(b) - totalUnits(a));
         } else if (sortVal === 'reliability') {
             hospitals.sort((a, b) => (b.reliability_score || 50) - (a.reliability_score || 50));
         } else {
@@ -551,6 +557,7 @@ async function searchHospitals() {
         renderPaginatedHospitals(false);
     } catch (err) {
         console.error('Search error:', err);
+        if (seq !== searchSeq) return;
         grid.innerHTML = `
             <div class="state-message-card">
                 <div class="state-icon-wrap" aria-hidden="true" style="color: var(--stock-critical);">
@@ -712,7 +719,10 @@ function createHospitalCard(h) {
     // Freshness status
     let dotClass = 'dot-fresh';
     let freshnessText = 'Updated today';
-    if (h.days_stale === 0) {
+    if (h.days_stale == null) {
+        dotClass = 'dot-stale';
+        freshnessText = 'Update date unknown';
+    } else if (h.days_stale === 0) {
         freshnessText = 'Updated today';
     } else if (h.days_stale === 1) {
         freshnessText = 'Updated yesterday';
@@ -728,12 +738,9 @@ function createHospitalCard(h) {
     }
 
     // Phone contact
-    const rawContact = h.contact || '';
-    const phoneMatch = rawContact.match(/Phone:\s*([0-9\-\s,]+)/i);
-    const phoneNumber = phoneMatch ? phoneMatch[1].trim() : '';
-    const primaryPhone = phoneNumber.split(',')[0].trim();
+    const primaryPhone = extractPrimaryPhone(h.contact);
 
-    const callButton = primaryPhone && primaryPhone !== '-'
+    const callButton = primaryPhone
         ? `<a href="tel:${primaryPhone}" class="btn-outline" aria-label="Call ${escapeHTML(h.name)}">
              <svg class="icon"><use href="#icon-phone"></use></svg>
              <span>Call</span>
@@ -743,19 +750,6 @@ function createHospitalCard(h) {
     // Google Maps Navigation
     const mapsQuery = encodeURIComponent(`${h.name}, ${h.district}, ${h.state}`);
     const mapsLink = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
-
-    // WhatsApp Share Link
-    const waText = encodeURIComponent(
-        `EMERGENCY BLOOD AVAILABILITY\n\n` +
-        `Facility: ${h.name}\n` +
-        `Location: ${h.district}, ${h.state}\n` +
-        `Contact: ${primaryPhone || 'Check registry'}\n` +
-        `Component: ${h.component || 'Packed Red Blood Cells'}\n` +
-        `Stock: ${h.stock || 'Contact facility directly'}\n` +
-        `Directions: https://www.google.com/maps/search/?api=1&query=${mapsQuery}\n\n` +
-        `Verified via eRaktKosh National Lakehouse`
-    );
-    const waLink = `https://api.whatsapp.com/send?text=${waText}`;
 
     // 4x2 Stock Grid
     const stockMap = parseStockGroups(h.stock);
@@ -845,9 +839,6 @@ function createHospitalCard(h) {
                         <span>7-day trend</span>
                     </button>
                 </div>
-                <button type="button" class="card-share-btn" title="Share SOS Card" aria-label="Share SOS card" onclick="triggerSosModalByCode(${h.code})">
-                    <svg class="icon"><use href="#icon-share-2"></use></svg>
-                </button>
             </div>
         </article>
     `;
@@ -917,7 +908,7 @@ async function fetchAndRenderHospitalHistory() {
     tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--ink-500); padding: 1.5rem;">Loading historical records...</td></tr>`;
 
     try {
-        const res = await fetch(`/api/history?hospital_code=${currentModalHospCode}&component=${encodeURIComponent(comp)}&days=14`);
+        const res = await fetch(`/api/history?hospital_code=${currentModalHospCode}&component=${encodeURIComponent(comp)}&days=7`);
         const data = await res.json();
 
         // Render Compact Summary Table
@@ -1115,9 +1106,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
-            closeHospitalHistory();
-        }
+        if (e.key !== 'Escape') return;
+        if (modal && !modal.classList.contains('hidden')) closeHospitalHistory();
+        closeTrustScoreModal();
     });
 
     if (modalCompSelect) {
@@ -1143,7 +1134,8 @@ function initOrUpdateLeafletMap() {
             scrollWheelZoom: true
         });
 
-        // Muted CartoDB Positron tiles authenticated with CARTO API key
+        // CARTO Positron basemap. CARTO requires a (publishable, browser-side) API key;
+        // without it every tile shows an "API KEY REQUIRED" watermark.
         const cartoApiKey = 'cb1_4kjs_1_d65cb9aedbd3050cfd5fd35a';
         L.tileLayer(`https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png?key=${cartoApiKey}`, {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -1169,6 +1161,7 @@ function renderBloodMapMarkers(hospitals) {
     if (!hospitals || hospitals.length === 0) return;
 
     const bounds = [];
+    const seen = {};
 
     hospitals.forEach(h => {
         if (!h.lat || !h.lng) return;
@@ -1194,11 +1187,9 @@ function renderBloodMapMarkers(hospitals) {
             popupAnchor: [0, -12]
         });
 
-        const rawContact = h.contact || '';
-        const phoneMatch = rawContact.match(/Phone:\s*([0-9\-\s,]+)/i);
-        const primaryPhone = phoneMatch ? phoneMatch[1].trim().split(',')[0].trim() : '';
+        const primaryPhone = extractPrimaryPhone(h.contact);
 
-        const callBtn = primaryPhone && primaryPhone !== '-'
+        const callBtn = primaryPhone
             ? `<a href="tel:${primaryPhone}" class="btn-outline" style="height: 28px; font-size: 0.75rem;">Call</a>`
             : '';
 
@@ -1224,14 +1215,25 @@ function renderBloodMapMarkers(hospitals) {
             </div>
         `;
 
-        const marker = L.marker([h.lat, h.lng], { icon: customIcon }).bindPopup(popupContent);
+        const key = `${h.lat},${h.lng}`;
+        const n = seen[key] = (seen[key] || 0) + 1;
+        const angle = n * 2.4, r = n > 1 ? 0.02 * Math.sqrt(n) : 0; // golden-angle spiral
+        const pos = [h.lat + r * Math.cos(angle), h.lng + r * Math.sin(angle)];
+        const marker = L.marker(pos, { icon: customIcon }).bindPopup(popupContent);
         markersLayer.addLayer(marker);
-        bounds.push([h.lat, h.lng]);
+        bounds.push(pos);
     });
+
+    if (userLat !== null) {
+        const youIcon = L.divIcon({ className: 'user-location-marker', html: '<div class="user-dot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
+        markersLayer.addLayer(L.marker([userLat, userLng], { icon: youIcon, zIndexOffset: 1000 }).bindPopup('You are here'));
+    }
 
     currentBounds = bounds;
 
-    if (bounds.length === 1) {
+    if (userLat !== null) {
+        leafletMap.setView([userLat, userLng], 10);
+    } else if (bounds.length === 1) {
         leafletMap.setView(bounds[0], 12);
     } else if (bounds.length > 1) {
         leafletMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
@@ -1251,61 +1253,6 @@ function escapeQuotes(str) {
     return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
-// ----------------- MODAL CONTROLLERS & SOS DISPATCHER -----------------
-let currentSosText = '';
-
-function triggerSosModalByCode(code) {
-    const hosp = currentHospitalsData.find(h => h.code === code);
-    if (hosp) openSosModal(hosp);
-}
-
-function openSosModal(hosp) {
-    const modal = document.getElementById('sos-modal');
-    if (!modal) return;
-
-    const mapsQuery = encodeURIComponent(`${hosp.name}, ${hosp.district}, ${hosp.state}`);
-    const mapsLink = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
-
-    const rawContact = hosp.contact || '';
-    const phoneMatch = rawContact.match(/Phone:\s*([0-9\-\s,]+)/i);
-    const primaryPhone = phoneMatch ? phoneMatch[1].trim().split(',')[0].trim() : (rawContact || 'Not listed');
-
-    const selectedComp = hosp.component || selectedComponent || 'Packed Red Blood Cells';
-    const groupNeeded = selectedBloodGroup || 'All Groups';
-
-    currentSosText = 
-`[BLOODGRID EMERGENCY AVAILABILITY SOS]
-Facility: ${hosp.name}
-Location: ${hosp.district}, ${hosp.state}
-Contact: ${primaryPhone}
-Component: ${selectedComp}
-Filter Group: ${groupNeeded}
-Reported Stock: ${hosp.stock || 'Check facility directly'}
-Directions: ${mapsLink}
-
-Notice: Data sourced from eRaktKosh (MoHFW, Govt of India). Not an official service. Always call the blood bank to confirm before travelling.`;
-
-    const previewEl = document.getElementById('sos-preview-text');
-    if (previewEl) previewEl.textContent = currentSosText;
-
-    const waBtn = document.getElementById('sos-whatsapp-btn');
-    if (waBtn) {
-        waBtn.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(currentSosText)}`;
-    }
-
-    const feedback = document.getElementById('sos-copy-feedback');
-    if (feedback) feedback.style.display = 'none';
-
-    modal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeSosModal() {
-    const modal = document.getElementById('sos-modal');
-    if (modal) modal.classList.add('hidden');
-    document.body.style.overflow = '';
-}
-
 // ----------------- 9. RARE BLOOD RADAR & DISTRICT DEFICIT RADAR -----------------
 async function loadRareBloodInventory() {
     const tbody = document.getElementById('rare-blood-tbody');
@@ -1321,9 +1268,7 @@ async function loadRareBloodInventory() {
         }
 
         tbody.innerHTML = items.map(item => {
-            const rawContact = item.hospital_contact || '';
-            const phoneMatch = rawContact.match(/Phone:\s*([0-9\-\s,]+)/i);
-            const primaryPhone = phoneMatch ? phoneMatch[1].trim().split(',')[0].trim() : (rawContact || 'Check registry');
+            const primaryPhone = extractPrimaryPhone(item.hospital_contact);
 
             return `
                 <tr>
@@ -1333,7 +1278,7 @@ async function loadRareBloodInventory() {
                     <td>${escapeHTML(item.component_name)}</td>
                     <td class="text-right" style="font-weight: 700; color: var(--stock-instock);">${item.units.toLocaleString('en-IN')} units</td>
                     <td>
-                        ${primaryPhone && primaryPhone !== '-' ? `<a href="tel:${primaryPhone}" class="btn-outline" style="height: 26px; font-size: 0.75rem; padding: 0 8px;">${escapeHTML(primaryPhone)}</a>` : '<span class="text-muted">Not listed</span>'}
+                        ${primaryPhone ? `<a href="tel:${primaryPhone}" class="btn-outline" style="height: 26px; font-size: 0.75rem; padding: 0 8px;">${escapeHTML(primaryPhone)}</a>` : '<span class="text-muted">Not listed</span>'}
                     </td>
                 </tr>
             `;
@@ -1377,10 +1322,10 @@ async function loadDistrictShortages() {
                     <td>${escapeHTML(d.state_name)}</td>
                     <td><span class="stock-cell-group" style="font-weight: 700; color: var(--ink-900);">${escapeHTML(d.blood_group)}</span></td>
                     <td class="text-right" style="font-weight: 700; color: ${d.total_units === 0 ? 'var(--stock-critical)' : 'var(--stock-low)'};">${d.total_units.toLocaleString('en-IN')}</td>
-                    <td class="text-right">${Number(d.total_reporting_banks || 1).toLocaleString('en-IN')}</td>
+                    <td class="text-right">${Number(d.reporting_banks || 0).toLocaleString('en-IN')}</td>
                     <td class="text-right text-critical">${Number(d.banks_with_zero || 0).toLocaleString('en-IN')}</td>
                     <td class="text-right"><code>${severity}/100</code></td>
-                    <td><span class="tag ${statusClass}">${escapeHTML(d.shortage_status || 'Adequate')}</span></td>
+                    <td><span class="tag ${statusClass}">${escapeHTML((d.shortage_status || 'Adequate').replace(/_/g, ' '))}</span></td>
                 </tr>
             `;
         }).join('');
@@ -1392,29 +1337,15 @@ async function loadDistrictShortages() {
 
 // ----------------- OFFLINE & STALE-DATA RESILIENCY -----------------
 function setupNetworkAndFreshnessWatchers() {
+    if (!navigator.onLine) {
+        showGlobalNoticeBanner('You are currently offline. Showing cached facilities and coordinates.');
+    }
     window.addEventListener('offline', () => {
         showGlobalNoticeBanner('You are currently offline. Showing cached facilities and coordinates.');
     });
     window.addEventListener('online', () => {
         hideGlobalNoticeBanner();
     });
-}
-
-async function checkSyncFreshness() {
-    try {
-        const res = await fetch('/api/v1/health/dashboard');
-        if (res.ok) {
-            const data = await res.json();
-            if (data.is_stale_warning) {
-                const staleBanner = document.getElementById('stale-sync-banner');
-                const staleHours = document.getElementById('stale-sync-hours');
-                if (staleBanner) staleBanner.classList.remove('hidden');
-                if (staleHours) staleHours.textContent = data.sync_age_hours ? Number(data.sync_age_hours).toFixed(1) : '13';
-            }
-        }
-    } catch (_) {
-        // Silently preserve offline resilience
-    }
 }
 
 function showGlobalNoticeBanner(msg) {
@@ -1548,15 +1479,26 @@ async function searchEmergencyRecommendations() {
         const params = new URLSearchParams();
         params.append('patient_blood_group', group);
         params.append('component', component);
-        if (state && state !== 'ALL') params.append('state', state);
-        if (district && district !== 'ALL') params.append('district', district);
-        if (userLat && userLng) {
+        const nearMe = userLat !== null && userLng !== null;
+        if (nearMe) {
             params.append('lat', userLat);
             params.append('lng', userLng);
+        } else {
+            if (state && state !== 'ALL') params.append('state', state);
+            if (district && district !== 'ALL') params.append('district', district);
         }
 
-        const res = await fetch(`/api/v1/emergency?${params.toString()}`);
-        const data = await res.json();
+        // With location on, widen the radius until compatible stock is found
+        let data, radius = null;
+        for (const r of nearMe ? [50, 150, 400] : [null]) {
+            if (r) params.set('radius_km', r);
+            const res = await fetch(`/api/v1/emergency?${params.toString()}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            data = await res.json();
+            radius = r;
+            if ((data.top_facilities || []).length) break;
+        }
+        const areaLabel = nearMe ? `within ${radius} km of your location` : `in ${district}, ${state}`;
 
         // Render compatible groups
         if (compatPills) {
@@ -1569,20 +1511,19 @@ async function searchEmergencyRecommendations() {
             cardsGrid.innerHTML = `
                 <div class="state-message-card" style="padding: 1.5rem; background: var(--surface);">
                     <div class="state-icon-wrap" style="color: var(--stock-low);"><svg class="icon"><use href="#icon-alert-triangle"></use></svg></div>
-                    <h3 class="state-title">No compatible units currently recorded in ${escapeHTML(district)}, ${escapeHTML(state)}</h3>
+                    <h3 class="state-title">No compatible units currently recorded ${escapeHTML(areaLabel)}</h3>
                     <p class="state-sub">Zero units found for compatible donor groups (${(data.compatible_donor_groups || []).join(', ')}). Try searching neighbouring districts or telephone the State Health Helpline at 104.</p>
                 </div>
             `;
             return;
         }
 
-        cardsGrid.innerHTML = data.top_facilities.map(f => {
-            const cleanPhone = (f.hospital_contact || '').replace(/[^0-9+]/g, '');
-            const telHref = cleanPhone ? `tel:${cleanPhone}` : '#';
+        cardsGrid.innerHTML = `<p class="emergency-area-note">Showing the best matches ${escapeHTML(areaLabel)}.</p>` + data.top_facilities.map(f => {
+            const cleanPhone = extractPrimaryPhone(f.hospital_contact);
             const callBtn = cleanPhone ? `
-                <a href="${telHref}" class="emergency-tel-btn">
+                <a href="tel:${cleanPhone.replace(/[^0-9+]/g, '')}" class="emergency-tel-btn">
                     <svg class="icon"><use href="#icon-phone"></use></svg>
-                    <span>CALL: ${escapeHTML(cleanPhone.slice(0, 15))}</span>
+                    <span>CALL: ${escapeHTML(cleanPhone)}</span>
                 </a>
             ` : `<span class="emergency-sub-btn text-muted">No phone listed</span>`;
 
@@ -1592,7 +1533,7 @@ async function searchEmergencyRecommendations() {
 
             const mapsQuery = encodeURIComponent(`${f.hospital_name}, ${f.district_name}, ${f.state_name}`);
             const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
-            const distText = f.distance_km ? ` &bull; <strong>approx. ${Number(f.distance_km).toFixed(1)} km</strong>` : '';
+            const distText = f.distance_km != null ? ` &bull; <strong>approx. ${Number(f.distance_km).toFixed(1)} km away</strong>` : '';
 
             return `
                 <article class="emergency-card">
@@ -1621,10 +1562,6 @@ async function searchEmergencyRecommendations() {
                                 <svg class="icon"><use href="#icon-navigation"></use></svg>
                                 <span>Directions</span>
                             </a>
-                            <button type="button" class="emergency-sub-btn" onclick="copyEmergencyDispatchText('${escapeQuotes(f.hospital_name)}', '${escapeQuotes(group)}', '${escapeQuotes(f.hospital_contact)}', '${escapeQuotes(mapsUrl)}')" title="Copy Dispatch Message">
-                                <svg class="icon"><use href="#icon-share-2"></use></svg>
-                                <span>Copy SOS</span>
-                            </button>
                         </div>
                     </div>
                 </article>
@@ -1637,24 +1574,6 @@ async function searchEmergencyRecommendations() {
     }
 }
 
-function copyEmergencyDispatchText(hospName, bloodGroup, contact, mapUrl) {
-    const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}, ${now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
-    const text = `🚨 *EMERGENCY BLOOD DISPATCH REQUIRED*\n` +
-        `Patient Group Needed: *${bloodGroup}*\n` +
-        `Verified Facility: *${hospName}*\n` +
-        `Registry Contact: ${contact}\n` +
-        `Directions: ${mapUrl}\n` +
-        `Status timestamp: as of ${timeStr}\n` +
-        `Sourced from eRaktKosh Lakehouse. Call facility immediately to confirm before travelling.`;
-
-    navigator.clipboard.writeText(text).then(() => {
-        alert("Emergency dispatch message copied to clipboard!");
-    }).catch(() => {
-        alert(text);
-    });
-}
-
 // ==============================================================================
 // PHASE 3: GEOLOCATION CONTROLLER
 // ==============================================================================
@@ -1663,44 +1582,70 @@ function setupGeolocationButtons() {
     const emergencyLocateBtn = document.getElementById('emergency-locate-btn');
 
     if (geoBtn) {
-        geoBtn.addEventListener('click', () => requestUserLocation(geoBtn, 'Near me'));
+        geoBtn.addEventListener('click', () => requestUserLocation(geoBtn));
     }
     if (emergencyLocateBtn) {
-        emergencyLocateBtn.addEventListener('click', () => requestUserLocation(emergencyLocateBtn, 'Use my location'));
+        emergencyLocateBtn.addEventListener('click', () => requestUserLocation(emergencyLocateBtn));
     }
 }
 
-function requestUserLocation(btnEl, defaultLabel) {
+const LOCATION_BUTTONS = [['geo-location-btn', 'Near me'], ['emergency-locate-btn', 'Use my location']];
+
+function setLocationButtons(state) {
+    LOCATION_BUTTONS.forEach(([id, label]) => {
+        const btn = document.getElementById(id);
+        const span = btn?.querySelector('span');
+        if (!btn || !span) return;
+        span.textContent = state === 'active' ? 'Location on (tap to clear)' : state === 'locating' ? 'Locating...' : label;
+        btn.classList.toggle('active', state === 'active');
+    });
+}
+
+function clearUserLocation() {
+    userLat = userLng = null;
+    userLocationPrecision = 'none';
+    setLocationButtons('off');
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect && sortSelect.value === 'distance') sortSelect.value = 'freshness';
+    searchHospitals();
+}
+
+function requestUserLocation(btnEl) {
+    if (userLat !== null) {
+        clearUserLocation();
+        return;
+    }
+    if (!window.isSecureContext) {
+        alert('Location only works on a secure page (https:// or localhost). Open the site over HTTPS, or pick your state and district instead.');
+        return;
+    }
     if (!navigator.geolocation) {
-        alert('Geolocation is not supported by your browser.');
+        alert('Geolocation is not supported by your browser. Please pick your state and district instead.');
         return;
     }
 
-    const labelSpan = btnEl.querySelector('span');
-    if (labelSpan) labelSpan.textContent = 'Locating...';
-
+    setLocationButtons('locating');
     navigator.geolocation.getCurrentPosition(
         (position) => {
             userLat = position.coords.latitude;
             userLng = position.coords.longitude;
             userLocationPrecision = 'device_gps';
+            setLocationButtons('active');
 
-            if (labelSpan) labelSpan.textContent = 'Location active';
-            btnEl.classList.add('active');
-
-            // Set sort select to distance
             const sortSelect = document.getElementById('sort-select');
             if (sortSelect) sortSelect.value = 'distance';
-
-            // Refresh search with distance
             searchHospitals();
+            if (btnEl.id === 'emergency-locate-btn') searchEmergencyRecommendations();
         },
         (error) => {
             console.warn('Geolocation denied or unavailable:', error.message);
-            if (labelSpan) labelSpan.textContent = defaultLabel;
-            alert('Location access denied or unavailable. Fallback: Select your state and district from the dropdown.');
+            setLocationButtons('off');
+            const reason = error.code === error.PERMISSION_DENIED
+                ? 'Location permission was denied. Allow it in your browser settings, or'
+                : 'Could not get your location (GPS timeout or unavailable). Try again, or';
+            alert(`${reason} pick your state and district instead.`);
         },
-        { timeout: 8000, maximumAge: 60000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
 }
 
@@ -1718,6 +1663,7 @@ function setupDonorModule() {
 
     // Set default last donation date to 100 days ago
     const lastDateInput = document.getElementById('donor-last-date');
+    if (lastDateInput) lastDateInput.max = new Date().toISOString().split('T')[0];
     if (lastDateInput && !lastDateInput.value) {
         const d = new Date();
         d.setDate(d.getDate() - 100);
@@ -1761,7 +1707,9 @@ function evaluateDonorEligibility() {
         const today = new Date();
         const diffMs = today - lastDonation;
         const daysSinceLast = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        if (daysSinceLast < intervalDays) {
+        if (daysSinceLast < 0) {
+            reasons.push('Last donation date is in the future. Please check the date you entered.');
+        } else if (daysSinceLast < intervalDays) {
             daysRemaining = intervalDays - daysSinceLast;
             reasons.push(`Minimum gap between whole blood donations is ${intervalDays} days for ${gender} donors (NBTC India). Only ${daysSinceLast} days have elapsed.`);
         }
@@ -1794,11 +1742,7 @@ function loadWhereToDonateSuggestions() {
     const container = document.getElementById('donor-suggested-banks');
     if (!container) return;
 
-    const district = document.getElementById('district-select')?.value || 'Anand';
-    const lowStockBanks = currentHospitalsData.filter(h => {
-        // Find facilities with low PRBC or O- stock
-        return (h.units !== undefined && h.units <= 5);
-    }).slice(0, 3);
+    const lowStockBanks = currentHospitalsData.filter(h => totalUnits(h) <= 5).slice(0, 3);
 
     if (lowStockBanks.length === 0) {
         container.innerHTML = `
@@ -1810,8 +1754,8 @@ function loadWhereToDonateSuggestions() {
     }
 
     container.innerHTML = lowStockBanks.map(h => {
-        const cleanPhone = (h.contact || '').replace(/[^0-9+]/g, '');
-        const telHref = cleanPhone ? `tel:${cleanPhone}` : '#';
+        const cleanPhone = extractPrimaryPhone(h.contact);
+        const telHref = `tel:${cleanPhone.replace(/[^0-9+]/g, '')}`;
         const mapsQuery = encodeURIComponent(`${h.name}, ${h.district}, ${h.state}`);
         const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
 
@@ -1819,7 +1763,7 @@ function loadWhereToDonateSuggestions() {
             <div style="background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.625rem 0.75rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
                 <div>
                     <strong style="font-size: 0.8125rem; color: var(--ink-900); display: block;">${escapeHTML(h.name)}</strong>
-                    <span style="font-size: 0.75rem; color: var(--stock-low);">Low stock reserve: ${h.units !== undefined ? h.units : 2} units</span>
+                    <span style="font-size: 0.75rem; color: var(--stock-low);">Low stock reserve: ${totalUnits(h)} units</span>
                 </div>
                 <div style="display: flex; gap: 0.35rem;">
                     ${cleanPhone ? `<a href="${telHref}" class="btn-outline" style="height: 26px; font-size: 0.6875rem; padding: 0 0.5rem;">Call</a>` : ''}
@@ -1845,6 +1789,8 @@ function setupExportButtons() {
             if (district && district !== 'ALL') params.append('district', district);
             if (component && component !== 'ALL') params.append('component', component);
             if (selectedBloodGroup) params.append('blood_group', selectedBloodGroup);
+            const query = document.getElementById('search-input')?.value.trim();
+            if (query) params.append('search', query);
 
             window.location.href = `/api/v1/export/availability.csv?${params.toString()}`;
         });
@@ -1900,7 +1846,12 @@ function readURLParams() {
 
     if (state) {
         const stateSelect = document.getElementById('state-select');
-        if (stateSelect) stateSelect.value = state;
+        if (stateSelect) {
+            stateSelect.value = state;
+            stateSelect.dispatchEvent(new Event('change'));
+            const districtSelect = document.getElementById('district-select');
+            if (district && districtSelect) districtSelect.value = district;
+        }
     }
     if (component) {
         const compSelect = document.getElementById('component-select');
@@ -1931,7 +1882,7 @@ async function loadDataHealthDashboard() {
         if (staleBanner && staleHours) {
             if (data.is_stale_warning) {
                 staleBanner.classList.remove('hidden');
-                staleHours.textContent = data.sync_age_hours ? Number(data.sync_age_hours).toFixed(1) : '13';
+                staleHours.textContent = data.sync_age_hours != null ? Number(data.sync_age_hours).toFixed(1) : 'unknown';
             } else {
                 staleBanner.classList.add('hidden');
             }
@@ -1944,11 +1895,12 @@ async function loadDataHealthDashboard() {
         const freshPctEl = document.getElementById('health-fresh-pct');
         const staleCountsEl = document.getElementById('health-stale-counts');
 
-        if (lastSyncEl) lastSyncEl.textContent = data.last_successful_sync || 'Today';
-        if (syncAgeEl) syncAgeEl.textContent = `${Number(data.sync_age_hours || 0).toFixed(1)} hours ago`;
+        updateLiveSyncTime(data.last_successful_sync);
+        if (lastSyncEl) lastSyncEl.textContent = data.last_successful_sync || 'Never';
+        if (syncAgeEl) syncAgeEl.textContent = data.sync_age_hours != null ? `${Number(data.sync_age_hours).toFixed(1)} hours ago` : 'No successful run yet';
         if (fresh24hEl) fresh24hEl.textContent = (data.facilities_updated_24h || 0).toLocaleString('en-IN');
         if (freshPctEl) {
-            const pct = data.total_facilities ? Math.round((data.facilities_updated_24h / data.total_facilities) * 100) : 76;
+            const pct = data.total_facilities ? Math.round((data.facilities_updated_24h / data.total_facilities) * 100) : 0;
             freshPctEl.textContent = `${pct}% of total network (${(data.total_facilities || 0).toLocaleString('en-IN')} banks)`;
         }
         if (staleCountsEl) {
@@ -1968,6 +1920,13 @@ async function loadDataHealthDashboard() {
             `).join('');
         }
 
+        const testsEl = document.getElementById('health-dbt-tests');
+        const t = data.dbt_tests_summary || {};
+        if (testsEl) {
+            testsEl.textContent = t.total_tests ? `${t.passed} / ${t.total_tests} ${t.status === 'PASSING' ? 'PASS' : 'FAIL'}` : 'Not run yet';
+            testsEl.className = `kpi-value-lg ${t.status === 'PASSING' ? 'text-instock' : 'text-critical'}`;
+        }
+
         // Recent runs table
         const runsTbody = document.getElementById('health-runs-tbody');
         if (runsTbody && data.recent_pipeline_runs) {
@@ -1975,7 +1934,7 @@ async function loadDataHealthDashboard() {
                 <tr>
                     <td><code class="code-inline" style="font-size: 0.75rem;">${escapeHTML(r.run_id)}</code></td>
                     <td style="font-size: 0.8125rem;">${escapeHTML(r.started_at || '')}</td>
-                    <td><span class="tag ${r.status === 'SUCCESS' ? 'tag-instock' : 'tag-critical'}">${escapeHTML(r.status)}</span></td>
+                    <td><span class="tag ${r.status.startsWith('SUCCESS') ? 'tag-instock' : r.status === 'RUNNING' ? 'tag-low' : 'tag-critical'}">${escapeHTML(r.status)}</span></td>
                     <td class="text-right">${Number(r.facilities_count || 0).toLocaleString('en-IN')}</td>
                     <td><span class="tag ${r.tests_passed ? 'tag-instock' : 'tag-critical'}">${r.tests_passed ? 'PASSED' : 'CHECK'}</span></td>
                 </tr>

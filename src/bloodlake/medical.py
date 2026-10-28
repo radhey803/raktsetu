@@ -34,7 +34,13 @@ def get_rules() -> Dict[str, Any]:
     return _RULES_CACHE
 
 
-def get_compatible_donor_groups(patient_group: str) -> Tuple[List[str], Optional[str], str]:
+# Plasma donors must lack antibodies against the patient's ABO antigens (Rh is irrelevant)
+PLASMA_ABO_DONORS = {"O": ["O", "A", "B", "AB"], "A": ["A", "AB"], "B": ["B", "AB"], "AB": ["AB"]}
+
+
+def get_compatible_donor_groups(
+    patient_group: str, component: Optional[str] = None
+) -> Tuple[List[str], Optional[str], str]:
     """
     Returns (compatible_donor_groups, clinical_warning, source_citation).
     patient_group must be one of:
@@ -65,10 +71,23 @@ def get_compatible_donor_groups(patient_group: str) -> Tuple[List[str], Optional
     rule = compat.get(canonical)
     if not rule:
         # Fallback to exact match only if unverified
-        return [canonical], "Group not in standard ABO/Rh table. Verify with blood bank.", "TODO_VERIFY"
+        return (
+            [canonical],
+            "Group not in standard ABO/Rh table. Verify with blood bank.",
+            "TODO_VERIFY",
+        )
 
     compatible_groups: List[str] = rule["compatible_donor_groups"]
     warning: Optional[str] = None
+
+    if component and "plasma" in component.lower() and "Bombay" not in canonical:
+        abo = canonical.rstrip("+-")
+        groups = [f"{g}{rh}" for g in PLASMA_ABO_DONORS[abo] for rh in ("+", "-")]
+        return (
+            groups,
+            "Plasma compatibility: ABO-reversed (AB is universal donor), Rh not required.",
+            f"{rule.get('source', 'NBTC India')} ({rule.get('source_url', '')})",
+        )
 
     if "Bombay" in canonical:
         warning = (
@@ -109,13 +128,17 @@ def get_emergency_clinical_warning(blood_group: str) -> Optional[str]:
 def get_medical_disclaimer() -> str:
     """Returns official disclaimer from medical rules config."""
     rules = get_rules()
-    return rules.get("disclaimer", "Guidance only, not medical advice. Confirm with a doctor or blood bank.")
+    return rules.get(
+        "disclaimer", "Guidance only, not medical advice. Confirm with a doctor or blood bank."
+    )
 
 
 def get_source_attribution() -> str:
     """Returns primary source attribution from medical rules config."""
     rules = get_rules()
-    return rules.get("sources", {}).get("primary_india", "National Blood Transfusion Council (NBTC), MoHFW India")
+    return rules.get("sources", {}).get(
+        "primary_india", "National Blood Transfusion Council (NBTC), MoHFW India"
+    )
 
 
 def get_donor_eligibility_criteria() -> Dict[str, Any]:

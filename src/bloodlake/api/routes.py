@@ -14,8 +14,10 @@ Provides analytical query endpoints powered directly by DuckDB Gold marts:
 - System Health (/healthz)
 """
 
+import json
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
+from zoneinfo import ZoneInfo
 
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -85,7 +87,10 @@ def get_data_health_dashboard(con: duckdb.DuckDBPyConnection = Depends(get_db_se
     if last_sync_row and last_sync_row[2]:
         dt = last_sync_row[2]
         if hasattr(dt, "tzinfo") and dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            # DuckDB stores naive timestamps in the session TimeZone, not UTC
+            dt = dt.replace(
+                tzinfo=ZoneInfo(con.execute("SELECT current_setting('TimeZone')").fetchone()[0])
+            )
         age_delta = now - dt
         sync_age_hours = round(age_delta.total_seconds() / 3600.0, 1)
         is_stale_warning = sync_age_hours > 12.0
@@ -94,7 +99,7 @@ def get_data_health_dashboard(con: duckdb.DuckDBPyConnection = Depends(get_db_se
     f_row = con.execute("""
         SELECT
             COUNT(*) as total_banks,
-            COUNT(CASE WHEN DATE_DIFF('day', source_updated_at, CURRENT_TIMESTAMP) <= 1 THEN 1 END) as fresh_24h,
+            COUNT(CASE WHEN source_updated_at >= CURRENT_TIMESTAMP - INTERVAL 24 HOUR THEN 1 END) as fresh_24h,
             COUNT(CASE WHEN DATE_DIFF('day', source_updated_at, CURRENT_TIMESTAMP) > 7 THEN 1 END) as stale_7d,
             COUNT(CASE WHEN DATE_DIFF('day', source_updated_at, CURRENT_TIMESTAMP) > 30 THEN 1 END) as stale_30d
         FROM main_gold.dim_blood_banks;
@@ -173,11 +178,23 @@ def get_data_health_dashboard(con: duckdb.DuckDBPyConnection = Depends(get_db_se
         "stale_facilities_30d": stale_30d,
         "stale_by_state": stale_by_state,
         "recent_pipeline_runs": recent_runs,
-        "dbt_tests_summary": {
-            "total_tests": 37,
-            "status": "PASSING",
-            "layer_coverage": ["bronze", "silver", "gold"],
-        },
+        "dbt_tests_summary": _dbt_tests_summary(),
+    }
+
+
+def _dbt_tests_summary() -> Dict[str, Any]:
+    """Summarises the latest dbt run_results.json; status is UNKNOWN if dbt has not run."""
+    path = settings.dbt_project_dir / "target" / "run_results.json"
+    try:
+        results = json.loads(path.read_text())["results"]
+    except (OSError, ValueError, KeyError):
+        return {"total_tests": 0, "passed": 0, "status": "UNKNOWN"}
+    tests = [r for r in results if r.get("unique_id", "").startswith("test.")]
+    passed = sum(r.get("status") == "pass" for r in tests)
+    return {
+        "total_tests": len(tests),
+        "passed": passed,
+        "status": "PASSING" if tests and passed == len(tests) else "FAILING",
     }
 
 
@@ -234,7 +251,7 @@ def get_national_summary(
 
     freshness_row = con.execute("""
         SELECT
-            COUNT(CASE WHEN DATE_DIFF('day', source_updated_at, CURRENT_TIMESTAMP) <= 1 THEN 1 END) as fresh_banks,
+            COUNT(CASE WHEN source_updated_at >= CURRENT_TIMESTAMP - INTERVAL 24 HOUR THEN 1 END) as fresh_banks,
             COUNT(CASE WHEN DATE_DIFF('day', source_updated_at, CURRENT_TIMESTAMP) > 30 THEN 1 END) as stale_banks
         FROM main_gold.dim_blood_banks;
     """).fetchone()
@@ -299,8 +316,10 @@ def list_blood_banks(
         where_clauses.append("b.district_name = ?")
         params.append(district)
     if search and search.strip():
-        where_clauses.append("(LOWER(b.hospital_name) LIKE ? OR LOWER(b.hospital_address) LIKE ?)")
-        q = f"%{search.strip().lower()}%"
+        where_clauses.append(
+            "(contains(LOWER(b.hospital_name), ?) OR contains(LOWER(b.hospital_address), ?))"
+        )
+        q = search.strip().lower()
         params.extend([q, q])
 
     where_sql = " AND ".join(where_clauses)
@@ -405,7 +424,9 @@ def get_blood_availability(
     max_age_hours: Optional[int] = Query(None, ge=1, description="Max hours since update"),
     lat: Optional[float] = Query(None, description="User latitude for distance calculation"),
     lng: Optional[float] = Query(None, description="User longitude for distance calculation"),
-    sort: Optional[str] = Query("freshness", description="Sort by: 'freshness', 'units', 'reliability', or 'distance'"),
+    sort: Optional[str] = Query(
+        "freshness", description="Sort by: 'freshness', 'units', 'reliability', or 'distance'"
+    ),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(15, ge=1, le=100, description="Items per page"),
     con: duckdb.DuckDBPyConnection = Depends(get_db_session),
@@ -433,6 +454,16 @@ def get_blood_availability(
     if min_units > 0:
         where_clauses.append("s.units >= ?")
         params.append(min_units)
+    if max_age_hours:
+        where_clauses.append(
+            "s.source_updated_at >= CURRENT_TIMESTAMP - to_hours(CAST(? AS INTEGER))"
+        )
+        params.append(max_age_hours)
+    by_distance = sort == "distance" and lat is not None and lng is not None
+    order_sql = {
+        "units": "s.units DESC",
+        "reliability": "reliability_score DESC, s.units DESC",
+    }.get(sort, "days_since_update ASC NULLS LAST, s.units DESC")
 
     where_sql = " AND ".join(where_clauses)
 
@@ -465,10 +496,10 @@ def get_blood_availability(
         LEFT JOIN main_gold.dim_blood_banks b ON s.hospital_code = b.hospital_code
         LEFT JOIN main_gold.mart_reliability_score r ON s.hospital_code = r.hospital_code
         WHERE {where_sql}
-        ORDER BY days_since_update ASC NULLS LAST, s.units DESC
-        LIMIT ? OFFSET ?;
+        ORDER BY {order_sql}
+        {"" if by_distance else "LIMIT ? OFFSET ?"};
     """
-    exec_params = list(params) + [page_size, offset]
+    exec_params = list(params) if by_distance else list(params) + [page_size, offset]
     rows = con.execute(query_sql, exec_params).fetchall()
 
     items = []
@@ -522,12 +553,10 @@ def get_blood_availability(
             )
         )
 
-    if sort == "distance" and lat is not None and lng is not None:
+    if by_distance:
+        # distance is computed in Python, so sort the full set and paginate here
         items.sort(key=lambda x: (x.distance_km is None, x.distance_km))
-    elif sort == "units":
-        items.sort(key=lambda x: x.units, reverse=True)
-    elif sort == "reliability":
-        items.sort(key=lambda x: x.reliability_score, reverse=True)
+        items = items[offset : offset + page_size]
 
     total_pages = (total + page_size - 1) // page_size if total > 0 else 1
     return PaginatedResponse(
@@ -541,7 +570,9 @@ def get_blood_availability(
 
 @router.get("/api/v1/emergency", response_model=EmergencyResponse)
 def get_emergency_recommendations(
-    patient_blood_group: Optional[str] = Query(None, description="Patient blood group, e.g., O-, A+, B-, AB+, Bombay (Oh+)"),
+    patient_blood_group: Optional[str] = Query(
+        None, description="Patient blood group, e.g., O-, A+, B-, AB+, Bombay (Oh+)"
+    ),
     blood_group: Optional[str] = Query(None, description="Alias for patient_blood_group"),
     component: str = Query("Packed Red Blood Cells", description="Blood component"),
     state: Optional[str] = Query(None, description="State filter"),
@@ -549,6 +580,9 @@ def get_emergency_recommendations(
     lat: Optional[float] = Query(None, description="User latitude for proximity ranking"),
     lng: Optional[float] = Query(None, description="User longitude for proximity ranking"),
     limit: int = Query(5, ge=1, le=20, description="Top N facilities to return"),
+    radius_km: Optional[float] = Query(
+        None, gt=0, le=3000, description="With lat/lng: only facilities within this distance"
+    ),
     con: duckdb.DuckDBPyConnection = Depends(get_db_session),
 ):
     """
@@ -565,7 +599,11 @@ def get_emergency_recommendations(
             detail="Missing required parameter: patient_blood_group (or blood_group)",
         )
     clean_group = target_group.strip()
-    compatible_groups, clinical_warning, source_citation = get_compatible_donor_groups(clean_group)
+    compatible_groups, clinical_warning, source_citation = get_compatible_donor_groups(
+        clean_group, component
+    )
+    if source_citation == "TODO_VERIFY":
+        raise HTTPException(status_code=422, detail=f"Unknown blood group: {clean_group}")
     is_rh_neg = clean_group.endswith("-")
     is_bombay = "Bombay" in clean_group
 
@@ -637,6 +675,8 @@ def get_emergency_recommendations(
         dist_km = None
         if lat is not None and lng is not None:
             dist_km = haversine_distance_km(lat, lng, f_lat, f_lng)
+            if radius_km and dist_km > radius_km:
+                continue
 
         # Parse group breakdown
         units_by_group: Dict[str, int] = {}
@@ -679,11 +719,7 @@ def get_emergency_recommendations(
             )
             dist_desc = f", approx. {dist_km} km away"
         else:
-            rank_score = (
-                0.40 * freshness_factor
-                + 0.35 * trust_factor
-                + 0.25 * units_factor
-            )
+            rank_score = 0.40 * freshness_factor + 0.35 * trust_factor + 0.25 * units_factor
             dist_desc = ""
 
         # Construct concise, human-readable rationale
@@ -799,6 +835,7 @@ def get_district_shortages(
     blood_group: Optional[str] = Query("O-", description="Blood group to inspect"),
     component: Optional[str] = Query("Packed Red Blood Cells", description="Component to inspect"),
     con: duckdb.DuckDBPyConnection = Depends(get_db_session),
+    limit: Optional[int] = 50,
 ):
     """District-level shortage radar highlighting critical deficit areas."""
     bg_val = blood_group if isinstance(blood_group, str) else getattr(blood_group, "default", "O-")
@@ -831,9 +868,9 @@ def get_district_shortages(
         FROM main_gold.mart_district_status d
         WHERE {where_sql}
         ORDER BY severity_score DESC, d.total_units ASC, d.total_reporting_banks DESC
-        LIMIT 50;
+        LIMIT ?;
     """
-    rows = con.execute(query_sql, params).fetchall()
+    rows = con.execute(query_sql, params + [limit]).fetchall()
 
     return [
         DistrictShortage(
@@ -971,12 +1008,13 @@ def get_multi_group_history(
         bg = r[1]
         units = r[2]
         if bg not in series:
-            series[bg] = [0] * len(dates_set)
+            series[bg] = [None] * len(dates_set)
         idx = date_to_idx[sdate]
         series[bg][idx] = units
 
     summary = {}
-    for bg, vals in series.items():
+    for bg, all_vals in series.items():
+        vals = [v for v in all_vals if v is not None]
         current_val = vals[-1] if vals else 0
         initial_val = vals[0] if vals else 0
         diff = current_val - initial_val
@@ -1005,6 +1043,7 @@ def export_availability_csv_endpoint(
     district: Optional[str] = Query(None, description="District filter"),
     blood_group: Optional[str] = Query(None, description="Blood Group"),
     component: Optional[str] = Query("Packed Red Blood Cells", description="Component"),
+    search: Optional[str] = Query(None, description="Hospital name or address contains"),
     con: duckdb.DuckDBPyConnection = Depends(get_db_session),
 ):
     """Exports availability search results as a compliant CSV file with UTF-8 BOM."""
@@ -1023,6 +1062,11 @@ def export_availability_csv_endpoint(
     if blood_group and blood_group != "ALL":
         where_clauses.append("s.blood_group = ?")
         params.append(blood_group)
+    if search and search.strip():
+        where_clauses.append(
+            "(contains(LOWER(b.hospital_name), ?) OR contains(LOWER(b.hospital_address), ?))"
+        )
+        params.extend([search.strip().lower()] * 2)
 
     where_sql = " AND ".join(where_clauses)
     query_sql = f"""
@@ -1039,33 +1083,35 @@ def export_availability_csv_endpoint(
             s.units,
             COALESCE(r.reliability_score, 50) as reliability_score,
             COALESCE(r.reliability_label, 'Medium') as reliability_label,
-            DATE_DIFF('day', s.source_updated_at, CURRENT_TIMESTAMP) as days_since_update
+            DATE_DIFF('day', s.source_updated_at, CURRENT_TIMESTAMP) as days_since_update,
+            s.source_updated_at
         FROM main_gold.fct_stock_current s
         LEFT JOIN main_gold.dim_blood_banks b ON s.hospital_code = b.hospital_code
         LEFT JOIN main_gold.mart_reliability_score r ON s.hospital_code = r.hospital_code
         WHERE {where_sql}
-        ORDER BY s.source_updated_at DESC
-        LIMIT 5000;
+        ORDER BY s.state_name, s.district_name, s.hospital_name, s.blood_group;
     """
     rows = con.execute(query_sql, params).fetchall()
     items = []
     for r in rows:
-        items.append({
-            "hospital_code": r[0],
-            "hospital_name": r[1],
-            "state_name": r[2],
-            "district_name": r[3],
-            "hospital_type": r[4],
-            "facility_type": r[5],
-            "hospital_contact": r[6],
-            "component_name": r[7],
-            "blood_group": r[8],
-            "units": r[9],
-            "reliability_score": r[10],
-            "reliability_label": r[11],
-            "days_since_last_update": r[12],
-            "location_precision": "district_centroid",
-        })
+        items.append(
+            {
+                "hospital_code": r[0],
+                "hospital_name": r[1],
+                "state_name": r[2],
+                "district_name": r[3],
+                "hospital_type": r[4],
+                "facility_type": r[5],
+                "hospital_contact": r[6],
+                "component_name": r[7],
+                "blood_group": r[8],
+                "units": r[9],
+                "reliability_score": r[10],
+                "reliability_label": r[11],
+                "days_since_last_update": r[12],
+                "last_updated_at": r[13],
+            }
+        )
     csv_content = export_search_results_csv(items)
     filename = f"eraktkosh_availability_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
     return Response(
@@ -1088,8 +1134,9 @@ def export_shortages_csv_endpoint(
         blood_group=blood_group,
         component=component,
         con=con,
+        limit=None,
     )
-    items_dict = [s.dict() for s in shortages]
+    items_dict = [s.model_dump() for s in shortages]
     csv_content = export_shortages_csv(items_dict)
     filename = f"eraktkosh_shortages_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
     return Response(
@@ -1118,4 +1165,3 @@ def legacy_rare_blood(
     con: duckdb.DuckDBPyConnection = Depends(get_db_session),
 ):
     return get_rare_blood_inventory(state=state, district=district, con=con)
-

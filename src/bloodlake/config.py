@@ -43,8 +43,7 @@ class Settings(BaseSettings):
     scraper_max_retries: int = 3
     min_run_interval_hours: float = 6.0
     user_agent: str = (
-        "BloodLake/1.0 (Academic Research; Academic Project; "
-        "mailto:radheygajera@gmail.com)"
+        "BloodLake/1.0 (Academic Research; Academic Project; mailto:radheygajera@gmail.com)"
     )
 
     # Data Quality & Anomaly Gate Threshold

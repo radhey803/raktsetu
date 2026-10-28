@@ -3,7 +3,7 @@ Unit Tests: CSV Export Utility (UTF-8 BOM & Attribution Header)
 ==============================================================
 Validates Phase 7 requirements:
 - UTF-8 with BOM (\\ufeff) for Excel compatibility
-- Top metadata comments with data timestamp and MoHFW attribution
+- Header on the first row and a Source column with MoHFW attribution
 - Correct columns and escaping
 """
 
@@ -15,11 +15,14 @@ def test_csv_export_has_utf8_bom():
     assert csv_str.startswith("\ufeff")
 
 
-def test_csv_export_has_attribution_and_disclaimer():
-    csv_str = export_search_results_csv([])
-    assert "eRaktKosh (MoHFW, Govt. of India)" in csv_str
-    assert "Academic research project" in csv_str
-    assert "Call the blood bank directly" in csv_str
+def test_csv_export_header_first_with_source_column():
+    csv_str = export_search_results_csv(
+        [{"hospital_name": "=cmd", "hospital_contact": "Phone: 123 ,Fax: 9, Email: a@b.in"}]
+    )
+    header, row = csv_str.lstrip("\ufeff").splitlines()[:2]
+    assert header.startswith("Hospital Code,") and header.endswith(",Source")
+    assert "eRaktKosh (MoHFW, Govt. of India)" in row
+    assert "'=cmd" in row and ",123,a@b.in," in row  # formula neutralised, contact split
 
 
 def test_csv_export_search_results_data_rows():
@@ -65,4 +68,4 @@ def test_csv_export_shortages():
     ]
     csv_str = export_shortages_csv(sample_data)
     assert "Dang" in csv_str
-    assert "CRITICAL_DEPLETION" in csv_str
+    assert "Critical depletion" in csv_str

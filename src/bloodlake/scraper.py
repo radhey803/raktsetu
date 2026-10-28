@@ -21,6 +21,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from zoneinfo import ZoneInfo
 
 import aiohttp
 import pyarrow as pa
@@ -65,6 +66,7 @@ async def fetch_district_data(
     }
 
     for attempt in range(1, max_retries + 1):
+        backoff = 0.0
         async with semaphore:
             try:
                 timeout = aiohttp.ClientTimeout(total=timeout_sec)
@@ -81,10 +83,7 @@ async def fetch_district_data(
                             attempt,
                             max_retries,
                         )
-                        await asyncio.sleep(backoff)
-                        continue
-
-                    if response.status == 200:
+                    elif response.status == 200:
                         text = await response.text()
                         if not text.strip():
                             return True, [], None
@@ -115,7 +114,9 @@ async def fetch_district_data(
                     )
                     return False, [], str(err)
                 backoff = (2**attempt) + random.uniform(0.5, 1.5)
-                await asyncio.sleep(backoff)
+        # sleep outside the semaphore so other districts keep fetching
+        if backoff:
+            await asyncio.sleep(backoff)
 
     return False, [], "Max retries exceeded"
 
@@ -411,7 +412,10 @@ def check_run_interval_guard(con, min_hours: float = 6.0, force: bool = False) -
         if row and row[0]:
             last_run_time = row[0]
             if last_run_time.tzinfo is None:
-                last_run_time = last_run_time.replace(tzinfo=timezone.utc)
+                # DuckDB stores naive timestamps in the session TimeZone, not UTC
+                last_run_time = last_run_time.replace(
+                    tzinfo=ZoneInfo(con.execute("SELECT current_setting('TimeZone')").fetchone()[0])
+                )
             now = datetime.now(timezone.utc)
             elapsed_hours = (now - last_run_time).total_seconds() / 3600.0
 

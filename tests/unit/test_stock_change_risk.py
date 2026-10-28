@@ -66,7 +66,9 @@ def evaluate_stock_change_and_risk(
 
 def test_single_snapshot_has_no_deltas():
     # Only 1 snapshot date exists
-    delta_prev, delta_7d, risk, anomaly = evaluate_stock_change_and_risk([15], total_distinct_dates=1)
+    delta_prev, delta_7d, risk, anomaly = evaluate_stock_change_and_risk(
+        [15], total_distinct_dates=1
+    )
     assert delta_prev is None
     assert delta_7d is None
     assert risk == "Stable"
@@ -75,7 +77,9 @@ def test_single_snapshot_has_no_deltas():
 
 def test_delta_vs_previous():
     # Snapshot on day 1: 20 units; Day 2: 14 units
-    delta_prev, delta_7d, risk, anomaly = evaluate_stock_change_and_risk([20, 14], total_distinct_dates=2)
+    delta_prev, delta_7d, risk, anomaly = evaluate_stock_change_and_risk(
+        [20, 14], total_distinct_dates=2
+    )
     assert delta_prev == -6
     assert delta_7d is None  # Only 2 dates, needs >= 7
     assert risk == "Stable"
@@ -103,7 +107,9 @@ def test_non_falling_when_fluctuating():
 
 def test_anomaly_sudden_drop_to_zero():
     # Previous was 18, now suddenly 0
-    delta_prev, delta_7d, risk, anomaly = evaluate_stock_change_and_risk([18, 0], total_distinct_dates=2)
+    delta_prev, delta_7d, risk, anomaly = evaluate_stock_change_and_risk(
+        [18, 0], total_distinct_dates=2
+    )
     assert delta_prev == -18
     assert anomaly == "SUDDEN_DROP_TO_ZERO"
     assert risk == "Depleted"
@@ -112,7 +118,9 @@ def test_anomaly_sudden_drop_to_zero():
 def test_7d_delta_calculated_when_sufficient_dates():
     # 7 snapshot intervals
     history = [30, 28, 25, 24, 20, 18, 14]
-    delta_prev, delta_7d, risk, anomaly = evaluate_stock_change_and_risk(history, total_distinct_dates=7)
+    delta_prev, delta_7d, risk, anomaly = evaluate_stock_change_and_risk(
+        history, total_distinct_dates=7
+    )
     assert delta_prev == -4
     assert delta_7d == 14 - 30  # -16 units over 7 days
     assert risk == "Falling"

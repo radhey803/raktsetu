@@ -155,7 +155,22 @@ def ingest_landing_to_bronze(con, parquet_path: Optional[Path] = None) -> int:
         );
     """)
 
-    con.execute(f"""
+    # Idempotent: re-loading a landing file must not duplicate bronze rows
+    file_run_ids = [
+        r[0]
+        for r in con.execute(
+            "SELECT DISTINCT run_id FROM read_parquet(?);", [str(target_file)]
+        ).fetchall()
+    ]
+    already = con.execute(
+        "SELECT COUNT(*) FROM bronze.raw_inventory WHERE list_contains(?, run_id);", [file_run_ids]
+    ).fetchone()[0]
+    if already:
+        logger.warning("Skipping %s: run(s) %s already in bronze", target_file, file_run_ids)
+        return 0
+
+    con.execute(
+        """
         INSERT INTO bronze.raw_inventory (
             run_id, scraped_at, hospital_code, hospital_name, state_name,
             district_name, hospital_type, facility_type, hospital_contact,
@@ -175,8 +190,10 @@ def ingest_landing_to_bronze(con, parquet_path: Optional[Path] = None) -> int:
             entry_date_raw,
             components_raw,
             raw_payload_json
-        FROM read_parquet('{target_file}');
-    """)
+        FROM read_parquet(?);
+    """,
+        [str(target_file)],
+    )
 
     row_count = con.execute("SELECT COUNT(*) FROM read_parquet(?);", [str(target_file)]).fetchone()[
         0
@@ -348,15 +365,17 @@ def all(
 
         transform()
         test()
-        publish()
 
-        elapsed = time.time() - start_time
+        # Record success before publishing so serving.duckdb carries the finished run
         con = get_warehouse_connection(read_only=False)
         facility_count = con.execute("SELECT COUNT(*) FROM main_gold.dim_blood_banks;").fetchone()[
             0
         ]
-        record_run_finish(con, run_id, "SUCCESS", facility_count, tests_passed=True)
+        status = "SUCCESS_NO_SCRAPE" if skip_scrape else "SUCCESS"
+        record_run_finish(con, run_id, status, facility_count, tests_passed=True)
         con.close()
+        publish()
+        elapsed = time.time() - start_time
 
         console.print(
             f"\n[bold green]🎉 PIPELINE COMPLETED IN {elapsed:.2f}s! Facilities: {facility_count:,}[/bold green]\n"

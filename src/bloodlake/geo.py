@@ -14,6 +14,8 @@ import math
 import time
 import urllib.parse
 import urllib.request
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 STATE_COORDS: Dict[str, Tuple[float, float]] = {
@@ -185,6 +187,17 @@ def geocode_with_nominatim(query: str) -> Optional[Tuple[float, float, str]]:
         return None
 
 
+@lru_cache(maxsize=1)
+def _load_geocoded_districts() -> Dict[str, Tuple[float, float]]:
+    """District centroids from OpenStreetMap, built by scripts/data/geocode_districts.py."""
+    path = Path(__file__).resolve().parents[2] / "data" / "district_coords.json"
+    try:
+        raw = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return {}
+    return {k: tuple(v) for k, v in raw.items() if v}
+
+
 def resolve_facility_lat_lng(
     hospital_code: int,
     state: str,
@@ -202,7 +215,11 @@ def resolve_facility_lat_lng(
     base_lat, base_lng = 22.5645, 72.9289  # Default Anand center
     found = False
 
-    if d_clean in DISTRICT_COORDS:
+    geocoded = _load_geocoded_districts().get(f"{s_clean}|{d_clean}")
+    if geocoded:
+        base_lat, base_lng = geocoded
+        found = True
+    elif d_clean in DISTRICT_COORDS:
         base_lat, base_lng = DISTRICT_COORDS[d_clean]
         found = True
     elif s_clean in STATE_COORDS:

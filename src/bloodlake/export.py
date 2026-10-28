@@ -1,47 +1,54 @@
 """
-CSV Export Utility with UTF-8 BOM for Excel
-===========================================
-Formats tabular search results and shortage reports into valid CSV with:
-- UTF-8 BOM (\\ufeff) for flawless Excel display without character corruption
-- Metadata header rows with generation timestamp and MoHFW attribution
-- Quoted fields to prevent delimiter collisions
+CSV Export Utility
+==================
+Writes plain RFC 4180 CSV that opens cleanly in Excel, Google Sheets and pandas:
+- UTF-8 BOM so Excel shows non-ASCII names correctly
+- header on the first row (no comment lines), CRLF line endings
+- contact string split into Phone / Email columns
+- cells that Excel would run as formulas are neutralised
 """
 
 import csv
 import io
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+import re
+from typing import Any, Dict, List, Tuple
+
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+SOURCE = "eRaktKosh (MoHFW, Govt. of India)"
 
 
-def export_to_csv_with_bom(
-    headers: List[str],
-    rows: List[List[Any]],
-    title: str = "Blood Inventory Export",
-) -> str:
-    """
-    Exports rows to a CSV string prefixed with UTF-8 BOM and metadata header comments.
-    """
+def _clean(value: Any) -> Any:
+    """Collapses repeated whitespace and blocks CSV formula injection."""
+    if not isinstance(value, str):
+        return "" if value is None else value
+    value = re.sub(r"\s+", " ", value).strip()
+    # "-" alone means "not listed"; anything else starting with a formula char gets a quote prefix
+    if value.startswith(_FORMULA_PREFIXES) and value != "-":
+        value = "'" + value
+    return value
+
+
+def split_contact(contact: str) -> Tuple[str, str]:
+    """Extracts (phones, email) from eRaktKosh 'Phone: a, b ,Fax: c, Email: d' strings."""
+    phone_match = re.search(r"Phone:\s*([0-9\-\s,]+)", contact or "", re.I)
+    phones = [p.strip() for p in phone_match.group(1).split(",")] if phone_match else []
+    phones = [p for p in phones if p and p != "-"]
+    email_match = re.search(r"[\w.+-]+@[\w-]+\.[\w.-]+", contact or "")
+    return " / ".join(phones), email_match.group(0) if email_match else ""
+
+
+def export_to_csv_with_bom(headers: List[str], rows: List[List[Any]]) -> str:
     output = io.StringIO()
-    # Write UTF-8 BOM
-    output.write("\ufeff")
-
-    timestamp_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    output.write(f"# {title} - Generated at: {timestamp_str}\n")
-    output.write(
-        "# Data sourced from eRaktKosh (MoHFW, Govt. of India). Academic research project, not an official service.\n"
-    )
-    output.write("# Call the blood bank directly to confirm live unit availability before travelling.\n")
-
-    writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
+    output.write("﻿")
+    writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL, lineterminator="\r\n")
     writer.writerow(headers)
     for row in rows:
-        writer.writerow(row)
-
+        writer.writerow([_clean(v) for v in row])
     return output.getvalue()
 
 
 def export_search_results_csv(items: List[Dict[str, Any]]) -> str:
-    """Exports availability search items to formatted CSV."""
+    """Exports availability rows (one per bank, component and blood group)."""
     headers = [
         "Hospital Code",
         "Hospital Name",
@@ -49,17 +56,21 @@ def export_search_results_csv(items: List[Dict[str, Any]]) -> str:
         "District",
         "Hospital Type",
         "Facility Type",
-        "Contact",
+        "Phone",
+        "Email",
         "Component",
         "Blood Group",
         "Available Units",
-        "Reliability Score",
-        "Reliability Label",
+        "Last Updated (IST)",
         "Days Since Update",
-        "Location Precision",
+        "Trust Score",
+        "Trust Label",
+        "Source",
     ]
     rows = []
     for item in items:
+        phone, email = split_contact(item.get("hospital_contact", ""))
+        updated = item.get("last_updated_at")
         rows.append(
             [
                 item.get("hospital_code", ""),
@@ -68,21 +79,23 @@ def export_search_results_csv(items: List[Dict[str, Any]]) -> str:
                 item.get("district_name", ""),
                 item.get("hospital_type", ""),
                 item.get("facility_type", ""),
-                item.get("hospital_contact", ""),
+                phone,
+                email,
                 item.get("component_name", ""),
                 item.get("blood_group", ""),
                 item.get("units", 0),
-                item.get("reliability_score", 50),
-                item.get("reliability_label", "Medium"),
+                str(updated)[:16] if updated else "",
                 item.get("days_since_last_update", ""),
-                item.get("location_precision", "district_centroid"),
+                item.get("reliability_score", ""),
+                item.get("reliability_label", ""),
+                SOURCE,
             ]
         )
-    return export_to_csv_with_bom(headers, rows, title="eRaktKosh Availability Search Export")
+    return export_to_csv_with_bom(headers, rows)
 
 
 def export_shortages_csv(items: List[Dict[str, Any]]) -> str:
-    """Exports district shortage items to formatted CSV."""
+    """Exports district shortage rows."""
     headers = [
         "State",
         "District",
@@ -91,20 +104,23 @@ def export_shortages_csv(items: List[Dict[str, Any]]) -> str:
         "Total Available Units",
         "Reporting Blood Banks",
         "Banks With Zero Stock",
-        "Shortage Severity Status",
+        "Severity Score (0-100)",
+        "Status",
+        "Source",
     ]
-    rows = []
-    for item in items:
-        rows.append(
-            [
-                item.get("state_name", ""),
-                item.get("district_name", ""),
-                item.get("component_name", ""),
-                item.get("blood_group", ""),
-                item.get("total_units", 0),
-                item.get("reporting_banks", 0),
-                item.get("banks_with_zero", 0),
-                item.get("shortage_status", "UNKNOWN"),
-            ]
-        )
-    return export_to_csv_with_bom(headers, rows, title="eRaktKosh District Shortage Radar Export")
+    rows = [
+        [
+            item.get("state_name", ""),
+            item.get("district_name", ""),
+            item.get("component_name", ""),
+            item.get("blood_group", ""),
+            item.get("total_units", 0),
+            item.get("reporting_banks", 0),
+            item.get("banks_with_zero", 0),
+            item.get("severity_score", ""),
+            (item.get("shortage_status") or "").replace("_", " ").capitalize(),
+            SOURCE,
+        ]
+        for item in items
+    ]
+    return export_to_csv_with_bom(headers, rows)

@@ -35,7 +35,9 @@ def test_haversine_known_city_pairs(
     city1, coords1, city2, coords2, expected_min_km, expected_max_km
 ):
     dist = haversine_distance_km(coords1[0], coords1[1], coords2[0], coords2[1])
-    assert expected_min_km <= dist <= expected_max_km, f"Distance {dist} km out of expected range for {city1}-{city2}"
+    assert expected_min_km <= dist <= expected_max_km, (
+        f"Distance {dist} km out of expected range for {city1}-{city2}"
+    )
 
 
 def test_haversine_same_point():
@@ -45,7 +47,7 @@ def test_haversine_same_point():
 def test_resolve_anand_district_coordinates():
     lat, lng, is_approx = resolve_facility_lat_lng(1001, "Gujarat", "Anand")
     assert 22.4 <= lat <= 22.7
-    assert 72.8 <= lng <= 73.1
+    assert 72.6 <= lng <= 73.1
     assert is_approx is True
 
 

@@ -13,7 +13,7 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
         rel="stylesheet">
     <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <!-- Leaflet CSS & JS for Interactive Blood Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -60,14 +60,6 @@
             stroke-linecap="round" stroke-linejoin="round">
             <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
             <polyline points="17 6 23 6 23 12"></polyline>
-        </symbol>
-        <symbol id="icon-share-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="18" cy="5" r="3"></circle>
-            <circle cx="6" cy="12" r="3"></circle>
-            <circle cx="18" cy="19" r="3"></circle>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
         </symbol>
         <symbol id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
             stroke-linecap="round" stroke-linejoin="round">
@@ -213,10 +205,13 @@
             </a>
 
             <div class="header-right">
-                <nav class="header-nav" aria-label="Main Navigation">
+                <button type="button" class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="main-nav">
+                    <span></span><span></span><span></span>
+                </button>
+                <nav id="main-nav" class="header-nav" aria-label="Main Navigation">
                     <a href="#emergency-section" class="nav-link nav-emergency">
                         <span class="emergency-nav-dot" aria-hidden="true"></span>
-                        <span>Emergency Triage</span>
+                        <span>Emergency</span>
                     </a>
                     <a href="#finder-section" class="nav-link">Find Blood</a>
                     <a href="#chart-section" class="nav-link">Network</a>
@@ -224,13 +219,11 @@
                     <a href="#shortages-section" class="nav-link">Shortages</a>
                     <a href="#donor-section" class="nav-link">Donor Help</a>
                     <a href="#health-section" class="nav-link">Data Health</a>
-                    <a href="/dbt-docs/" target="_blank" rel="noopener" class="nav-link">dbt Models</a>
-                    <a href="/docs" target="_blank" rel="noopener" class="nav-link">API Docs</a>
                 </nav>
 
                 <div class="live-status" role="status" aria-label="Inventory system active">
                     <span class="live-dot" aria-hidden="true"></span>
-                    <span class="live-label">Live Sync <span id="live-sync-time">19:30</span></span>
+                    <span class="live-label">Live Sync <span id="live-sync-time">--:--</span></span>
                 </div>
             </div>
         </div>
@@ -271,7 +264,7 @@
                         Shortage Intelligence</h1>
                     <p class="hero-sub">Direct ingestion from eRaktKosh (MoHFW, Govt. of India).
                         Engineered with DuckDB, dbt Medallion Lakehouse architecture (Bronze &rarr; Silver &rarr; Gold),
-                        and append-only snapshot analytics across 4,680+ verified facilities.</p>
+                        and append-only snapshot analytics across <span id="hero-total-banks">thousands of</span> verified facilities.</p>
                 </div>
 
                 <!-- PHASE 2: SMART EMERGENCY MODE SECTION -->
@@ -574,7 +567,7 @@
 
                 <div class="stat-cell">
                     <span class="stat-label">Facilities reporting today</span>
-                    <div class="stat-value" id="kpi-today-banks">3,864</div>
+                    <div class="stat-value" id="kpi-today-banks">--</div>
                     <span class="stat-sub">Active nodes transmitting availability</span>
                 </div>
             </section>
@@ -1027,7 +1020,7 @@
                     </div>
                     <div class="health-kpi-card">
                         <div class="kpi-label">dbt Schema Quality Tests</div>
-                        <div class="kpi-value-lg text-instock" id="health-dbt-tests">37 / 37 PASS</div>
+                        <div class="kpi-value-lg text-instock" id="health-dbt-tests">--</div>
                         <div class="kpi-sub">Bronze &bull; Silver &bull; Gold contracts</div>
                     </div>
                 </div>
@@ -1276,46 +1269,6 @@
             <div class="modal-footer">
                 <span class="modal-source-note">Verified against append-only DuckDB snapshots. Multi-day trajectories
                     reflect real incremental runs of the data pipeline.</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Shareable Emergency SOS Modal -->
-    <div id="sos-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="sos-modal-title">
-        <div class="modal-container" role="document">
-            <div class="modal-header">
-                <div>
-                    <span class="tag tag-vol" id="sos-modal-badge">Direct Transfusion Assistance</span>
-                    <h3 id="sos-modal-title" class="modal-title">Emergency Blood Availability SOS
-                        Card</h3>
-                    <p class="modal-subtitle">Share verified facility coordinates and availability with family, doctors,
-                        or patient groups.</p>
-                </div>
-                <button type="button" id="sos-close-btn" class="close-btn" aria-label="Close SOS modal">
-                    <svg class="icon">
-                        <use href="#icon-x"></use>
-                    </svg>
-                </button>
-            </div>
-
-            <div class="modal-body" style="padding: 1.25rem 1.75rem;">
-                <div id="sos-preview-text" class="sos-preview-card"></div>
-                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem;">
-                    <button type="button" id="sos-copy-btn" class="btn btn-primary" style="flex: 1;">
-                        <svg class="icon">
-                            <use href="#icon-share-2"></use>
-                        </svg>
-                        <span>Copy SOS Message</span>
-                    </button>
-                    <a id="sos-whatsapp-btn" href="#" target="_blank" rel="noopener" class="btn btn-text"
-                        style="flex: 1; border: 1px solid var(--line); justify-content: center; background: #25D366; color: #FFFFFF; font-weight: 600;">
-                        <span>Share via WhatsApp</span>
-                    </a>
-                </div>
-                <div id="sos-copy-feedback"
-                    style="font-size: 0.8125rem; color: var(--stock-instock); margin-top: 0.5rem; text-align: center; display: none;">
-                    SOS card copied to clipboard!
-                </div>
             </div>
         </div>
     </div>

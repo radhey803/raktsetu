@@ -91,8 +91,8 @@ flowchart LR
 ## 🚀 Quick start
 
 ```bash
-git clone https://github.com/radhey803/eraktkosh-blood-lakehouse.git
-cd eraktkosh-blood-lakehouse
+git clone https://github.com/radhey803/raktsetu.git
+cd raktsetu
 make install          # uv sync
 make pipeline         # scrape eRaktKosh → build the lakehouse (about 5–15 min, needs internet)
 make run              # http://localhost:8000   ·   API docs: http://localhost:8000/docs

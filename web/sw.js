@@ -1,11 +1,11 @@
 /**
- * eRaktKosh Blood Lakehouse Service Worker
+ * Raktsetu Service Worker
  * Precaches core application shell and provides runtime caching for API queries
  * with offline fallback support.
  */
 
-const CACHE_NAME = 'eraktkosh-shell-v4';
-const DATA_CACHE_NAME = 'eraktkosh-data-v4';
+const CACHE_NAME = 'raktsetu-shell-v5';
+const DATA_CACHE_NAME = 'raktsetu-data-v5';
 
 const APP_SHELL_FILES = [
   '/',

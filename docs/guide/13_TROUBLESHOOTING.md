@@ -187,7 +187,7 @@ is wrong, the bug is in `routes.py` or the database.
 - **Check:** DevTools → Application → Service Workers. Which version is active?
 - **Fix:**
   - **You:** in DevTools, tick "Update on reload", or click **Unregister** and do a hard refresh (Ctrl+Shift+R).
-  - **All users:** raise `CACHE_NAME` in `sw.js` (`v4` → `v5`).
+  - **All users:** raise `CACHE_NAME` in `sw.js` (`v5` → `v6`).
 
 ### The page scrolls sideways on mobile
 - **Check:** in the Console, run

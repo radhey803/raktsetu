@@ -185,18 +185,18 @@ It holds the app name, the icons (`/assets/icon-192.svg`, `icon-512.svg`), the t
 
 ### `sw.js`: the service worker
 ```js
-const CACHE_NAME = 'eraktkosh-shell-v4';
-const DATA_CACHE_NAME = 'eraktkosh-data-v4';
+const CACHE_NAME = 'raktsetu-shell-v5';
+const DATA_CACHE_NAME = 'raktsetu-data-v5';
 ```
 | Event | What it does |
 |-------|--------------|
 | `install` | Saves the app shell (`/`, `style.css`, `app.js`, `manifest.json`, icons) in the cache |
-| `activate` | Deletes old caches (any name that isn't v4) |
+| `activate` | Deletes old caches (any name that isn't v5) |
 | `fetch` `/api/*` | **Network-first.** A 200 answer is saved in the data cache. When offline, it returns the cached answer, or `503 {"error":"offline"}` |
 | `fetch` other | **Network-first.** It caches the shell files and the CDN libraries, **but not map tiles** (there are too many) |
 
 **When you change `app.js` or `style.css`:** network-first means online users get the new files
-automatically. If you change the **service worker logic**, raise the version (`v4` → `v5`) so old
+automatically. If you change the **service worker logic**, raise the version (`v5` → `v6`) so old
 caches are cleared.
 
 **Debug it:** DevTools → Application → Service Workers (tick "Update on reload") and Cache Storage.

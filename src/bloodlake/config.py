@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # Academic Project Metadata
-    project_name: str = "eRaktKosh Blood Lakehouse"
-    project_subtitle: str = "National Blood Inventory Intelligence & Emergency Finder"
+    project_name: str = "Raktsetu"
+    project_subtitle: str = "Real-Time Blood Availability Finder"
     version: str = "1.0.0"
     institution: str = "Academic Research Initiative"
     department: str = "Faculty of Computer Science and Applications"

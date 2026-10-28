@@ -23,7 +23,7 @@ def test_meta_endpoint():
     resp = client.get("/api/v1/meta")
     assert resp.status_code == 200
     data = resp.json()
-    assert "eRaktKosh Blood Lakehouse" in data["project_name"]
+    assert "Raktsetu" in data["project_name"]
     assert "Academic" in data["institution"]
     assert data["total_facilities"] > 0
     assert "eRaktKosh" in data["data_source"]

@@ -1,6 +1,6 @@
 {
-  "name": "eRaktKosh Blood Lakehouse",
-  "short_name": "eRaktKosh",
+  "name": "Raktsetu: Blood Availability Finder",
+  "short_name": "Raktsetu",
   "description": "Real-time national blood inventory intelligence and emergency facility finder across India.",
   "start_url": "/",
   "display": "standalone",

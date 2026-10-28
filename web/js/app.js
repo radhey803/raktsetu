@@ -1,5 +1,5 @@
 /**
- * eRaktKosh Lakehouse - Modern Health-Tech Web Frontend
+ * Raktsetu - Modern Health-Tech Web Frontend
  * Vanilla JS logic querying FastAPI backend connected to DuckDB Gold Lakehouse.
  * Redesigned with clinical precision, Lucide-style SVG icons, and zero emojis.
  */
@@ -1951,7 +1951,7 @@ async function loadDataHealthDashboard() {
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').then(() => {
-            console.log('eRaktKosh PWA Service Worker registered successfully.');
+            console.log('Raktsetu PWA Service Worker registered successfully.');
         }).catch((err) => {
             console.warn('Service Worker registration skipped:', err);
         });

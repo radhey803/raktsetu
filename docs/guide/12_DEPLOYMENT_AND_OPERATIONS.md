@@ -129,7 +129,7 @@ Manual run: GitHub → Actions → *Scheduled Ingestion* → **Run workflow**.
 ## 6. Releasing a change
 
 1. Create a branch, make the change, and run `make lint test` (plus the e2e check for UI changes).
-2. If you changed the **service worker logic** (`sw.js`), raise `CACHE_NAME`/`DATA_CACHE_NAME` (`v4` → `v5`).
+2. If you changed the **service worker logic** (`sw.js`), raise `CACHE_NAME`/`DATA_CACHE_NAME` (`v5` → `v6`).
 3. If you changed dbt models, run `make transform publish`.
 4. Open a PR and merge it once CI is green.
 5. On the VPS: `git pull && docker compose up -d --build`.

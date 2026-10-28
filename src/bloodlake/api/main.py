@@ -1,5 +1,5 @@
 """
-eRaktKosh Blood Lakehouse FastAPI Application
+Raktsetu FastAPI Application
 =============================================
 Academic Project - Blood Inventory Intelligence Lakehouse
 
@@ -72,7 +72,7 @@ if web_dir.exists():
         index_file = web_dir / "index.html"
         if index_file.exists():
             return FileResponse(str(index_file))
-        return HTMLResponse("<h1>eRaktKosh Blood Lakehouse</h1><p>API Running. Visit /docs</p>")
+        return HTMLResponse("<h1>Raktsetu</h1><p>API Running. Visit /docs</p>")
 
     @app.get("/dashboard", response_class=HTMLResponse)
     def serve_dashboard():

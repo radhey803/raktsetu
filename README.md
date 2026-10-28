@@ -4,7 +4,7 @@
 
 **Find compatible blood across India in seconds, with how fresh and how reliable each listing is.**
 
-*Academic project*
+*Academic data engineering project*
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg?logo=python&logoColor=white)](pyproject.toml)
 [![DuckDB](https://img.shields.io/badge/DuckDB-lakehouse-FFF000.svg?logo=duckdb&logoColor=black)](https://duckdb.org)

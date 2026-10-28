@@ -104,7 +104,6 @@ make run              # http://localhost:8000   ·   API docs: http://localhost:
 | `make status` | Recent pipeline runs |
 | `make test` · `make lint` · `make dbt-test` | Tests and code checks |
 | `uv run python tests/e2e/e2e_check.py` | 146-check browser test (with `make run` running) |
-| `make report` | Rebuild the project report (DOCX/PDF) |
 
 Full setup for Linux, macOS and Windows, with fixes for common errors: **[docs/guide/02_INSTALLATION.md](docs/guide/02_INSTALLATION.md)**
 
@@ -122,7 +121,7 @@ A complete beginner-friendly guide (17 chapters) is in **[docs/guide/](docs/guid
 | [Testing](docs/guide/11_TESTING.md) · [Deployment](docs/guide/12_DEPLOYMENT_AND_OPERATIONS.md) · [Troubleshooting](docs/guide/13_TROUBLESHOOTING.md) | Operations |
 | [Build it yourself](docs/guide/14_BUILD_IT_YOURSELF.md) · [Tech stack](docs/guide/15_TECH_STACK_REFERENCE.md) · [Glossary & FAQ](docs/guide/16_GLOSSARY_AND_FAQ.md) | Learning |
 
-Also: [design decisions (ADRs)](docs/adr/) · [project report (PDF)](reports/Raktsetu_Project_Report.pdf) · [presentation (PDF)](reports/Raktsetu_Presentation.pdf)
+Also: [design decisions (ADRs)](docs/adr/)
 
 ---
 
@@ -135,7 +134,6 @@ web/                index.html, app.js, style.css, service worker, manifest
 data/               district metadata, medical rules, district coordinates
 tests/              unit, integration (fixture DB), e2e (Playwright)
 docs/               guide, ADRs, diagrams, screenshots
-reports/            project report + presentation
 ```
 
 ---

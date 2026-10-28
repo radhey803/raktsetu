@@ -50,3 +50,12 @@ logs/
 Thumbs.db
 .vscode/
 .idea/
+
+# Academic submission material (kept locally, not published)
+reports/
+docs/academic/
+docs/prompts/
+docs/USER_MANUAL.md
+scripts/report/build_raktsetu_docx.py
+scripts/report/build_presentation.js
+scripts/report/assets/

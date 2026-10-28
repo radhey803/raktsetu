@@ -141,17 +141,13 @@
 
 ---
 
-## Report tooling (`scripts/report/`)
+## Diagram and screenshot tooling (`scripts/report/`)
 
 | Tool | Used for |
 |------|----------|
-| **python-docx** | Builds `reports/Raktsetu_Project_Report.docx` (`build_raktsetu_docx.py`) |
-| **LibreOffice** (`soffice --headless --convert-to pdf`) | DOCX → PDF |
-| **Graphviz** (`dot`) | Architecture, class, DFD, ER and activity diagrams |
+| **Graphviz** (`dot`) | Architecture, class, DFD, ER and activity diagrams (`generate_diagrams.py`, `make diagrams`) |
 | **matplotlib** | Use case, sequence and Gantt diagrams |
-| **Playwright** | Screenshots (`capture_screenshots.py`) |
-
-Rebuild the report with `make report`.
+| **Playwright** | UI screenshots (`capture_screenshots.py`) |
 
 ---
 

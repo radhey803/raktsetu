@@ -1,5 +1,5 @@
 """
-Generates the report's UML diagrams in black and white (CMPICA report style).
+Generates the report's UML diagrams in black and white.
 
 Graphviz draws the architecture, class and activity diagrams; matplotlib draws the
 use case (stick-figure actors) and sequence diagrams. Fonts are large so every label

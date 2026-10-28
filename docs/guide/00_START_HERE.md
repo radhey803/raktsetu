@@ -167,7 +167,6 @@ project_idea/
 │   ├── diagrams/, screenshots/ ← images used in the docs and the report
 │   └── academic/, learning/    ← report notes, viva prep, DuckDB/dbt learning notes
 │
-├── reports/                    ← final project report (.docx / .pdf)
 └── .github/workflows/          ← ci.yml, pipeline.yml (every 6 h), deploy.yml
 ```
 

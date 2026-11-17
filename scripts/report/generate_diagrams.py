@@ -140,13 +140,6 @@ def class_diagram():
         "CircuitBreakerError": ([""], [""]),
         "RunIntervalGuardError": ([""], [""]),
     }
-    legend = """  legend [shape=plain, label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4">
-    <TR><TD ALIGN="LEFT"><B>Visibility</B></TD></TR>
-    <TR><TD ALIGN="LEFT">+  public: used by other modules</TD></TR>
-    <TR><TD ALIGN="LEFT">~  package: helper inside its own module</TD></TR>
-    <TR><TD ALIGN="LEFT">-  private: name starts with _</TD></TR>
-    <TR><TD ALIGN="LEFT">#  protected: not needed (no subclass)</TD></TR></TABLE>>];
-"""
 
     def nodes(names):
         return "\n".join(f"  {n} {_uml(n, *classes[n])};" for n in names) + "\n"
@@ -160,10 +153,9 @@ def class_diagram():
         "CircuitBreakerError",
         "RunIntervalGuardError",
     ]
-    body = "  rankdir=TB; nodesep=0.5; ranksep=0.6;\n" + nodes(pipeline) + legend
+    body = "  rankdir=TB; nodesep=0.5; ranksep=0.6;\n" + nodes(pipeline)
     body += """
   Exception [shape=box, label="«built-in»\\nException"];
-  { rank=same; legend; Pipeline; }
   Pipeline -> Scraper [label=" uses"];
   Pipeline -> Database [label=" writes"];
   Scraper -> Settings [label=" reads", style=dashed];
@@ -176,10 +168,8 @@ def class_diagram():
     render_dot("class_diagram", body)
 
     api = ["APIRoutes", "Database", "MedicalRules", "GeoService", "CSVExporter"]
-    body = "  rankdir=LR; nodesep=0.35; ranksep=0.9;\n" + nodes(api) + legend
+    body = "  rankdir=LR; nodesep=0.35; ranksep=0.9;\n" + nodes(api)
     body += """
-  { rank=same; legend; APIRoutes; }
-  legend -> APIRoutes [style=invis];
   APIRoutes -> Database [label=" reads"];
   APIRoutes -> MedicalRules [label=" uses"];
   APIRoutes -> GeoService [label=" uses"];

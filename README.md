@@ -78,12 +78,6 @@ flowchart LR
 5. **Publish:** the database is copied to `serving.duckdb` in one atomic step.
 6. **Serve:** FastAPI answers JSON; a plain HTML/CSS/JS PWA shows it.
 
-<details>
-<summary>📐 Architecture and ER diagrams</summary>
-
-<img src="docs/diagrams/architecture_diagram.png" width="420"> <img src="docs/diagrams/er_diagram.png" width="420">
-</details>
-
 **Tech stack:** Python 3.12 · uv · aiohttp · PyArrow/Parquet · DuckDB · dbt-duckdb · FastAPI · Pydantic · Leaflet · Chart.js · Service Worker · pytest · Playwright · ruff · Docker · GitHub Actions
 
 ---

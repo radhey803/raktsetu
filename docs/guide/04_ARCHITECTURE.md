@@ -53,8 +53,6 @@ flowchart TB
     PIPE -.writes.-> RUNS
 ```
 
-The same diagram, as a picture for the report, is in `docs/diagrams/architecture_diagram.png`.
-
 ---
 
 ## 2. Why each layer exists

@@ -8,11 +8,12 @@ stays readable when the image is placed at full page width (about 6.2 inches).
 Usage: uv run python scripts/report/generate_diagrams.py
 """
 
+import math
 import subprocess
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import Ellipse, Rectangle
+from matplotlib.patches import Ellipse, Polygon, Rectangle
 
 OUT_DIR = Path(__file__).resolve().parents[2] / "docs" / "diagrams"
 plt.rcParams["font.family"] = ["Liberation Serif", "DejaVu Serif"]
@@ -242,108 +243,156 @@ def activity_pipeline():
 # ---------------------------------------------------------------------------
 # Use case diagram (stick-figure actors, ellipses, system boundary)
 # ---------------------------------------------------------------------------
-def _actor(ax, x, y, name):
+def _actor(ax, x, y, name, label_above=False):
     ax.add_patch(plt.Circle((x, y + 0.55), 0.18, fill=False, lw=1.6))
     ax.plot([x, x], [y + 0.37, y - 0.25], "k", lw=1.6)
     ax.plot([x - 0.35, x + 0.35], [y + 0.15, y + 0.15], "k", lw=1.6)
     ax.plot([x, x - 0.28], [y - 0.25, y - 0.75], "k", lw=1.6)
     ax.plot([x, x + 0.28], [y - 0.25, y - 0.75], "k", lw=1.6)
-    ax.text(x, y - 1.05, name, ha="center", va="top", fontsize=15, fontweight="bold")
+    ty, va = (y + 0.9, "bottom") if label_above else (y - 0.95, "top")
+    ax.text(x, ty, name, ha="center", va=va, fontsize=14, fontweight="bold")
 
 
 # ---------------------------------------------------------------------------
-# Use case diagrams (stick-figure actors, system actors, include / extend)
+# Use case diagrams (stick-figure actors, system actors, include / extend, generalization)
+# Layout is fixed by hand so that no line crosses another line, ellipse or label.
 # ---------------------------------------------------------------------------
-COL_X = (4.25, 8.55)
-EW, EH = 3.7, 0.8
+EW, EH = 4.4, 0.95
 
 
 def _system_actor(ax, x, y, name):
-    ax.add_patch(Rectangle((x - 1.05, y - 0.5), 2.1, 1.0, fill=False, lw=1.4))
-    ax.text(x, y + 0.18, "«system»", ha="center", va="center", fontsize=10.5, style="italic")
-    ax.text(x, y - 0.16, name, ha="center", va="center", fontsize=11, fontweight="bold")
+    ax.add_patch(Rectangle((x - 1.3, y - 0.65), 2.6, 1.3, fill=False, lw=1.4))
+    ax.text(x, y + 0.36, "«system»", ha="center", va="center", fontsize=10.5, style="italic")
+    ax.text(
+        x,
+        y - 0.12,
+        name,
+        ha="center",
+        va="center",
+        fontsize=11.5,
+        fontweight="bold",
+        linespacing=1.0,
+    )
 
 
-def draw_use_case(name, title, cases, actors, systems, links, rels, rows):
-    fig, ax = plt.subplots(figsize=(9.5, rows * 0.92 + 1.2))
-    ax.set_xlim(-0.4, 12.9)
-    ax.set_ylim(-0.9, rows + 0.4)
+def _edge(c, toward):
+    """Point on the ellipse centred at c, in the direction of `toward`."""
+    dx, dy = toward[0] - c[0], toward[1] - c[1]
+    t = 1 / math.hypot(dx / (EW / 2), dy / (EH / 2))
+    return c[0] + dx * t, c[1] + dy * t
+
+
+def draw_use_case(name, title, box, cases, actors, systems, links, rels, gens=None):
+    x0, y0, x1, y1 = box
+    xs = [x for _, x, _ in cases.values()] + [a[1] for a in actors] + [sy[1] for sy in systems]
+    xmin, xmax = min(xs + [x0]) - 1.6, max(xs + [x1]) + 1.6
+    ymin, ymax = y0 - 0.4, y1 + 0.4
+    fig, ax = plt.subplots(figsize=((xmax - xmin) * 0.6, (ymax - ymin) * 0.6))
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)
+    ax.set_aspect("equal")
     ax.axis("off")
-    ax.add_patch(Rectangle((2.2, -0.6), 8.35, rows + 0.75, fill=False, lw=1.3, ls="--"))
-    ax.text(2.6, rows + 0.05, title, fontsize=14, fontweight="bold", va="top")
+    ax.add_patch(Rectangle((x0, y0), x1 - x0, y1 - y0, fill=False, lw=1.3, ls="--"))
+    ax.text(x0 + 0.3, y1 - 0.3, title, fontsize=14, fontweight="bold", va="top")
     pos = {}
-    for cid, (label, col, row) in cases.items():
-        x, y = COL_X[col], rows - 1 - row
+    for cid, (label, x, y) in cases.items():
         pos[cid] = (x, y)
         ax.add_patch(Ellipse((x, y), EW, EH, fill=False, lw=1.4))
         ax.text(x, y, label, ha="center", va="center", fontsize=12)
-    apos = {}
-    for aname, row in actors:
-        apos[aname] = (0.75, rows - 1 - row)
-        _actor(ax, 0.75, rows - 1 - row, aname)
-    for sname, row in systems:
-        apos[sname] = (11.75, rows - 1 - row)
-        _system_actor(ax, 11.75, rows - 1 - row, sname)
+    anchor = {}
+    for aname, x, y, *opt in actors:
+        _actor(ax, x, y, aname, label_above=bool(opt and opt[0]))
+        anchor[aname] = (x, y + 0.15, 0.35)
+    for sname, x, y in systems:
+        _system_actor(ax, x, y, sname)
+        anchor[sname] = (x, y, 1.3)
     for a, cid in links:
-        ax_, ay = apos[a]
-        cx, cy = pos[cid]
-        if ax_ < 5:
-            ax.plot([ax_ + 0.4, cx - EW / 2], [ay + 0.15, cy], "k", lw=0.9)
-        else:
-            ax.plot([ax_ - 1.05, cx + EW / 2], [ay, cy], "k", lw=0.9)
+        x, y, half = anchor[a]
+        c = pos[cid]
+        start = (x - half if c[0] < x else x + half, y)
+        end = _edge(c, start)
+        ax.plot([start[0], end[0]], [start[1], end[1]], "k", lw=1.0)
     for src, dst, kind in rels:
-        (x1, y1), (x2, y2) = pos[src], pos[dst]
-        start = (
-            x1 - EW / 2 if x1 > x2 else x1 + EW / 2 if x1 < x2 else x1,
-            y1 if x1 != x2 else y1 - EH / 2,
-        )
-        end = (
-            x2 + EW / 2 if x1 > x2 else x2 - EW / 2 if x1 < x2 else x2,
-            y2 if x1 != x2 else y2 + EH / 2,
-        )
+        start, end = _edge(pos[src], pos[dst]), _edge(pos[dst], pos[src])
         ax.annotate("", end, start, arrowprops=dict(arrowstyle="->", lw=1.1, linestyle="--"))
-        mx, my = start[0] + (end[0] - start[0]) * 0.6, start[1] + (end[1] - start[1]) * 0.6
-        ax.text(mx, my + 0.1, f"«{kind}»", ha="center", va="bottom", fontsize=10, style="italic")
+        dx, dy = end[0] - start[0], end[1] - start[1]
+        ang = math.degrees(math.atan2(dy, dx))
+        if ang > 90 or ang < -90:
+            ang -= 180 if ang > 0 else -180
+        L = math.hypot(dx, dy)
+        nx, ny = -dy / L, dx / L
+        if ny < 0:
+            nx, ny = -nx, -ny
+        mx, my = start[0] + dx * 0.5 + nx * 0.2, start[1] + dy * 0.5 + ny * 0.2
+        ax.text(
+            mx,
+            my,
+            f"«{kind}»",
+            ha="center",
+            va="center",
+            fontsize=10.5,
+            style="italic",
+            rotation=ang,
+            rotation_mode="anchor",
+        )
+    for children, parent, trunk_x in gens or []:
+        px, py = next((a[1], a[2]) for a in actors if a[0] == parent)
+        ys = []
+        for ch in children:
+            cx, cy = next((a[1], a[2]) for a in actors if a[0] == ch)
+            ax.plot([cx + 0.18, trunk_x], [cy + 0.55, cy + 0.55], "k", lw=1.0)
+            ys.append(cy + 0.55)
+        top = py - 0.8
+        ax.plot([trunk_x, trunk_x], [min(ys), top - 0.3], "k", lw=1.0)
+        ax.add_patch(
+            Polygon(
+                [(trunk_x - 0.17, top - 0.3), (trunk_x + 0.17, top - 0.3), (trunk_x, top)],
+                closed=True,
+                fill=True,
+                facecolor="white",
+                edgecolor="black",
+                lw=1.1,
+            )
+        )
     fig.savefig(OUT_DIR / f"{name}.png", dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
 
 
 def use_case():
+    c0, c1 = 4.0, 10.0
     draw_use_case(
         "use_case_diagram",
         "Raktsetu: Public Website",
+        box=(1.4, -13.5, 12.6, 1.5),
         cases={
-            "emg": ("Search Emergency Blood", 0, 0),
-            "cmp": ("Check Blood Compatibility", 1, 0),
-            "near": ("Search Near My Location", 1, 1),
-            "find": ("Find Blood Centres", 0, 2),
-            "map": ("View Live Map", 1, 2),
-            "trend": ("View Trend & Trust Score", 1, 3),
-            "call": ("Call / Get Directions", 0, 4),
-            "rare": ("Check Rare Blood", 0, 5),
-            "short": ("View District Shortages", 0, 6),
-            "csv": ("Export CSV Report", 1, 6),
-            "net": ("View Network Statistics", 0, 7),
-            "donor": ("Check Donor Eligibility", 0, 8),
+            "cmp": ("Check Blood Compatibility", c0, 0),
+            "emg": ("Search Emergency Blood", c1, 0),
+            "near": ("Search Near My Location", c0, -1.3),
+            "map": ("View Live Map", c0, -2.6),
+            "find": ("Find Blood Centres", c1, -2.6),
+            "trend": ("View Trend & Trust Score", c0, -3.9),
+            "net": ("View Network Statistics", c1, -3.9),
+            "call": ("Call / Get Directions", c1, -5.6),
+            "rare": ("Check Rare Blood", c1, -8.0),
+            "csv": ("Export CSV Report", c0, -10.4),
+            "short": ("View District Shortages", c1, -10.4),
+            "donor": ("Check Donor Eligibility", c1, -12.9),
         },
         actors=[
-            ("Patient's Family", 0.2),
-            ("Doctor / Staff", 2.6),
-            ("Health Official", 5.0),
-            ("Blood Donor", 7.4),
+            ("Public User", 16.6, -1.8, True),
+            ("Patient's Family", 14.6, -5.75),
+            ("Doctor / Staff", 14.6, -8.15),
+            ("Health Official", 14.6, -10.55),
+            ("Blood Donor", 14.6, -13.05),
         ],
-        systems=[("Device GPS", 1.1)],
+        systems=[("Device GPS", -0.6, -1.3)],
         links=[
-            ("Patient's Family", "emg"),
-            ("Patient's Family", "find"),
+            ("Public User", "emg"),
+            ("Public User", "find"),
+            ("Public User", "net"),
             ("Patient's Family", "call"),
-            ("Doctor / Staff", "emg"),
-            ("Doctor / Staff", "find"),
             ("Doctor / Staff", "rare"),
-            ("Health Official", "find"),
             ("Health Official", "short"),
-            ("Health Official", "net"),
-            ("Blood Donor", "net"),
             ("Blood Donor", "donor"),
             ("Device GPS", "near"),
         ],
@@ -354,23 +403,30 @@ def use_case():
             ("trend", "find", "extend"),
             ("csv", "short", "extend"),
         ],
-        rows=9,
+        gens=[
+            (
+                ["Patient's Family", "Doctor / Staff", "Health Official", "Blood Donor"],
+                "Public User",
+                16.6,
+            )
+        ],
     )
     draw_use_case(
         "use_case_operator",
         "Raktsetu: Data Pipeline",
+        box=(1.4, -9.6, 13.0, 1.5),
         cases={
-            "run": ("Run Data Pipeline", 0, 2),
-            "scrape": ("Scrape eRaktKosh Data", 1, 0),
-            "load": ("Load Raw Data", 1, 1),
-            "dbt": ("Transform with dbt", 1, 2),
-            "gate": ("Run Quality Gate", 1, 3),
-            "pub": ("Publish Data", 1, 4),
-            "health": ("Monitor Data Health", 0, 5),
-            "geo": ("Geocode Districts", 1, 6),
+            "run": ("Run Data Pipeline", c0, -2.6),
+            "scrape": ("Scrape eRaktKosh Data", 10.4, 0),
+            "load": ("Load Raw Data", 10.4, -1.3),
+            "dbt": ("Transform with dbt", 10.4, -2.6),
+            "gate": ("Run Quality Gate", 10.4, -3.9),
+            "pub": ("Publish Data", 10.4, -5.2),
+            "health": ("Monitor Data Health", c0, -6.0),
+            "geo": ("Geocode Districts", c0, -8.6),
         },
-        actors=[("Operator", 3.0)],
-        systems=[("eRaktKosh\nPortal", 0), ("OpenStreetMap", 6)],
+        actors=[("Operator", -0.2, -7.45)],
+        systems=[("eRaktKosh\nPortal", 14.9, 0), ("OpenStreetMap", 14.9, -8.6)],
         links=[
             ("Operator", "run"),
             ("Operator", "health"),
@@ -385,7 +441,6 @@ def use_case():
             ("run", "gate", "include"),
             ("run", "pub", "include"),
         ],
-        rows=7,
     )
 
 

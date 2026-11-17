@@ -46,32 +46,53 @@ def _uml(name, attrs, ops):
 
 
 def class_diagram():
+    # Visibility follows the code: + used by other modules, ~ helper used only inside its own
+    # module (package scope), - underscore-prefixed (private). No class needs # (protected).
     classes = {
         "Settings": (
             [
-                "+ warehouse_path",
-                "+ serving_path",
-                "+ scraper_concurrency",
-                "+ min_run_interval_hours",
+                "+ warehouse_path: Path",
+                "+ serving_path: Path",
+                "+ scraper_concurrency: int = 10",
+                "+ min_run_interval_hours: float = 6.0",
+                "+ min_facility_threshold_ratio: float = 0.8",
             ],
-            ["+ (pydantic settings)"],
+            ["+ Settings() «reads .env»"],
         ),
         "Scraper": (
-            ["+ concurrency: int", "+ max_retries: int"],
+            ["~ logger: Logger"],
             [
-                "+ scrape_nationwide()",
-                "+ fetch_district_data()",
-                "+ write_landing_parquet()",
+                "+ scrape_nationwide(): list",
+                "+ write_landing_parquet(): Path",
                 "+ check_run_interval_guard()",
+                "~ fetch_district_data(): tuple",
+                "~ compute_file_sha256(): str",
             ],
         ),
         "Pipeline": (
-            ["+ run_id: str", "+ status: str"],
-            ["+ scrape()", "+ load()", "+ transform()", "+ test()", "+ publish()", "+ all()"],
+            ["+ app: Typer", "~ console: Console"],
+            [
+                "+ scrape()",
+                "+ load()",
+                "+ transform()",
+                "+ test()",
+                "+ publish()",
+                "+ all()",
+                "+ status()",
+                "~ init_metadata_tables()",
+                "~ record_run_start()",
+                "~ record_run_finish()",
+                "~ get_last_successful_run(): dict",
+                "~ ingest_landing_to_bronze(): int",
+            ],
         ),
         "Database": (
-            ["+ warehouse.duckdb", "+ serving.duckdb"],
-            ["+ get_warehouse_connection()", "+ get_serving_connection()"],
+            ["+ warehouse_db: Path", "+ serving_db: Path"],
+            [
+                "+ get_serving_connection(): Connection",
+                "+ get_warehouse_connection(): Connection",
+                "+ get_db_session(): Generator",
+            ],
         ),
         "APIRoutes": (
             ["+ router: APIRouter"],
@@ -81,32 +102,66 @@ def class_diagram():
                 "+ history()",
                 "+ shortages()",
                 "+ rare()",
+                "+ health_dashboard()",
                 "+ export_csv()",
+                "- _dbt_tests_summary(): dict",
             ],
         ),
         "MedicalRules": (
-            ["+ red_cell_compatibility", "+ plasma_compatibility"],
-            ["+ get_compatible_donor_groups()", "+ is_rh_negative()"],
+            ["~ RULES_PATH: Path", "~ PLASMA_ABO_DONORS: dict"],
+            [
+                "+ get_compatible_donor_groups(): tuple",
+                "+ get_rules(): dict",
+                "~ load_medical_rules(): dict",
+                "~ is_rh_negative(): bool",
+                "~ is_bombay_phenotype(): bool",
+            ],
         ),
         "GeoService": (
-            ["+ district_coords"],
-            ["+ resolve_facility_lat_lng()", "+ haversine_distance_km()"],
+            ["~ DISTRICT_COORDS: dict", "~ STATE_COORDS: dict", "- _LAST_NOMINATIM_CALL: float"],
+            [
+                "+ resolve_facility_lat_lng(): tuple",
+                "+ haversine_distance_km(): float",
+                "~ geocode_with_nominatim(): tuple",
+                "- _load_geocoded_districts(): dict",
+            ],
         ),
         "CSVExporter": (
-            ["+ SOURCE: str"],
-            ["+ export_search_results_csv()", "+ export_shortages_csv()"],
+            ["+ SOURCE: str", "- _FORMULA_PREFIXES: tuple"],
+            [
+                "+ export_search_results_csv(): str",
+                "+ export_shortages_csv(): str",
+                "~ export_to_csv_with_bom(): str",
+                "~ split_contact(): tuple",
+                "- _clean()",
+            ],
         ),
+        "CircuitBreakerError": ([""], [""]),
+        "RunIntervalGuardError": ([""], [""]),
     }
     body = "  rankdir=LR; nodesep=0.3; ranksep=0.9;\n"  # left-to-right stacks classes vertically (portrait page)
     body += "\n".join(f"  {n} {_uml(n, a, o)};" for n, (a, o) in classes.items())
     body += """
+  Exception [shape=box, label="«built-in»\\nException"];
+  legend [shape=plain, label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4">
+    <TR><TD ALIGN="LEFT"><B>Visibility</B></TD></TR>
+    <TR><TD ALIGN="LEFT">+  public: used by other modules</TD></TR>
+    <TR><TD ALIGN="LEFT">~  package: helper inside its own module</TD></TR>
+    <TR><TD ALIGN="LEFT">-  private: name starts with _</TD></TR>
+    <TR><TD ALIGN="LEFT">#  protected: not needed (no subclass)</TD></TR></TABLE>>];
   Pipeline -> Scraper [label=" uses"];
   Pipeline -> Database [label=" writes"];
   Scraper -> Settings [label=" reads", style=dashed];
+  Database -> Settings [label=" reads", style=dashed];
   APIRoutes -> Database [label=" reads"];
   APIRoutes -> MedicalRules [label=" uses"];
   APIRoutes -> GeoService [label=" uses"];
   APIRoutes -> CSVExporter [label=" uses"];
+  Scraper -> CircuitBreakerError [label=" raises", style=dashed];
+  Scraper -> RunIntervalGuardError [label=" raises", style=dashed];
+  CircuitBreakerError -> Exception [arrowhead=onormal];
+  RunIntervalGuardError:e -> Exception:e [arrowhead=onormal];
+  { rank=same; Settings; RunIntervalGuardError; CircuitBreakerError; Exception; }
 """
     render_dot("class_diagram", body)
 

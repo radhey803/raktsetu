@@ -21,7 +21,7 @@ plt.rcParams["font.family"] = ["Liberation Serif", "DejaVu Serif"]
 DOT_STYLE = """
   graph [fontname="Liberation Serif", fontsize=22, bgcolor=white, pad=0.3, nodesep=0.45, ranksep=0.45, dpi=220];
   node  [fontname="Liberation Serif", fontsize=17, color=black, fontcolor=black, penwidth=1.4, shape=box, margin="0.22,0.10"];
-  edge  [fontname="Liberation Serif", fontsize=14, color=black, penwidth=1.3, arrowsize=0.9];
+  edge  [fontname="Liberation Serif", fontsize=16, color=black, penwidth=1.3, arrowsize=0.9];
 """
 
 
@@ -140,31 +140,52 @@ def class_diagram():
         "CircuitBreakerError": ([""], [""]),
         "RunIntervalGuardError": ([""], [""]),
     }
-    body = "  rankdir=LR; nodesep=0.3; ranksep=0.9;\n"  # left-to-right stacks classes vertically (portrait page)
-    body += "\n".join(f"  {n} {_uml(n, a, o)};" for n, (a, o) in classes.items())
-    body += """
-  Exception [shape=box, label="«built-in»\\nException"];
-  legend [shape=plain, label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4">
+    legend = """  legend [shape=plain, label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4">
     <TR><TD ALIGN="LEFT"><B>Visibility</B></TD></TR>
     <TR><TD ALIGN="LEFT">+  public: used by other modules</TD></TR>
     <TR><TD ALIGN="LEFT">~  package: helper inside its own module</TD></TR>
     <TR><TD ALIGN="LEFT">-  private: name starts with _</TD></TR>
     <TR><TD ALIGN="LEFT">#  protected: not needed (no subclass)</TD></TR></TABLE>>];
+"""
+
+    def nodes(names):
+        return "\n".join(f"  {n} {_uml(n, *classes[n])};" for n in names) + "\n"
+
+    # Two parts so each fits the page width with readable text.
+    pipeline = [
+        "Pipeline",
+        "Scraper",
+        "Database",
+        "Settings",
+        "CircuitBreakerError",
+        "RunIntervalGuardError",
+    ]
+    body = "  rankdir=TB; nodesep=0.5; ranksep=0.6;\n" + nodes(pipeline) + legend
+    body += """
+  Exception [shape=box, label="«built-in»\\nException"];
+  { rank=same; legend; Pipeline; }
   Pipeline -> Scraper [label=" uses"];
   Pipeline -> Database [label=" writes"];
   Scraper -> Settings [label=" reads", style=dashed];
   Database -> Settings [label=" reads", style=dashed];
+  Scraper -> CircuitBreakerError [label=" raises", style=dashed];
+  Scraper -> RunIntervalGuardError [label=" raises", style=dashed];
+  CircuitBreakerError -> Exception [arrowhead=onormal];
+  RunIntervalGuardError -> Exception [arrowhead=onormal];
+"""
+    render_dot("class_diagram", body)
+
+    api = ["APIRoutes", "Database", "MedicalRules", "GeoService", "CSVExporter"]
+    body = "  rankdir=LR; nodesep=0.35; ranksep=0.9;\n" + nodes(api) + legend
+    body += """
+  { rank=same; legend; APIRoutes; }
+  legend -> APIRoutes [style=invis];
   APIRoutes -> Database [label=" reads"];
   APIRoutes -> MedicalRules [label=" uses"];
   APIRoutes -> GeoService [label=" uses"];
   APIRoutes -> CSVExporter [label=" uses"];
-  Scraper -> CircuitBreakerError [label=" raises", style=dashed];
-  Scraper -> RunIntervalGuardError [label=" raises", style=dashed];
-  CircuitBreakerError -> Exception [arrowhead=onormal];
-  RunIntervalGuardError:e -> Exception:e [arrowhead=onormal];
-  { rank=same; Settings; RunIntervalGuardError; CircuitBreakerError; Exception; }
 """
-    render_dot("class_diagram", body)
+    render_dot("class_diagram_api", body)
 
 
 # ---------------------------------------------------------------------------
@@ -262,14 +283,14 @@ EW, EH = 4.4, 0.95
 
 def _system_actor(ax, x, y, name):
     ax.add_patch(Rectangle((x - 1.3, y - 0.65), 2.6, 1.3, fill=False, lw=1.4))
-    ax.text(x, y + 0.36, "«system»", ha="center", va="center", fontsize=10.5, style="italic")
+    ax.text(x, y + 0.36, "«system»", ha="center", va="center", fontsize=12, style="italic")
     ax.text(
         x,
         y - 0.12,
         name,
         ha="center",
         va="center",
-        fontsize=11.5,
+        fontsize=12.5,
         fontweight="bold",
         linespacing=1.0,
     )
@@ -330,7 +351,7 @@ def draw_use_case(name, title, box, cases, actors, systems, links, rels, gens=No
             f"«{kind}»",
             ha="center",
             va="center",
-            fontsize=10.5,
+            fontsize=12,
             style="italic",
             rotation=ang,
             rotation_mode="anchor",
